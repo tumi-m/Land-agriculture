@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as LibreMap } from "maplibre-gl";
-import { PROVINCE_SHAPES } from "@/lib/geo";
+import { PROVINCE_SHAPES, DISTRICTS_BY_PROVINCE } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
 import rivers from "@/data/sa-rivers.json";
 import { provinceBounds, ATLAS_ATTRIBUTION, TILE_BASE } from "@/lib/atlas";
@@ -13,6 +13,7 @@ import {
   ELEVATION_TILES,
   ELEVATION_ATTRIBUTION,
   groundElevation,
+  districtBounds,
 } from "@/lib/terrain";
 import { valueOf, type Metric } from "@/lib/land-metrics";
 import { group } from "@/lib/format";
@@ -21,17 +22,27 @@ import type { ProvinceCode } from "@/lib/types";
 export default function AtlasMap({
   metric,
   selected,
+  district,
+  onSelectDistrict,
   onSelect,
   onFallback,
 }: {
   metric: Metric;
   selected: ProvinceCode | null;
+  district: string | null;
+  onSelectDistrict: (id: string | null) => void;
   onSelect: (code: ProvinceCode | null) => void;
   onFallback: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
-  const latest = useRef({ selected, onSelect, flat: false });
+  const latest = useRef({
+    selected,
+    district,
+    onSelectDistrict,
+    onSelect,
+    flat: false,
+  });
   const markers = useRef<
     {
       code: ProvinceCode;
@@ -48,7 +59,7 @@ export default function AtlasMap({
   const [dataOverlay, setDataOverlay] = useState(false);
   const [water, setWater] = useState(true);
   const [elevation, setElevation] = useState<number | null>(null);
-  latest.current = { selected, onSelect, flat };
+  latest.current = { selected, district, onSelectDistrict, onSelect, flat };
 
   const frame = (duration = 1400) => {
     const instance = map.current;
@@ -57,7 +68,19 @@ export default function AtlasMap({
     const time = matchMedia("(prefers-reduced-motion: reduce)").matches
       ? 0
       : duration;
-    if (code) {
+    const extent =
+      code && latest.current.district
+        ? districtBounds(code, latest.current.district)
+        : null;
+    if (extent) {
+      instance.fitBounds(extent, {
+        padding: { top: 90, bottom: 110, left: 30, right: 65 },
+        pitch: latest.current.flat ? 0 : 55,
+        bearing: -24,
+        maxZoom: 11,
+        duration: time,
+      });
+    } else if (code) {
       instance.flyTo({
         ...PROVINCE_VIEWS[code],
         zoom:
@@ -226,6 +249,48 @@ export default function AtlasMap({
         filter: ["==", ["get", "code"], ""],
         paint: { "line-color": "#b8f6d9", "line-width": 2.5 },
       });
+      instance.addSource("districts", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: PROVINCE_SHAPES.flatMap((province) =>
+            DISTRICTS_BY_PROVINCE[province.code].map((shape) => ({
+              type: "Feature",
+              properties: { id: shape.id, province: province.code },
+              geometry: shape.geometry,
+            })),
+          ),
+        },
+      });
+      instance.addLayer({
+        id: "district-fill",
+        type: "fill",
+        source: "districts",
+        filter: ["==", ["get", "province"], ""],
+        paint: { "fill-color": "#d6f7ac", "fill-opacity": 0 },
+      });
+      instance.addLayer({
+        id: "district-borders",
+        type: "line",
+        source: "districts",
+        filter: ["==", ["get", "province"], ""],
+        paint: {
+          "line-color": "#e1ffde",
+          "line-width": 1,
+          "line-opacity": 0.45,
+        },
+      });
+      instance.addLayer({
+        id: "district-focus",
+        type: "line",
+        source: "districts",
+        filter: ["==", ["get", "id"], ""],
+        paint: { "line-color": "#f9ec9f", "line-width": 3 },
+      });
+      instance.on("click", "district-fill", (event) => {
+        const id = event.features?.[0]?.properties?.id as string | undefined;
+        if (id) latest.current.onSelectDistrict(id);
+      });
       instance.addSource("rivers", {
         type: "geojson",
         data: {
@@ -296,6 +361,17 @@ export default function AtlasMap({
       ["get", "code"],
       selected ?? "",
     ]);
+    instance.setFilter("district-fill", [
+      "==",
+      ["get", "province"],
+      selected ?? "",
+    ]);
+    instance.setFilter("district-borders", [
+      "==",
+      ["get", "province"],
+      selected ?? "",
+    ]);
+    instance.setFilter("district-focus", ["==", ["get", "id"], district ?? ""]);
     const maximum = Math.max(
       ...PROVINCE_SHAPES.map((shape) => valueOf(shape.code, metric) ?? 0),
       1,
@@ -323,10 +399,10 @@ export default function AtlasMap({
         `${PROVINCES[item.code].name}, ${value === null ? "not recorded" : group(value)} ${metric === "share" ? "percent" : "hectares"}. Explore terrain`,
       );
     });
-  }, [loaded, selected, metric, dataOverlay]);
+  }, [loaded, selected, district, metric, dataOverlay]);
   useEffect(() => {
     if (loaded) frame();
-  }, [loaded, selected]);
+  }, [loaded, selected, district]);
 
   return (
     <div className="terrain-map">

@@ -1,13 +1,19 @@
 "use client";
 
 import ParcelCard from "./ParcelCard";
+import { DISTRICTS_BY_PROVINCE } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import type { Listing, ProvinceCode } from "@/lib/types";
 
-/** Slides over the map when a province is picked. Figures first, prose last. */
+/**
+ * Slides over the map when a province is opened, and cascades in: each block
+ * arrives just behind the last, in the same order the districts fly apart.
+ */
 export default function ProvincePanel({
   code,
+  district,
+  onSelectDistrict,
   adverts,
   openIds,
   onToggle,
@@ -17,6 +23,8 @@ export default function ProvincePanel({
 }: {
   hasFeed: boolean;
   code: ProvinceCode;
+  district: string | null;
+  onSelectDistrict: (id: string | null) => void;
   adverts: Listing[];
   openIds: Set<string>;
   onToggle: (id: string) => void;
@@ -24,6 +32,11 @@ export default function ProvincePanel({
   onOpenOffices: () => void;
 }) {
   const p = PROVINCES[code];
+  const districts = DISTRICTS_BY_PROVINCE[code];
+  const picked = district ? districts.find((d) => d.id === district) : null;
+
+  // One shared rhythm for the cascade.
+  const step = (i: number) => ({ animationDelay: `${120 + i * 70}ms` });
 
   return (
     <aside
@@ -32,23 +45,34 @@ export default function ProvincePanel({
     >
       <div className="flex items-start justify-between gap-4 border-b border-ink px-5 py-4">
         <div className="min-w-0">
-          <p className="eyebrow">{p.capital}</p>
-          <h2 className="mt-0.5 font-display text-3xl leading-none text-ink">
-            {p.name}
+          <p className="eyebrow">
+            {picked ? `${p.name} · district` : p.capital}
+          </p>
+          <h2 className="mt-0.5 truncate font-display text-3xl leading-none text-ink">
+            {picked ? picked.name.replace(/ (District|Metro)$/, "") : p.name}
           </h2>
         </div>
         <button
           type="button"
-          onClick={onClose}
-          aria-label="Close province"
+          onClick={picked ? () => onSelectDistrict(null) : onClose}
+          aria-label={picked ? "Back to the province" : "Close province"}
           className="btn shrink-0 px-2.5 py-1.5"
         >
-          ✕
+          {picked ? "↩" : "✕"}
         </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
-        <dl className="grid grid-cols-3 gap-px border border-rule bg-rule">
+        {picked && (
+          <p className="mb-2 text-xs text-muted">
+            Province-wide figures · {p.name}. District-level figures are not
+            available in this reference.
+          </p>
+        )}
+        <dl
+          className="grid animate-rise grid-cols-3 gap-px border border-rule bg-rule"
+          style={step(0)}
+        >
           <Stat
             label="Advertised"
             value={p.advertised2020 > 0 ? group(p.advertised2020) : "0"}
@@ -72,7 +96,55 @@ export default function ProvincePanel({
           rounds, not current listings.
         </p>
 
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <section className="mt-5 animate-rise" style={step(1)}>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="eyebrow">{districts.length} districts</p>
+            {picked && (
+              <button
+                type="button"
+                onClick={() => onSelectDistrict(null)}
+                className="eyebrow underline decoration-rule underline-offset-4 hover:text-ink"
+              >
+                Show all
+              </button>
+            )}
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {districts.map((d, i) => {
+              const on = district === d.id;
+              return (
+                <li
+                  key={d.id}
+                  className="animate-rise"
+                  style={step(2 + i * 0.35)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSelectDistrict(on ? null : d.id)}
+                    aria-pressed={on}
+                    className={cx(
+                      "border px-2 py-1 text-left text-xs transition-colors duration-150",
+                      on
+                        ? "border-clay bg-clay text-paper"
+                        : "border-rule bg-raised text-muted hover:border-ink/30 hover:text-ink",
+                    )}
+                  >
+                    {d.name.replace(/ (District|Metro)$/, "")}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-2xs leading-snug text-muted">
+            Applications go to the office below for the district the farm sits
+            in.
+          </p>
+        </section>
+
+        <div
+          className="mt-4 flex animate-rise flex-wrap gap-1.5"
+          style={step(4)}
+        >
           {p.commodities.map((c) => (
             <span key={c} className="chip">
               {c}
@@ -80,9 +152,17 @@ export default function ProvincePanel({
           ))}
         </div>
 
-        <p className="mt-4 text-sm leading-relaxed text-muted">{p.systems}</p>
+        <p
+          className="mt-4 animate-rise text-sm leading-relaxed text-muted"
+          style={step(5)}
+        >
+          {p.systems}
+        </p>
 
-        <div className="mt-5 border-t border-ink pt-3">
+        <div
+          className="mt-5 animate-rise border-t border-ink pt-3"
+          style={step(6)}
+        >
           <p className="eyebrow">Apply here</p>
           <p className="mt-1.5 text-sm leading-snug text-ink">
             {p.pssc.address}

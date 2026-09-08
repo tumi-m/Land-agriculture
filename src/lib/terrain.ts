@@ -1,3 +1,5 @@
+import { DISTRICTS_BY_PROVINCE } from "./geo";
+import type { MapBounds } from "./atlas";
 import type { ProvinceCode } from "./types";
 
 /** Regional camera positions; these are views of the landscape, never farm listings. */
@@ -26,4 +28,28 @@ export function groundElevation(rendered: number | null): number | null {
   return rendered === null || !Number.isFinite(rendered)
     ? null
     : Math.round(rendered / TERRAIN_EXAGGERATION);
+}
+
+export function districtBounds(
+  province: ProvinceCode,
+  district: string,
+): MapBounds | null {
+  const shape = DISTRICTS_BY_PROVINCE[province].find(
+    (item) => item.id === district,
+  );
+  if (!shape) return null;
+  const points =
+    shape.geometry.type === "MultiPolygon"
+      ? shape.geometry.coordinates.flat(2)
+      : shape.geometry.coordinates.flat();
+  return [
+    [
+      Math.min(...points.map((point) => point[0])),
+      Math.min(...points.map((point) => point[1])),
+    ],
+    [
+      Math.max(...points.map((point) => point[0])),
+      Math.max(...points.map((point) => point[1])),
+    ],
+  ];
 }

@@ -40,10 +40,12 @@ test("unknown historical values remain unknown and are not presented as zero", (
   }
 });
 
-const panel = (hasFeed: boolean) =>
+const panel = (hasFeed: boolean, district: string | null = null) =>
   renderToStaticMarkup(
     <ProvincePanel
       code="LP"
+      district={district}
+      onSelectDistrict={() => {}}
       adverts={[]}
       openIds={new Set()}
       onToggle={() => {}}
@@ -103,4 +105,21 @@ test("elevation readings remove display exaggeration and preserve missing values
   assert.equal(groundElevation(-160), -100);
   assert.equal(groundElevation(null), null);
   assert.equal(groundElevation(NaN), null);
+});
+
+import { districtBounds } from "../src/lib/terrain";
+import { DISTRICTS_BY_PROVINCE } from "../src/lib/geo";
+test("district framing resolves the chosen boundary and rejects districts from another province", () => {
+  const first = DISTRICTS_BY_PROVINCE.LP[0];
+  const bounds = districtBounds("LP", first.id);
+  assert.ok(
+    bounds && bounds[0][0] < bounds[1][0] && bounds[0][1] < bounds[1][1],
+  );
+  assert.equal(districtBounds("WC", first.id), null);
+});
+
+test("district details identify the displayed totals as province-wide", () => {
+  const html = panel(false, DISTRICTS_BY_PROVINCE.LP[0].id);
+  assert.match(html, /Province-wide figures/);
+  assert.match(html, /District-level figures are not available/);
 });

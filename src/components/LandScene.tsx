@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { PROVINCE_SHAPES, projectedRings } from "@/lib/geo";
+import {
+  DISTRICTS_BY_PROVINCE,
+  PROVINCE_SHAPES,
+  projectedRings,
+} from "@/lib/geo";
 import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import type { ProvinceCode } from "@/lib/types";
@@ -12,6 +16,11 @@ import { METRICS, type Metric, valueOf } from "@/lib/land-metrics";
 
 const MAX_HEIGHT = 30;
 const BASE = 0.6;
+/** How flat the rest of the country lies once one province is opened. */
+const GHOST = 0.22;
+/** How far the districts travel apart, in world units. */
+const SPREAD = 7.5;
+const LIFT = 5;
 
 /** Where the camera arrives from, and where it settles. */
 const INTRO_FROM = new THREE.Vector3(-10, 148, 60);
@@ -39,6 +48,22 @@ const RAMP_DARK = [
   "#b4d49e",
 ];
 
+interface DistrictPiece {
+  id: string;
+  name: string;
+  group: THREE.Group;
+  solid: THREE.Mesh;
+  outline: THREE.LineSegments;
+  /** Plan-view centre in the centred scene. */
+  centre: THREE.Vector3;
+  /** Unit vector away from the province centre — the direction it flies apart. */
+  away: THREE.Vector3;
+  /** Position in the outward-running flight order. */
+  order: number;
+  /** How far along that flight it currently is, for label placement. */
+  reach: number;
+}
+
 interface ProvinceObject {
   code: ProvinceCode;
   group: THREE.Group;
@@ -60,12 +85,16 @@ export default function LandScene({
   metric,
   selected,
   onSelect,
+  district,
+  onSelectDistrict,
   dark,
   narrationOverlay = false,
 }: {
   metric: Metric;
   selected: ProvinceCode | null;
   onSelect: (code: ProvinceCode | null) => void;
+  district: string | null;
+  onSelectDistrict: (id: string | null) => void;
   dark: boolean;
   narrationOverlay?: boolean;
 }) {
@@ -97,6 +126,18 @@ export default function LandScene({
   const [rotating, setRotating] = useState(false);
   const [hover, setHover] = useState<ProvinceCode | null>(null);
   const labelRefs = useRef(new Map<ProvinceCode, HTMLButtonElement>());
+  const districtLabelRefs = useRef(new Map<string, HTMLButtonElement>());
+  /** Districts are built the first time a province is opened, then kept. */
+  const districts = useRef<Map<ProvinceCode, DistrictPiece[]>>(new Map());
+  const midpoint = useRef(new THREE.Vector3());
+  /** Eased 0 → 1 as the opened province comes apart. */
+  const burst = useRef(0);
+  const narrowRef = useRef(false);
+  const [hoverDistrict, setHoverDistrict] = useState<string | null>(null);
+  const hoverDistrictRef = useRef<string | null>(null);
+  hoverDistrictRef.current = hoverDistrict;
+  const districtRef = useRef<string | null>(district);
+  districtRef.current = district;
   const tipRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
   const active = METRICS.find((m) => m.id === metric)!;
@@ -335,6 +376,7 @@ export default function LandScene({
     // Centre the country on the origin so the camera frames it without guesswork.
     const midX = (extent.minX + extent.maxX) / 2;
     const midZ = -(extent.minY + extent.maxY) / 2;
+    midpoint.current.set(midX, 0, midZ);
     for (const o of built) {
       o.group.position.x = -midX;
       o.group.position.z = -midZ;
@@ -347,6 +389,7 @@ export default function LandScene({
       if (!el) return;
       const w = el.clientWidth;
       const h = el.clientHeight;
+      narrowRef.current = w < 640;
       cam.aspect = w / h;
       cam.fov = w < 640 ? 48 : 38;
       cam.updateProjectionMatrix();
@@ -392,14 +435,24 @@ export default function LandScene({
         if (t >= 1) intro.current = null;
       }
 
+      const open = selectedRef.current;
+      burst.current += ((open ? 1 : 0) - burst.current) * Math.min(1, dt * 3.6);
+      const b = burst.current;
+      const easedBurst = b * b * (3 - 2 * b);
+
+      // Once a province is open the pick target is its districts, not the country.
       raycaster.current.setFromCamera(pointer.current, cam);
-      const hits = raycaster.current.intersectObjects(
-        objects.current.map((o) => o.solid),
-        false,
-      );
-      const hitCode =
-        (hits[0]?.object.userData.code as ProvinceCode | undefined) ?? null;
+      const pickable = open
+        ? (districts.current.get(open) ?? []).map((d) => d.solid)
+        : objects.current.map((o) => o.solid);
+      const hits = raycaster.current.intersectObjects(pickable, false);
+      const picked = hits[0]?.object.userData as
+        { code?: ProvinceCode; id?: string } | undefined;
+
+      const hitCode = open ? null : (picked?.code ?? null);
+      const hitDistrict = open ? (picked?.id ?? null) : null;
       setHover((prev) => (prev === hitCode ? prev : hitCode));
+      setHoverDistrict((prev) => (prev === hitDistrict ? prev : hitDistrict));
 
       for (const o of objects.current) {
         const isSelected = selectedRef.current === o.code;
@@ -410,15 +463,18 @@ export default function LandScene({
         o.group.position.y +=
           (lift - o.group.position.y) * Math.min(1, dt * 10);
 
+        // The rest of the country drops to a flat plate; the opened province
+        // hands over to its districts as the burst runs.
+        const wantScale = dimmed ? GHOST : o.targetScale;
         o.currentScale +=
-          (o.targetScale - o.currentScale) *
-          (reduced ? 1 : Math.min(1, dt * 4.5));
+          (wantScale - o.currentScale) * (reduced ? 1 : Math.min(1, dt * 4.5));
         o.group.scale.y = o.currentScale;
+        o.group.visible = !(isSelected && easedBurst > 0.04);
 
         o.solid.castShadow = !dimmed;
 
         const material = o.solid.material as THREE.MeshStandardMaterial;
-        const wantOpacity = dimmed ? 0.28 : 1;
+        const wantOpacity = dimmed ? 0.34 : 1;
         material.opacity +=
           (wantOpacity - material.opacity) * Math.min(1, dt * 6);
         const emissive = isSelected ? 0.09 : isHovered && !dimmed ? 0.14 : 0;
@@ -435,6 +491,77 @@ export default function LandScene({
         line.color.set(
           isSelected ? "#b3491a" : darkRef.current ? "#cfd4c4" : "#2a3320",
         );
+      }
+
+      for (const [code, list] of districts.current) {
+        const showing = open === code;
+        for (const piece of list) {
+          piece.group.visible = showing && easedBurst > 0.02;
+          if (!piece.group.visible) continue;
+
+          const isPicked = districtRef.current === piece.id;
+          const isHovered = hitDistrict === piece.id;
+          const muted = districtRef.current !== null && !isPicked;
+
+          // Stagger: each district starts its flight a little after the last,
+          // so the burst reads as one motion rather than several.
+          const staged = Math.max(
+            0,
+            Math.min(
+              1,
+              (easedBurst - piece.order * 0.05) /
+                Math.max(0.2, 1 - piece.order * 0.05),
+            ),
+          );
+          const eased = 1 - Math.pow(1 - staged, 3);
+
+          // A phone has a strip of map, not a stage: the burst travels less far
+          // and rises less, or it climbs straight out of view.
+          const spread = SPREAD;
+          const climb = narrowRef.current ? LIFT * 0.7 : LIFT;
+          const reach = eased * spread * (isPicked ? 1.25 : 1);
+          piece.reach = reach;
+
+          piece.group.position.x = -midpoint.current.x + piece.away.x * reach;
+          piece.group.position.z = -midpoint.current.z + piece.away.z * reach;
+
+          const rise =
+            eased * climb +
+            (isHovered || isPicked ? (narrowRef.current ? 1.2 : 2.4) : 0);
+          piece.group.position.y +=
+            (rise - piece.group.position.y) * Math.min(1, dt * 9);
+
+          piece.group.scale.y +=
+            (scalesRef.current[code] - piece.group.scale.y) *
+            Math.min(1, dt * 4.5);
+
+          const material = piece.solid.material as THREE.MeshStandardMaterial;
+          // Opacity only carries the fade-in. A half-transparent extrusion shows
+          // its own inner walls and reads as glass, so a set-aside district is
+          // muted by washing its colour toward the surface instead.
+          material.opacity += (eased - material.opacity) * Math.min(1, dt * 7);
+          material.color.lerpColors(
+            new THREE.Color(coloursRef.current[code]),
+            new THREE.Color(darkRef.current ? "#232d1e" : "#e9eee1"),
+            muted ? 0.62 : 0,
+          );
+          material.emissive.set(
+            new THREE.Color(isPicked ? "#b3491a" : "#ffffff").multiplyScalar(
+              isPicked ? 0.14 : isHovered ? 0.16 : 0,
+            ),
+          );
+
+          const line = piece.outline.material as THREE.LineBasicMaterial;
+          const wanted = isPicked || isHovered ? 0.75 : 0.3;
+          line.opacity += (wanted * eased - line.opacity) * Math.min(1, dt * 7);
+          line.color.set(
+            isPicked || isHovered
+              ? "#b3491a"
+              : darkRef.current
+                ? "#cfd4c4"
+                : "#2a3320",
+          );
+        }
       }
 
       if (flight.current) {
@@ -471,6 +598,35 @@ export default function LandScene({
         el.style.pointerEvents = hidden ? "none" : "auto";
         el.tabIndex = hidden ? -1 : 0;
       }
+
+      const openList = open ? districts.current.get(open) : null;
+      for (const [id, node] of districtLabelRefs.current) {
+        const piece = openList?.find((d) => d.id === id);
+        if (!piece || !piece.group.visible) {
+          node.style.opacity = "0";
+          node.style.pointerEvents = "none";
+          node.tabIndex = -1;
+          continue;
+        }
+        const world = new THREE.Vector3(
+          piece.centre.x + piece.away.x * piece.reach,
+          piece.group.scale.y + piece.group.position.y + 1.4,
+          piece.centre.z + piece.away.z * piece.reach,
+        ).project(cam);
+        const muted =
+          districtRef.current !== null && districtRef.current !== piece.id;
+        const behind = world.z > 1;
+        node.style.transform = `translate3d(${((world.x + 1) / 2) * width}px, ${
+          ((-world.y + 1) / 2) * height
+        }px, 0) translate(-50%, -100%)`;
+        node.style.opacity = behind
+          ? "0"
+          : muted
+            ? "0.35"
+            : String(Math.min(1, easedBurst * 1.4));
+        node.style.pointerEvents = behind ? "none" : "auto";
+        node.tabIndex = behind ? -1 : 0;
+      }
     };
 
     setReady(true);
@@ -498,6 +654,11 @@ export default function LandScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const scalesRef = useRef(scales);
+  scalesRef.current = scales;
+  const coloursRef = useRef(colours);
+  coloursRef.current = colours;
+
   useEffect(() => {
     for (const o of objects.current) o.targetScale = scales[o.code];
   }, [scales]);
@@ -509,6 +670,57 @@ export default function LandScene({
       );
     }
   }, [colours]);
+
+  // Districts are extruded the first time their province is opened, then kept.
+  useEffect(() => {
+    const sc = scene.current;
+    if (!sc || !selected || districts.current.has(selected)) return;
+
+    const parent = objects.current.find((o) => o.code === selected);
+    if (!parent) return;
+
+    const list: DistrictPiece[] = [];
+
+    for (const shape of DISTRICTS_BY_PROVINCE[selected]) {
+      const made = buildPiece(shape.geometry, coloursRef.current[selected]);
+      if (!made) continue;
+
+      made.solid.userData.id = shape.id;
+      made.group.position.set(-midpoint.current.x, 0, -midpoint.current.z);
+      made.group.scale.y = scalesRef.current[selected];
+      made.group.visible = false;
+      sc.add(made.group);
+
+      const centre = made.centre.clone().sub(midpoint.current);
+      const away = centre.clone().sub(parent.top).setY(0);
+      away.setLength(Math.max(0.35, Math.min(1, away.length() / 12)));
+
+      list.push({
+        id: shape.id,
+        name: shape.name,
+        group: made.group,
+        solid: made.solid,
+        outline: made.outline,
+        centre,
+        away,
+        order: 0,
+        reach: 0,
+      });
+    }
+
+    // Flight order runs outward from the province centre.
+    list
+      .slice()
+      .sort(
+        (a, b) =>
+          a.centre.distanceTo(parent.top) - b.centre.distanceTo(parent.top),
+      )
+      .forEach((piece, i) => {
+        piece.order = i;
+      });
+
+    districts.current.set(selected, list);
+  }, [selected]);
 
   // Fly to the selected province — or back out to the whole country.
   useEffect(() => {
@@ -524,10 +736,11 @@ export default function LandScene({
       : null;
     if (selected && !object) return;
 
-    // Keep country context on phones; province details sit below the map.
-    // Wider screens can frame the selected province beside its detail panel.
+    // The detail panel stacks below the map on a phone rather than covering it,
+    // so there is nothing to frame around: zoom in at every width. A narrow
+    // canvas just needs more distance to hold the exploded spread.
     const narrow = window.innerWidth < 640;
-    const zoomIn = Boolean(object) && !narrow;
+    const zoomIn = Boolean(object);
 
     const targetTo =
       zoomIn && object
@@ -545,10 +758,7 @@ export default function LandScene({
 
     // The detail panel covers the right of a wide viewport, so bias the framing
     // left to centre the province in what is actually visible.
-    if (
-      (zoomIn && window.innerWidth > 1100) ||
-      (narrationOverlay && window.innerWidth > 1100)
-    ) {
+    if (narrationOverlay && window.innerWidth > 1100) {
       // `direction` runs from the target to the camera, so its cross with up
       // points to the camera's left — negate it to push the framing left of centre.
       const left = new THREE.Vector3().crossVectors(
@@ -565,7 +775,11 @@ export default function LandScene({
       cameraFrom: cam.position.clone(),
       cameraTo: targetTo
         .clone()
-        .add(direction.multiplyScalar(zoomIn ? 76 : narrow ? 152 : 128)),
+        .add(
+          direction.multiplyScalar(
+            zoomIn ? (narrow ? 118 : 92) : narrow ? 152 : 128,
+          ),
+        ),
       startedAt: performance.now(),
     };
   }, [selected, narrationOverlay]);
@@ -589,13 +803,23 @@ export default function LandScene({
       );
       raycaster.current.setFromCamera(location, cam);
       const hit = raycaster.current.intersectObjects(
-        objects.current.map((o) => o.solid),
+        selectedRef.current
+          ? (districts.current.get(selectedRef.current) ?? []).map(
+              (d) => d.solid,
+            )
+          : objects.current.map((o) => o.solid),
         false,
       )[0];
+      if (selectedRef.current) {
+        const id = hit?.object.userData.id as string | undefined;
+        onSelectDistrict(id && districtRef.current !== id ? id : null);
+        return;
+      }
+
       const code = hit?.object.userData.code as ProvinceCode | undefined;
       onSelect(code && selectedRef.current !== code ? code : null);
     },
-    [onSelect],
+    [onSelect, onSelectDistrict],
   );
 
   const changeView = (flat: boolean) => {
@@ -629,6 +853,26 @@ export default function LandScene({
     cam.position.copy(orbit.target).add(offset);
     orbit.update();
   };
+
+  const districtName = useMemo(
+    () =>
+      selected && district
+        ? (DISTRICTS_BY_PROVINCE[selected]
+            .find((d) => d.id === district)
+            ?.name.replace(/ (District|Metro)$/, "") ?? null)
+        : null,
+    [selected, district],
+  );
+
+  const hoveredDistrictName = useMemo(
+    () =>
+      selected && hoverDistrict
+        ? (DISTRICTS_BY_PROVINCE[selected]
+            .find((d) => d.id === hoverDistrict)
+            ?.name.replace(/ (District|Metro)$/, "") ?? null)
+        : null,
+    [selected, hoverDistrict],
+  );
 
   if (failed) {
     return (
@@ -666,7 +910,13 @@ export default function LandScene({
       />
 
       <p className="scene-instructions">
-        Drag to orbit · select a province to explore
+        {selected
+          ? hoveredDistrictName
+            ? hoveredDistrictName
+            : district
+              ? `${districtName ?? "District"} · tap another block`
+              : `${PROVINCES[selected].name} · tap a district block`
+          : "Drag to orbit · select a province to explore"}
       </p>
       <div className="scene-controls" role="group" aria-label="3D map controls">
         <button type="button" aria-label="Zoom in" onClick={() => zoom(0.8)}>
@@ -779,6 +1029,125 @@ export default function LandScene({
           </button>
         );
       })}
+
+      {selected &&
+        DISTRICTS_BY_PROVINCE[selected].map((d) => (
+          <button
+            key={d.id}
+            ref={(el) => {
+              if (el) districtLabelRefs.current.set(d.id, el);
+              else districtLabelRefs.current.delete(d.id);
+            }}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectDistrict(district === d.id ? null : d.id);
+            }}
+            style={{ left: 0, top: 0, opacity: 0 }}
+            className={cx(
+              // Hidden on a phone: the panel lists the districts as tappable
+              // chips, which beats labels colliding in a narrow strip.
+              "scene-label absolute z-10 hidden whitespace-nowrap border px-1.5 py-0.5 text-center text-2xs backdrop-blur-[2px] transition-colors duration-150 sm:block",
+              district === d.id || hoverDistrict === d.id
+                ? "border-clay bg-clay text-paper"
+                : "border-rule/70 bg-paper/85 text-ink",
+            )}
+          >
+            {d.name.replace(/ (District|Metro)$/, "")}
+          </button>
+        ))}
     </div>
   );
+}
+
+/** Extrudes one polygon set into a unit-deep solid with its own outline. */
+function buildPiece(
+  geometry: GeoJSON.MultiPolygon | GeoJSON.Polygon,
+  colour: string,
+): {
+  group: THREE.Group;
+  solid: THREE.Mesh;
+  outline: THREE.LineSegments;
+  centre: THREE.Vector3;
+} | null {
+  const rings = projectedRings(geometry);
+  if (rings.length === 0) return null;
+
+  const bounds = {
+    minX: Infinity,
+    maxX: -Infinity,
+    minY: Infinity,
+    maxY: -Infinity,
+  };
+  for (const ring of rings) {
+    for (const [x, y] of ring.outer) {
+      if (x < bounds.minX) bounds.minX = x;
+      if (x > bounds.maxX) bounds.maxX = x;
+      if (y < bounds.minY) bounds.minY = y;
+      if (y > bounds.maxY) bounds.maxY = y;
+    }
+  }
+  if (!Number.isFinite(bounds.minX)) return null;
+
+  const shapes = rings.map(({ outer, holes }) => {
+    const shape = new THREE.Shape(
+      outer.map(([x, y]) => new THREE.Vector2(x, y)),
+    );
+    for (const hole of holes) {
+      shape.holes.push(
+        new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))),
+      );
+    }
+    return shape;
+  });
+
+  const solidGeometry = new THREE.ExtrudeGeometry(shapes, {
+    depth: 1,
+    bevelEnabled: true,
+    bevelThickness: 0.06,
+    bevelSize: 0.06,
+    bevelSegments: 1,
+  });
+  solidGeometry.rotateX(-Math.PI / 2);
+
+  // A ring that still triangulates to NaN is dropped rather than shipped.
+  const position = solidGeometry.getAttribute("position");
+  for (let i = 0; i < position.count * 3; i++) {
+    if (Number.isNaN(position.array[i])) {
+      solidGeometry.dispose();
+      return null;
+    }
+  }
+
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(colour),
+    roughness: 0.5,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 1,
+  });
+
+  const solid = new THREE.Mesh(solidGeometry, material);
+  solid.castShadow = true;
+  solid.receiveShadow = true;
+
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(solidGeometry, 24),
+    new THREE.LineBasicMaterial({ transparent: true, opacity: 0.28 }),
+  );
+
+  const holder = new THREE.Group();
+  holder.add(solid, outline);
+
+  return {
+    group: holder,
+    solid,
+    outline,
+    // The scene is Y-up, so the ring's Y becomes Z.
+    centre: new THREE.Vector3(
+      (bounds.minX + bounds.maxX) / 2,
+      0,
+      -(bounds.minY + bounds.maxY) / 2,
+    ),
+  };
 }

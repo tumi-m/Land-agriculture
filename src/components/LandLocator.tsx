@@ -57,6 +57,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     useLiveData(initial);
   const [mapView, setMapView] = useState<"atlas" | "data">("atlas");
   const [province, setProvince] = useState<ProvinceCode | null>("LP");
+  const [district, setDistrict] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>("advertised");
   const [tab, setTab] = useState<TabId>("route");
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -93,10 +94,18 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   useEffect(() => {
     if (!province) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setProvince(null);
+      if (e.key !== "Escape") return;
+      // Step back out one level at a time.
+      if (district) setDistrict(null);
+      else setProvince(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [province, district]);
+
+  // A district only means something inside its province.
+  useEffect(() => {
+    setDistrict(null);
   }, [province]);
 
   const toggleOpen = useCallback((id: string) => {
@@ -306,6 +315,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <div className="map-stage">
               {mapView === "atlas" ? (
                 <AtlasMap
+                  district={district}
+                  onSelectDistrict={setDistrict}
                   metric={displayMetric}
                   selected={province}
                   onSelect={(code) => {
@@ -324,6 +335,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     setMetric(displayMetric);
                     setProvince(code);
                   }}
+                  district={district}
+                  onSelectDistrict={setDistrict}
                   dark={dark}
                 />
               )}
@@ -348,6 +361,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <div className="province-detail">
                 <ProvincePanel
                   code={province}
+                  district={district}
+                  onSelectDistrict={setDistrict}
                   adverts={provinceAdverts}
                   openIds={openIds}
                   onToggle={toggleOpen}
