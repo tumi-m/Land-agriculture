@@ -272,6 +272,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             "explorer-shell",
             guided && "journey-shell",
             mapView === "atlas" && "atlas-shell",
+            province && !guided && "has-province-detail",
           )}
           aria-label="Explore South African provinces"
         >

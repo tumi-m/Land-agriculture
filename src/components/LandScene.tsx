@@ -546,7 +546,7 @@ export default function LandScene({
     // The detail panel covers the right of a wide viewport, so bias the framing
     // left to centre the province in what is actually visible.
     if (
-      (zoomIn && window.innerWidth > 760) ||
+      (zoomIn && window.innerWidth > 1100) ||
       (narrationOverlay && window.innerWidth > 1100)
     ) {
       // `direction` runs from the target to the camera, so its cross with up

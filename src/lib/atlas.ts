@@ -29,7 +29,7 @@ export function atlasPadding(
     top: 80,
     bottom: 75,
     left: guided && width > 1100 ? 420 : 40,
-    right: !guided && selected && width > 760 ? 390 : 55,
+    right: !guided && selected && width > 1100 ? 390 : 55,
   };
 }
 

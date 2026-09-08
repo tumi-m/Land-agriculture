@@ -125,4 +125,5 @@ test("map framing reserves desktop panels and releases space on tablet and phone
   assert.equal(atlasPadding(768, true, false).left, 40);
   assert.equal(atlasPadding(1440, false, true).right, 390);
   assert.equal(atlasPadding(375, false, true).right, 55);
+  assert.equal(atlasPadding(768, false, true).right, 55);
 });
