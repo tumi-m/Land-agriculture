@@ -128,7 +128,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <span className="eyebrow hidden sm:inline">Land Locator</span>
           </div>
 
-          <nav aria-label="Reference" className="-mx-1 min-w-0 flex-1 overflow-x-auto">
+          <nav aria-label="Reference" className="-mx-1 hidden min-w-0 flex-1 overflow-x-auto lg:block">
             <ul className="flex items-center justify-center gap-0.5 whitespace-nowrap">
               {TABS.map((t) => (
                 <li key={t.id}>
@@ -167,6 +167,22 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
       </header>
 
+      {/* On a phone the title sits above the map; there is no room to lay it over. */}
+      <div className="border-b border-rule px-4 py-5 sm:hidden">
+        <h1 className="font-display text-[2rem] leading-[0.98] tracking-tight text-ink">
+          The state owns the farm.
+          <br />
+          <span className="italic text-clay">You lease it.</span>
+        </h1>
+        <p className="mt-2.5 text-sm leading-relaxed text-muted">
+          {group(ADVERTISED_TOTAL_PUBLISHED)} hectares over {ADVERTISED_FARMS} state farms went out
+          on 30-year leases. Height is the measure — tap a province.
+        </p>
+        <button type="button" onClick={() => openTab('route')} className="btn-solid mt-3">
+          Which category am I?
+        </button>
+      </div>
+
       {/* The map is the page. */}
       <section
         id="map"
@@ -177,7 +193,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         {/* Title lockup, kept to two lines. */}
         <div
           className={cx(
-            'pointer-events-none absolute left-0 top-0 max-w-[34rem] p-5 transition-opacity duration-300 lg:p-8',
+            'pointer-events-none absolute left-0 top-0 hidden max-w-[34rem] p-5 transition-opacity duration-300 sm:block lg:p-8',
             province ? 'opacity-0' : 'opacity-100',
           )}
         >
@@ -200,7 +216,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
 
         {/* Measure switcher. */}
-        <div className="absolute right-4 top-4 lg:right-6 lg:top-6">
+        <div className="absolute right-3 top-3 lg:right-6 lg:top-6">
           <div className="border border-rule bg-paper/90 backdrop-blur">
             <div role="radiogroup" aria-label="Measure" className="flex p-1">
               {METRICS.map((m) => (
@@ -211,7 +227,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   aria-checked={metric === m.id}
                   onClick={() => setMetric(m.id)}
                   className={cx(
-                    'px-3 py-1.5 text-sm transition-colors',
+                    'px-2 py-1 text-xs transition-colors sm:px-3 sm:py-1.5 sm:text-sm',
                     metric === m.id ? 'bg-ink text-paper' : 'text-muted hover:text-ink',
                   )}
                 >
@@ -219,14 +235,14 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </button>
               ))}
             </div>
-            <p className="max-w-[16rem] border-t border-rule px-2 py-1.5 text-2xs leading-snug text-muted">
+            <p className="hidden max-w-[16rem] border-t border-rule px-2 py-1.5 text-2xs leading-snug text-muted sm:block">
               {active.note}
             </p>
           </div>
         </div>
 
         {/* Reading key. */}
-        <div className="pointer-events-none absolute bottom-4 left-4 lg:bottom-6 lg:left-8">
+        <div className="pointer-events-none absolute bottom-4 left-4 hidden sm:block lg:bottom-6 lg:left-8">
           <p className="eyebrow">Tallest · {active.label.toLowerCase()}</p>
           <p className="mt-0.5 font-display text-xl leading-none text-ink">
             {leader}
@@ -245,8 +261,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         {/* Province panel. */}
         <div
           className={cx(
-            'pointer-events-none absolute inset-y-0 right-0 w-full transition-transform duration-500 ease-out sm:w-[26rem]',
-            province ? 'translate-x-0' : 'translate-x-full',
+            'pointer-events-none absolute z-20 transition-transform duration-500 ease-out',
+            'inset-x-0 bottom-0 h-[58%]',
+            'sm:inset-y-0 sm:left-auto sm:right-0 sm:h-auto sm:w-[26rem]',
+            province ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-y-0 sm:translate-x-full',
           )}
         >
           {province && (

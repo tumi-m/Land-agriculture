@@ -164,9 +164,12 @@ export default function LandScene({
     const sc = new THREE.Scene();
     scene.current = sc;
 
-    const cam = new THREE.PerspectiveCamera(38, el.clientWidth / el.clientHeight, 1, 800);
+    const narrow = el.clientWidth < 640;
+    const cam = new THREE.PerspectiveCamera(narrow ? 48 : 38, el.clientWidth / el.clientHeight, 1, 800);
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    cam.position.copy(reduced ? INTRO_TO : INTRO_FROM);
+    // A portrait canvas is constrained horizontally, so stand further back.
+    const pull = narrow ? 1.18 : 1;
+    cam.position.copy(reduced ? INTRO_TO : INTRO_FROM).multiplyScalar(pull);
     if (!reduced) intro.current = performance.now();
     camera.current = cam;
 
@@ -317,6 +320,7 @@ export default function LandScene({
       const w = el.clientWidth;
       const h = el.clientHeight;
       cam.aspect = w / h;
+      cam.fov = w < 640 ? 48 : 38;
       cam.updateProjectionMatrix();
       gl.setSize(w, h);
     };
@@ -342,6 +346,7 @@ export default function LandScene({
     gl.domElement.addEventListener('pointermove', onPointerMove);
     gl.domElement.addEventListener('pointerleave', onLeave);
 
+    const introPull = pull;
     let frame = 0;
     const clock = new THREE.Clock();
 
@@ -353,7 +358,9 @@ export default function LandScene({
 
       if (intro.current !== null) {
         const t = Math.min(1, (now - intro.current) / 1400);
-        cam.position.lerpVectors(INTRO_FROM, INTRO_TO, 1 - Math.pow(1 - t, 4));
+        cam.position
+          .lerpVectors(INTRO_FROM, INTRO_TO, 1 - Math.pow(1 - t, 4))
+          .multiplyScalar(introPull);
         if (t >= 1) intro.current = null;
       }
 
@@ -415,13 +422,14 @@ export default function LandScene({
           o.currentScale + o.group.position.y + 1.6,
           o.top.z,
         ).project(cam);
-        const behind = world.z > 1;
-        const dimmed = selectedRef.current !== null && selectedRef.current !== o.code;
+        // Any open panel hides every label: the panel names the province, and a
+        // label floating over its contact list reads as a stray control.
+        const hidden = world.z > 1 || selectedRef.current !== null;
         el.style.transform = `translate3d(${((world.x + 1) / 2) * width}px, ${
           ((-world.y + 1) / 2) * height
         }px, 0) translate(-50%, -100%)`;
-        el.style.opacity = behind || dimmed ? '0' : '1';
-        el.style.pointerEvents = behind || dimmed ? 'none' : 'auto';
+        el.style.opacity = hidden ? '0' : '1';
+        el.style.pointerEvents = hidden ? 'none' : 'auto';
       }
     };
 
@@ -457,6 +465,32 @@ export default function LandScene({
     }
   }, [colours]);
 
+  // With the sheet open on a phone the canvas centre sits behind it. Rather than
+  // move the camera, offset the projection so the scene renders into the strip of
+  // map that is actually visible — same framing, shifted up.
+  useEffect(() => {
+    const cam = camera.current;
+    const gl = renderer.current;
+    if (!cam || !gl) return;
+
+    const apply = () => {
+      const w = gl.domElement.clientWidth;
+      const h = gl.domElement.clientHeight;
+      if (w === 0 || h === 0) return;
+      if (selected && w < 640) {
+        // The sheet takes the bottom 58%; centre the scene in the top 42%.
+        cam.setViewOffset(w, h, 0, h * 0.29, w, h);
+      } else {
+        cam.clearViewOffset();
+      }
+      cam.updateProjectionMatrix();
+    };
+
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [selected]);
+
   // Fly to the selected province — or back out to the whole country.
   useEffect(() => {
     const orbit = controls.current;
@@ -466,18 +500,26 @@ export default function LandScene({
     const object = selected ? objects.current.find((o) => o.code === selected) : null;
     if (selected && !object) return;
 
-    const targetTo = object
-      ? new THREE.Vector3(object.top.x, Math.min(object.targetScale * 0.45, 9), object.top.z)
-      : new THREE.Vector3(0, 0, 0);
+    // On a phone the detail sheet takes the lower half of the map, and a close-up
+    // of one province in the strip that is left says less than seeing where that
+    // province sits in the country. So the phone keeps the whole-country framing
+    // and lets the highlight do the work; only wide screens fly in.
+    const narrow = window.innerWidth < 640;
+    const zoomIn = Boolean(object) && !narrow;
+
+    const targetTo =
+      zoomIn && object
+        ? new THREE.Vector3(object.top.x, Math.min(object.targetScale * 0.45, 9), object.top.z)
+        : new THREE.Vector3(0, 0, 0);
 
     // Keep the viewer's current angle; only the framing changes.
     const direction = cam.position.clone().sub(orbit.target);
     if (direction.lengthSq() < 1e-6) direction.set(-0.12, 0.62, 0.78);
     direction.normalize();
 
-    // The detail panel covers the right of the viewport on wide screens, so shift
-    // the framing to centre the province in what is actually visible.
-    if (object && window.innerWidth >= 640) {
+    // The detail panel covers the right of a wide viewport, so bias the framing
+    // left to centre the province in what is actually visible.
+    if (zoomIn) {
       // `direction` runs from the target to the camera, so its cross with up
       // points to the camera's left — negate it to push the framing left of centre.
       const left = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0));
@@ -488,7 +530,7 @@ export default function LandScene({
       targetFrom: orbit.target.clone(),
       targetTo,
       cameraFrom: cam.position.clone(),
-      cameraTo: targetTo.clone().add(direction.multiplyScalar(selected ? 76 : 128)),
+      cameraTo: targetTo.clone().add(direction.multiplyScalar(zoomIn ? 76 : narrow ? 152 : 128)),
       startedAt: performance.now(),
     };
   }, [selected]);

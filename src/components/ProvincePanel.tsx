@@ -26,7 +26,7 @@ export default function ProvincePanel({
   return (
     <aside
       aria-label={`${p.name} detail`}
-      className="pointer-events-auto flex h-full w-full flex-col border-l border-rule bg-paper/95 backdrop-blur-md"
+      className="pointer-events-auto flex h-full w-full flex-col border-t border-ink bg-paper/95 backdrop-blur-md sm:border-l sm:border-t-0 sm:border-l-rule"
     >
       <div className="flex items-start justify-between gap-4 border-b border-ink px-5 py-4">
         <div className="min-w-0">
