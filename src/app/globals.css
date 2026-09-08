@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paper: 246 243 235;
+    --surface: 252 250 245;
+    --raised: 255 255 255;
+    --ink: 20 24 27;
+    --muted: 88 95 99;
+    --faint: 140 146 149;
+    --rule: 219 213 199;
+    --signal: 193 84 30;
+    --signal-soft: 245 226 213;
+    --veld: 47 107 63;
+    --alert: 168 46 46;
+  }
+
+  .dark {
+    --paper: 15 18 19;
+    --surface: 22 26 27;
+    --raised: 30 35 36;
+    --ink: 238 235 227;
+    --muted: 160 166 168;
+    --faint: 112 119 121;
+    --rule: 51 58 60;
+    --signal: 226 122 61;
+    --signal-soft: 62 38 24;
+    --veld: 116 176 122;
+    --alert: 226 106 106;
+  }
+
+  * {
+    border-color: rgb(var(--rule));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: rgb(var(--paper));
+    color: rgb(var(--ink));
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Survey-paper grid, sits behind everything */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgb(var(--rule) / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--rule) / 0.35) 1px, transparent 1px);
+    background-size: 88px 88px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 20%, transparent 78%);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--signal));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--signal) / 0.24);
+  }
+}
+
+@layer components {
+  .label {
+    @apply font-mono text-2xs uppercase tracking-[0.14em] text-faint;
+  }
+
+  .rule-t {
+    @apply border-t border-rule;
+  }
+
+  .card {
+    @apply border border-rule bg-surface;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 border border-rule bg-raised px-3 py-2 font-mono text-2xs uppercase tracking-[0.12em] text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-signal-soft disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-solid {
+    @apply inline-flex items-center gap-2 bg-ink px-3 py-2 font-mono text-2xs uppercase tracking-[0.12em] text-paper transition-opacity duration-150 hover:opacity-85;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 border border-rule bg-raised px-2 py-1 font-mono text-2xs uppercase tracking-[0.1em] text-muted;
+  }
+
+  .num {
+    @apply font-mono tabular-nums;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--rule)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--rule));
+    border-radius: 99px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
