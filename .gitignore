@@ -10,3 +10,8 @@ build
 next-env.d.ts
 *.tsbuildinfo
 scripts/.cache-*
+
+.open-next/
+.wrangler/
+dist/
+.dev.vars*

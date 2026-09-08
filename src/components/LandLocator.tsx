@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import LiveStatus from './LiveStatus';
-import Pathfinder from './Pathfinder';
-import ProvincePanel from './ProvincePanel';
-import ProvinceRanking from './ProvinceRanking';
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import LiveStatus from "./LiveStatus";
+import Pathfinder from "./Pathfinder";
+import ProvincePanel from "./ProvincePanel";
+import ProvinceRanking from "./ProvinceRanking";
 import {
   CaseStudies,
   CategoryTable,
@@ -15,15 +15,25 @@ import {
   ProcessSection,
   RiskSection,
   WhoHandlesWhat,
-} from './Sections';
-import { METRICS, type Metric, valueOf } from './LandScene';
-import { CONTENT_REVIEWED, SOURCE_NOTE } from '@/content/meta';
-import { ADVERTISED_FARMS, ADVERTISED_TOTAL_PUBLISHED, PROVINCE_ORDER } from '@/content/provinces';
-import { cx, group } from '@/lib/format';
-import { useLiveData } from '@/lib/useLiveData';
-import type { Dataset, ProvinceCode } from '@/lib/types';
+} from "./Sections";
+import {
+  METRICS,
+  type Metric,
+  valueOf,
+  rankProvinces,
+} from "@/lib/land-metrics";
+import { CONTENT_REVIEWED, SOURCE_NOTE } from "@/content/meta";
+import {
+  ADVERTISED_FARMS,
+  ADVERTISED_TOTAL_PUBLISHED,
+  PROVINCES,
+  PROVINCE_ORDER,
+} from "@/content/provinces";
+import { cx, group } from "@/lib/format";
+import { useLiveData } from "@/lib/useLiveData";
+import type { Dataset, ProvinceCode } from "@/lib/types";
 
-const LandScene = dynamic(() => import('./LandScene'), {
+const LandScene = dynamic(() => import("./LandScene"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">
@@ -32,53 +42,62 @@ const LandScene = dynamic(() => import('./LandScene'), {
   ),
 });
 
-const THEME_KEY = 'all-theme';
+const THEME_KEY = "all-theme";
 
-type TabId = 'route' | 'process' | 'money' | 'history' | 'reality' | 'offices';
+type TabId = "route" | "process" | "money" | "history" | "reality" | "offices";
 
 const TABS: { id: TabId; n: string; label: string }[] = [
-  { id: 'route', n: '01', label: 'Your route' },
-  { id: 'process', n: '02', label: 'Applying' },
-  { id: 'money', n: '03', label: 'Money' },
-  { id: 'history', n: '04', label: 'History' },
-  { id: 'reality', n: '05', label: 'Reality' },
-  { id: 'offices', n: '06', label: 'Offices' },
+  { id: "route", n: "01", label: "Your route" },
+  { id: "process", n: "02", label: "Applying" },
+  { id: "money", n: "03", label: "Money" },
+  { id: "history", n: "04", label: "History" },
+  { id: "reality", n: "05", label: "Reality" },
+  { id: "offices", n: "06", label: "Offices" },
 ];
 
 export default function LandLocator({ initial }: { initial: Dataset }) {
-  const { dataset, state, changed, lastCheckedAt, refresh } = useLiveData(initial);
+  const { dataset, state, changed, lastCheckedAt, refresh } =
+    useLiveData(initial);
   const [province, setProvince] = useState<ProvinceCode | null>(null);
-  const [metric, setMetric] = useState<Metric>('advertised');
-  const [tab, setTab] = useState<TabId>('route');
+  const [metric, setMetric] = useState<Metric>("advertised");
+  const [tab, setTab] = useState<TabId>("route");
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [dark, setDark] = useState(false);
+  const [query, setQuery] = useState("");
+  const [urlReady, setUrlReady] = useState(false);
   const referenceRef = useRef<HTMLDivElement | null>(null);
 
-  const hasFeed = dataset.source === 'remote';
-  const adverts = useMemo(() => (hasFeed ? dataset.listings : []), [hasFeed, dataset.listings]);
+  const hasFeed = dataset.source === "remote";
+  const adverts = useMemo(
+    () => (hasFeed ? dataset.listings : []),
+    [hasFeed, dataset.listings],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('province')?.toUpperCase();
-    if (code && (PROVINCE_ORDER as string[]).includes(code)) setProvince(code as ProvinceCode);
-    setDark(document.documentElement.classList.contains('dark'));
+    const code = params.get("province")?.toUpperCase();
+    if (code && (PROVINCE_ORDER as string[]).includes(code))
+      setProvince(code as ProvinceCode);
+    setDark(document.documentElement.classList.contains("dark"));
+    setUrlReady(true);
   }, []);
 
   useEffect(() => {
+    if (!urlReady) return;
     const url = new URL(window.location.href);
-    if (province) url.searchParams.set('province', province);
-    else url.searchParams.delete('province');
-    window.history.replaceState(null, '', url);
-  }, [province]);
+    if (province) url.searchParams.set("province", province);
+    else url.searchParams.delete("province");
+    window.history.replaceState(null, "", url);
+  }, [province, urlReady]);
 
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {
     if (!province) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setProvince(null);
+      if (e.key === "Escape") setProvince(null);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [province]);
 
   const toggleOpen = useCallback((id: string) => {
@@ -93,9 +112,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle('dark', next);
+    document.documentElement.classList.toggle("dark", next);
     try {
-      localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+      localStorage.setItem(THEME_KEY, next ? "dark" : "light");
     } catch {
       /* private mode — the toggle still works for this session */
     }
@@ -103,7 +122,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
   const openTab = useCallback((id: TabId) => {
     setTab(id);
-    referenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    referenceRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }, []);
 
   const provinceAdverts = useMemo(
@@ -112,42 +134,266 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   );
 
   const active = METRICS.find((m) => m.id === metric)!;
-  const leader = useMemo(() => {
-    const ranked = [...PROVINCE_ORDER].sort(
-      (a, b) => (valueOf(b, metric) ?? 0) - (valueOf(a, metric) ?? 0),
-    );
-    return ranked[0];
-  }, [metric]);
 
   return (
     <div className="relative z-[1]">
-      <header className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex max-w-[110rem] items-center justify-between gap-6 px-4 py-2.5 lg:px-6">
-          <div className="flex items-baseline gap-2.5">
-            <span className="font-display text-lg leading-none text-ink">Asbonge</span>
-            <span className="eyebrow hidden sm:inline">Land Locator</span>
+      <header className="app-header">
+        <a className="brand" href="#map" aria-label="Asbonge Land Locator home">
+          <span className="brand-mark" aria-hidden="true">
+            A<span>↗</span>
+          </span>
+          <span>
+            asbonge<span className="brand-sub">LAND & OPPORTUNITY</span>
+          </span>
+        </a>
+        <nav aria-label="Main navigation" className="main-nav">
+          <a href="#map" className="nav-current">
+            Explore land
+          </a>
+          <button onClick={() => openTab("process")}>How to apply</button>
+          <button onClick={() => openTab("money")}>Funding & support</button>
+        </nav>
+        <div className="header-actions">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="theme-toggle"
+            aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            {dark ? "☀" : "☾"}
+          </button>
+          <button
+            className="btn-solid route-cta"
+            onClick={() => openTab("route")}
+          >
+            Find my route <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="workspace">
+        <section className="explorer-intro" aria-labelledby="explorer-title">
+          <div>
+            <p className="eyebrow">
+              <span className="status-dot" /> SOUTH AFRICA · AGRICULTURAL LAND
+              EXPLORER
+            </p>
+            <h1 id="explorer-title">
+              Find your <em>ground.</em>
+            </h1>
+            <p>
+              Understand the land. Explore your options. Take your next step
+              into farming.
+            </p>
           </div>
+          <div className="intro-note">
+            <span aria-hidden="true">↗</span>
+            <p>
+              From province to possibility.
+              <br />
+              <strong>A practical guide to state land.</strong>
+            </p>
+          </div>
+        </section>
 
-          <nav aria-label="Reference" className="-mx-1 min-w-0 flex-1 overflow-x-auto">
-            <ul className="flex items-center justify-center gap-0.5 whitespace-nowrap">
-              {TABS.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    onClick={() => openTab(t.id)}
-                    className={cx(
-                      'px-2.5 py-1 text-sm transition-colors',
-                      tab === t.id ? 'text-ink' : 'text-muted hover:text-ink',
-                    )}
-                  >
-                    {t.label}
-                  </button>
-                </li>
+        <section
+          className="stat-strip"
+          aria-label="Historical national land release overview"
+        >
+          <div>
+            <span className="stat-icon" aria-hidden="true">
+              ▧
+            </span>
+            <div>
+              <p className="eyebrow">HECTARES ADVERTISED</p>
+              <p className="stat-value">
+                {group(ADVERTISED_TOTAL_PUBLISHED)} <small>ha</small>
+              </p>
+              <p className="stat-caption">Published October 2020 total</p>
+            </div>
+          </div>
+          <div>
+            <span className="stat-icon" aria-hidden="true">
+              ⌖
+            </span>
+            <div>
+              <p className="eyebrow">STATE FARMS</p>
+              <p className="stat-value">{ADVERTISED_FARMS}</p>
+              <p className="stat-caption">In the October 2020 announcement</p>
+            </div>
+          </div>
+          <div>
+            <span className="stat-icon" aria-hidden="true">
+              ◷
+            </span>
+            <div>
+              <p className="eyebrow">LEASE FRAMEWORK</p>
+              <p className="stat-value">
+                30 <small>years</small>
+              </p>
+              <p className="stat-caption">
+                Terms depend on beneficiary category
+              </p>
+            </div>
+          </div>
+          <button className="stat-action" onClick={() => openTab("route")}>
+            <span className="eyebrow">YOUR STARTING POINT</span>
+            <strong>What could my route look like?</strong>
+            <span>
+              Answer four questions <span aria-hidden="true">↗</span>
+            </span>
+          </button>
+        </section>
+
+        <section
+          id="map"
+          className="explorer-shell"
+          aria-label="Explore South African provinces"
+        >
+          <div className="explorer-toolbar">
+            <div>
+              <h2>Explore the landscape</h2>
+              <p>Choose a measure, then select a province.</p>
+            </div>
+            <div
+              role="group"
+              aria-label="Map measure"
+              className="metric-switch"
+            >
+              {METRICS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={metric === m.id}
+                  onClick={() => setMetric(m.id)}
+                  className={cx(metric === m.id && "is-active")}
+                >
+                  {m.label}
+                </button>
               ))}
-            </ul>
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-3">
+            </div>
+          </div>
+          <div className="explorer-body">
+            <aside className="province-browser" aria-label="Province selector">
+              <label className="province-search">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  type="search"
+                  aria-label="Search provinces or farming commodities"
+                  placeholder="Province or crop…"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </label>
+              <div className="ranking-label">
+                <span>PROVINCE</span>
+                <span>{metric === "share" ? "STATE SHARE" : "HECTARES"}</span>
+              </div>
+              <div className="province-list">
+                {rankProvinces(metric, query).map((code) => {
+                  const value = valueOf(code, metric);
+                  const max = Math.max(
+                    ...PROVINCE_ORDER.map((c) => valueOf(c, metric) ?? 0),
+                    1,
+                  );
+                  return (
+                    <button
+                      key={code}
+                      className={cx(
+                        "province-row",
+                        province === code && "is-selected",
+                      )}
+                      aria-pressed={province === code}
+                      onClick={() =>
+                        setProvince(province === code ? null : code)
+                      }
+                    >
+                      <span className="province-row-title">
+                        <span>{PROVINCES[code].name}</span>
+                        <strong>
+                          {value === null
+                            ? "—"
+                            : metric === "share"
+                              ? `${value}%`
+                              : group(value)}
+                        </strong>
+                      </span>
+                      <span className="province-bar">
+                        <span
+                          style={{ width: `${((value ?? 0) / max) * 100}%` }}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+                {rankProvinces(metric, query).length === 0 && (
+                  <div className="search-empty">
+                    <p>No matching province or crop.</p>
+                    <button className="btn mt-3" onClick={() => setQuery("")}>
+                      Clear search
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="province-browser-note">
+                <span className="status-dot" />
+                <p>
+                  All 9 provinces. Select one for farming systems and the local
+                  application office.
+                </p>
+              </div>
+            </aside>
+            <div className="map-stage">
+              <div className="map-heading">
+                <span className="map-badge">3D DATA MAP</span>
+                <span>ZA / 09 PROVINCES</span>
+              </div>
+              <LandScene
+                metric={metric}
+                selected={province}
+                onSelect={setProvince}
+                dark={dark}
+              />
+              <div className="map-legend">
+                <div>
+                  <span className="legend-ramp" />
+                  <span>Lower</span>
+                  <span>Higher</span>
+                </div>
+                <p>
+                  Height & colour show {active.label.toLowerCase()}.<br />
+                  This is a data model, not terrain elevation.
+                </p>
+              </div>
+            </div>
+            {province && (
+              <div className="province-detail">
+                <ProvincePanel
+                  code={province}
+                  adverts={provinceAdverts}
+                  openIds={openIds}
+                  onToggle={toggleOpen}
+                  onClose={() => setProvince(null)}
+                  onOpenOffices={() => openTab("offices")}
+                  hasFeed={hasFeed}
+                />
+              </div>
+            )}
+          </div>
+          <div className="explorer-footnote">
+            <p>
+              <strong>
+                {metric === "advertised"
+                  ? "October 2020"
+                  : metric === "released"
+                    ? "February 2020"
+                    : "Historical land audit"}
+                .
+              </strong>{" "}
+              {active.note} These figures do not indicate current availability.
+              {metric === "released" &&
+                " The February and October figures are separate rounds."}
+            </p>
             <LiveStatus
               dataset={dataset}
               state={state}
@@ -155,118 +401,46 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               lastCheckedAt={lastCheckedAt}
               onRefresh={refresh}
             />
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="btn px-2.5 py-1.5"
-              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              {dark ? '☀' : '☾'}
-            </button>
           </div>
-        </div>
-      </header>
+        </section>
 
-      {/* The map is the page. */}
-      <section
-        id="map"
-        className="relative h-[62vh] min-h-[26rem] w-full overflow-hidden border-b border-ink sm:h-[calc(100dvh-3.25rem)] sm:min-h-[34rem]"
-      >
-        <LandScene metric={metric} selected={province} onSelect={setProvince} dark={dark} />
-
-        {/* Title lockup, kept to two lines. */}
-        <div
-          className={cx(
-            'pointer-events-none absolute left-0 top-0 max-w-[34rem] p-5 transition-opacity duration-300 lg:p-8',
-            province ? 'opacity-0' : 'opacity-100',
-          )}
-        >
-          <h1 className="font-display text-[clamp(2.2rem,4.4vw,3.6rem)] leading-[0.98] tracking-tight text-ink">
-            The state owns the farm.
-            <br />
-            <span className="italic text-clay">You lease it.</span>
-          </h1>
-          <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-muted">
-            {group(ADVERTISED_TOTAL_PUBLISHED)} hectares over {ADVERTISED_FARMS} state farms went out
-            on 30-year leases. Height is the measure. Pick a province.
-          </p>
-          <button
-            type="button"
-            onClick={() => openTab('route')}
-            className="btn-solid pointer-events-auto mt-4"
-          >
-            Which category am I?
-          </button>
-        </div>
-
-        {/* Measure switcher. */}
-        <div className="absolute right-4 top-4 lg:right-6 lg:top-6">
-          <div className="border border-rule bg-paper/90 backdrop-blur">
-            <div role="radiogroup" aria-label="Measure" className="flex p-1">
-              {METRICS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={metric === m.id}
-                  onClick={() => setMetric(m.id)}
-                  className={cx(
-                    'px-3 py-1.5 text-sm transition-colors',
-                    metric === m.id ? 'bg-ink text-paper' : 'text-muted hover:text-ink',
-                  )}
-                >
-                  {m.label}
-                </button>
-              ))}
+        <section className="next-steps" aria-label="Plan your next step">
+          <button onClick={() => openTab("route")}>
+            <span className="step-number">01</span>
+            <div>
+              <h3>Find your fit</h3>
+              <p>Your farming plans, category and lease options.</p>
             </div>
-            <p className="max-w-[16rem] border-t border-rule px-2 py-1.5 text-2xs leading-snug text-muted">
-              {active.note}
-            </p>
-          </div>
-        </div>
-
-        {/* Reading key. */}
-        <div className="pointer-events-none absolute bottom-4 left-4 lg:bottom-6 lg:left-8">
-          <p className="eyebrow">Tallest · {active.label.toLowerCase()}</p>
-          <p className="mt-0.5 font-display text-xl leading-none text-ink">
-            {leader}
-            <span className="ml-2 font-sans text-sm font-normal text-muted">
-              {(() => {
-                const v = valueOf(leader, metric);
-                return v === null ? '—' : metric === 'share' ? `${v}%` : `${group(v)} ha`;
-              })()}
-            </span>
-          </p>
-          <p className="mt-2 max-w-[24ch] text-2xs leading-snug text-muted">
-            Drag to orbit · scroll to zoom · click a province
-          </p>
-        </div>
-
-        {/* Province panel. */}
-        <div
-          className={cx(
-            'pointer-events-none absolute inset-y-0 right-0 w-full transition-transform duration-500 ease-out sm:w-[26rem]',
-            province ? 'translate-x-0' : 'translate-x-full',
-          )}
-        >
-          {province && (
-            <ProvincePanel
-              code={province}
-              adverts={provinceAdverts}
-              openIds={openIds}
-              onToggle={toggleOpen}
-              onClose={() => setProvince(null)}
-              onOpenOffices={() => openTab('offices')}
-            />
-          )}
-        </div>
-      </section>
+            <span aria-hidden="true">↗</span>
+          </button>
+          <button onClick={() => openTab("process")}>
+            <span className="step-number">02</span>
+            <div>
+              <h3>Build your application</h3>
+              <p>The process, Form ALA and a document checklist.</p>
+            </div>
+            <span aria-hidden="true">↗</span>
+          </button>
+          <button onClick={() => openTab("money")}>
+            <span className="step-number">03</span>
+            <div>
+              <h3>Plan the funding</h3>
+              <p>Understand grants, loans and farmer support.</p>
+            </div>
+            <span aria-hidden="true">↗</span>
+          </button>
+        </section>
+      </div>
 
       {/* Everything else, one panel at a time. */}
-      <div ref={referenceRef} className="scroll-mt-14">
-        <div className="sticky top-[3.25rem] z-30 border-b border-rule bg-paper/90 backdrop-blur">
-          <div className="mx-auto max-w-[110rem] overflow-x-auto px-4 lg:px-6">
-            <div role="tablist" aria-label="Reference" className="flex gap-1 whitespace-nowrap py-1">
+      <div ref={referenceRef} className="reference-area scroll-mt-24">
+        <div className="sticky top-[4.5rem] z-30 border-b border-rule bg-paper/90 backdrop-blur">
+          <div className="mx-auto max-w-[96rem] overflow-x-auto px-4 lg:px-6">
+            <div
+              role="tablist"
+              aria-label="Reference"
+              className="flex gap-1 whitespace-nowrap py-1"
+            >
               {TABS.map((t) => (
                 <button
                   key={t.id}
@@ -276,11 +450,29 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   aria-controls={`panel-${t.id}`}
                   type="button"
                   onClick={() => setTab(t.id)}
+                  tabIndex={tab === t.id ? 0 : -1}
+                  onKeyDown={(event) => {
+                    const current = TABS.findIndex((item) => item.id === t.id);
+                    const next =
+                      event.key === "ArrowRight"
+                        ? (current + 1) % TABS.length
+                        : event.key === "ArrowLeft"
+                          ? (current - 1 + TABS.length) % TABS.length
+                          : event.key === "Home"
+                            ? 0
+                            : event.key === "End"
+                              ? TABS.length - 1
+                              : -1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    setTab(TABS[next].id);
+                    document.getElementById(`tab-${TABS[next].id}`)?.focus();
+                  }}
                   className={cx(
-                    'flex items-baseline gap-2 border-b-2 px-3 py-2 text-sm transition-colors',
+                    "flex items-baseline gap-2 border-b-2 px-3 py-2 text-sm transition-colors",
                     tab === t.id
-                      ? 'border-clay text-ink'
-                      : 'border-transparent text-muted hover:text-ink',
+                      ? "border-clay text-ink"
+                      : "border-transparent text-muted hover:text-ink",
                   )}
                 >
                   <span className="num text-2xs text-faint">{t.n}</span>
@@ -291,9 +483,12 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           </div>
         </div>
 
-        <main className="mx-auto max-w-[110rem] px-4 pb-20 pt-10 lg:px-6">
+        <main className="mx-auto max-w-[96rem] px-4 pb-20 pt-10 lg:px-6">
           <Panel id="route" tab={tab} title="Which category are you?">
-            <Pathfinder onProvinceChange={setProvince} />
+            <Pathfinder
+              onProvinceChange={setProvince}
+              selectedProvince={province}
+            />
           </Panel>
 
           <Panel id="process" tab={tab} title="Applying">
@@ -302,7 +497,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <ProcessSection />
             </div>
             <div className="mt-12">
-              <h3 className="font-display text-opener leading-tight text-ink">The four categories</h3>
+              <h3 className="font-display text-opener leading-tight text-ink">
+                The four categories
+              </h3>
               <div className="mt-4">
                 <CategoryTable />
               </div>
@@ -316,7 +513,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           <Panel id="history" tab={tab} title="History">
             <PolicySection />
             <div className="mt-12">
-              <h3 className="font-display text-opener leading-tight text-ink">What has worked</h3>
+              <h3 className="font-display text-opener leading-tight text-ink">
+                What has worked
+              </h3>
               <div className="mt-5">
                 <CaseStudies />
               </div>
@@ -338,7 +537,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   selected={province}
                   onSelect={(code) => {
                     setProvince(code);
-                    document.getElementById('map')?.scrollIntoView({ behavior: 'smooth' });
+                    document
+                      .getElementById("map")
+                      ?.scrollIntoView({ behavior: "smooth" });
                   }}
                 />
               </div>
@@ -348,10 +549,12 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       </div>
 
       <footer className="border-t border-ink">
-        <div className="mx-auto max-w-[110rem] px-4 py-7 lg:px-6">
-          <p className="max-w-reading text-sm leading-relaxed text-muted">{SOURCE_NOTE}</p>
+        <div className="mx-auto max-w-[96rem] px-4 py-7 lg:px-6">
+          <p className="max-w-reading text-sm leading-relaxed text-muted">
+            {SOURCE_NOTE}
+          </p>
           <p className="eyebrow mt-4">
-            Reviewed {CONTENT_REVIEWED} · nothing here is an offer · dataset{' '}
+            Reviewed {CONTENT_REVIEWED} · nothing here is an offer · dataset{" "}
             <span className="num">{dataset.revision}</span>
           </p>
         </div>
@@ -371,9 +574,9 @@ function Panel({
   title: string;
   children: React.ReactNode;
 }) {
-  if (tab !== id) return null;
   return (
     <section
+      hidden={tab !== id}
       role="tabpanel"
       id={`panel-${id}`}
       aria-labelledby={`tab-${id}`}
@@ -381,7 +584,9 @@ function Panel({
       className="animate-rise"
     >
       <div className="opener">
-        <h2 className="font-display text-opener leading-none text-ink">{title}</h2>
+        <h2 className="font-display text-opener leading-none text-ink">
+          {title}
+        </h2>
       </div>
       <div className="mt-7">{children}</div>
     </section>

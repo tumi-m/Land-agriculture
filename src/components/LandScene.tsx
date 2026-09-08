@@ -1,42 +1,14 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PROVINCE_SHAPES, projectedRings } from '@/lib/geo';
-import { PROVINCES, PROVINCE_ORDER } from '@/content/provinces';
-import { cx, group } from '@/lib/format';
-import type { ProvinceCode } from '@/lib/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { PROVINCE_SHAPES, projectedRings } from "@/lib/geo";
+import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
+import { cx, group } from "@/lib/format";
+import type { ProvinceCode } from "@/lib/types";
 
-export type Metric = 'advertised' | 'released' | 'share';
-
-export const METRICS: { id: Metric; label: string; unit: string; note: string }[] = [
-  {
-    id: 'advertised',
-    label: 'Advertised',
-    unit: 'ha',
-    note: 'Hectares put out for lease in the October 2020 tranche.',
-  },
-  {
-    id: 'released',
-    label: 'Released',
-    unit: 'ha',
-    note: 'Hectares actually handed to producers in February 2020.',
-  },
-  {
-    id: 'share',
-    label: 'State land',
-    unit: '%',
-    note: 'Share of the province’s registered surface that the state already owns.',
-  },
-];
-
-export function valueOf(code: ProvinceCode, metric: Metric): number | null {
-  const p = PROVINCES[code];
-  if (metric === 'advertised') return p.advertised2020;
-  if (metric === 'released') return p.released2020;
-  return p.stateLandSharePct;
-}
+import { METRICS, type Metric, valueOf } from "@/lib/land-metrics";
 
 const MAX_HEIGHT = 30;
 const BASE = 0.6;
@@ -46,8 +18,26 @@ const INTRO_FROM = new THREE.Vector3(-10, 148, 60);
 const INTRO_TO = new THREE.Vector3(-12, 74, 104);
 
 /** Ramp steps as hex, matching the --land-* tokens so 2D and 3D agree. */
-const RAMP_LIGHT = ['#e9eee1', '#d3dec5', '#bacaa6', '#a0b687', '#88a972', '#688f53', '#4f7540', '#2a4524'];
-const RAMP_DARK = ['#232d1e', '#2e3f26', '#3b532f', '#4a6b39', '#5c8546', '#74a159', '#90bc77', '#b4d49e'];
+const RAMP_LIGHT = [
+  "#e9eee1",
+  "#d3dec5",
+  "#bacaa6",
+  "#a0b687",
+  "#88a972",
+  "#688f53",
+  "#4f7540",
+  "#2a4524",
+];
+const RAMP_DARK = [
+  "#232d1e",
+  "#2e3f26",
+  "#3b532f",
+  "#4a6b39",
+  "#5c8546",
+  "#74a159",
+  "#90bc77",
+  "#b4d49e",
+];
 
 interface ProvinceObject {
   code: ProvinceCode;
@@ -100,6 +90,9 @@ export default function LandScene({
   const darkRef = useRef(dark);
   darkRef.current = dark;
 
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const [topDown, setTopDown] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const [hover, setHover] = useState<ProvinceCode | null>(null);
   const labelRefs = useRef(new Map<ProvinceCode, HTMLButtonElement>());
   const tipRef = useRef<HTMLDivElement | null>(null);
@@ -133,7 +126,10 @@ export default function LandScene({
           // Square-rooted only for the colour step, so small provinces stay
           // distinguishable from empty ones. Height remains linear.
           const t = Math.sqrt(v / max);
-          acc[code] = ramp[Math.min(ramp.length - 1, 1 + Math.floor(t * (ramp.length - 1)))];
+          acc[code] =
+            ramp[
+              Math.min(ramp.length - 1, 1 + Math.floor(t * (ramp.length - 1)))
+            ];
         }
         return acc;
       },
@@ -148,7 +144,11 @@ export default function LandScene({
 
     let gl: THREE.WebGLRenderer;
     try {
-      gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      gl = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
     } catch {
       setFailed(true);
       return;
@@ -164,8 +164,15 @@ export default function LandScene({
     const sc = new THREE.Scene();
     scene.current = sc;
 
-    const cam = new THREE.PerspectiveCamera(38, el.clientWidth / el.clientHeight, 1, 800);
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cam = new THREE.PerspectiveCamera(
+      38,
+      el.clientWidth / el.clientHeight,
+      1,
+      800,
+    );
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     cam.position.copy(reduced ? INTRO_TO : INTRO_FROM);
     if (!reduced) intro.current = performance.now();
     camera.current = cam;
@@ -189,7 +196,12 @@ export default function LandScene({
     key.shadow.camera.near = 10;
     key.shadow.camera.far = 320;
     const d = 95;
-    Object.assign(key.shadow.camera, { left: -d, right: d, top: d, bottom: -d });
+    Object.assign(key.shadow.camera, {
+      left: -d,
+      right: d,
+      top: d,
+      bottom: -d,
+    });
     key.shadow.bias = -0.0012;
     sc.add(key);
 
@@ -211,12 +223,22 @@ export default function LandScene({
 
     // Centres and the country extent come straight from the projected rings.
     // Reading them back off the built geometry proved unreliable.
-    const extent = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    const extent = {
+      minX: Infinity,
+      maxX: -Infinity,
+      minY: Infinity,
+      maxY: -Infinity,
+    };
 
     for (const shape of PROVINCE_SHAPES) {
       const rings = projectedRings(shape.geometry);
 
-      const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+      const bounds = {
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
+      };
       for (const ring of rings) {
         for (const [x, y] of ring.outer) {
           if (x < bounds.minX) bounds.minX = x;
@@ -230,9 +252,13 @@ export default function LandScene({
       extent.minY = Math.min(extent.minY, bounds.minY);
       extent.maxY = Math.max(extent.maxY, bounds.maxY);
       const shapes = rings.map(({ outer, holes }) => {
-        const s = new THREE.Shape(outer.map(([x, y]) => new THREE.Vector2(x, y)));
+        const s = new THREE.Shape(
+          outer.map(([x, y]) => new THREE.Vector2(x, y)),
+        );
         for (const hole of holes) {
-          s.holes.push(new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))));
+          s.holes.push(
+            new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))),
+          );
         }
         return s;
       });
@@ -250,15 +276,15 @@ export default function LandScene({
 
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(colours[shape.code]),
-        roughness: 0.82,
-        metalness: 0.02,
+        roughness: 0.5,
+        metalness: 0.12,
         flatShading: false,
         transparent: true,
         opacity: 1,
       });
 
       // A ring that still triangulates to NaN is dropped rather than shipped.
-      const position = geometry.getAttribute('position');
+      const position = geometry.getAttribute("position");
       let broken = false;
       for (let i = 0; i < position.count * 3 && !broken; i++) {
         if (Number.isNaN(position.array[i])) broken = true;
@@ -334,13 +360,13 @@ export default function LandScene({
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         tip.style.transform = `translate3d(${x + 18}px, ${y + 18}px, 0)${
-          x > rect.width - 260 ? ' translateX(-100%) translateX(-36px)' : ''
+          x > rect.width - 260 ? " translateX(-100%) translateX(-36px)" : ""
         }`;
       }
     };
     const onLeave = () => pointer.current.set(-2, -2);
-    gl.domElement.addEventListener('pointermove', onPointerMove);
-    gl.domElement.addEventListener('pointerleave', onLeave);
+    gl.domElement.addEventListener("pointermove", onPointerMove);
+    gl.domElement.addEventListener("pointerleave", onLeave);
 
     let frame = 0;
     const clock = new THREE.Clock();
@@ -362,7 +388,8 @@ export default function LandScene({
         objects.current.map((o) => o.solid),
         false,
       );
-      const hitCode = (hits[0]?.object.userData.code as ProvinceCode | undefined) ?? null;
+      const hitCode =
+        (hits[0]?.object.userData.code as ProvinceCode | undefined) ?? null;
       setHover((prev) => (prev === hitCode ? prev : hitCode));
 
       for (const o of objects.current) {
@@ -370,32 +397,42 @@ export default function LandScene({
         const isHovered = hitCode === o.code;
         const dimmed = selectedRef.current !== null && !isSelected;
 
-        const lift = isHovered && !dimmed ? 1.6 : 0;
-        o.group.position.y += (lift - o.group.position.y) * Math.min(1, dt * 10);
+        const lift = isHovered && !dimmed && !reduced ? 1.6 : 0;
+        o.group.position.y +=
+          (lift - o.group.position.y) * Math.min(1, dt * 10);
 
-        o.currentScale += (o.targetScale - o.currentScale) * Math.min(1, dt * 4.5);
+        o.currentScale +=
+          (o.targetScale - o.currentScale) *
+          (reduced ? 1 : Math.min(1, dt * 4.5));
         o.group.scale.y = o.currentScale;
 
         o.solid.castShadow = !dimmed;
 
         const material = o.solid.material as THREE.MeshStandardMaterial;
         const wantOpacity = dimmed ? 0.28 : 1;
-        material.opacity += (wantOpacity - material.opacity) * Math.min(1, dt * 6);
+        material.opacity +=
+          (wantOpacity - material.opacity) * Math.min(1, dt * 6);
         const emissive = isSelected ? 0.09 : isHovered && !dimmed ? 0.14 : 0;
         material.emissive.set(
-          new THREE.Color(isSelected ? '#b3491a' : '#ffffff').multiplyScalar(emissive),
+          new THREE.Color(isSelected ? "#b3491a" : "#ffffff").multiplyScalar(
+            emissive,
+          ),
         );
 
         const line = o.outline.material as THREE.LineBasicMaterial;
-        line.opacity += ((dimmed ? 0 : isSelected ? 0.5 : 0.22) - line.opacity) * Math.min(1, dt * 6);
-        line.color.set(isSelected ? '#b3491a' : darkRef.current ? '#cfd4c4' : '#2a3320');
+        line.opacity +=
+          ((dimmed ? 0 : isSelected ? 0.5 : 0.22) - line.opacity) *
+          Math.min(1, dt * 6);
+        line.color.set(
+          isSelected ? "#b3491a" : darkRef.current ? "#cfd4c4" : "#2a3320",
+        );
       }
 
       if (flight.current) {
         // Both endpoints are fixed when the flight starts and interpolated
         // together, so nothing accumulates frame to frame.
         const f = flight.current;
-        const t = Math.min(1, (now - f.startedAt) / 900);
+        const t = reduced ? 1 : Math.min(1, (now - f.startedAt) / 900);
         const e = 1 - Math.pow(1 - t, 3);
         orbit.target.lerpVectors(f.targetFrom, f.targetTo, e);
         cam.position.lerpVectors(f.cameraFrom, f.cameraTo, e);
@@ -416,12 +453,14 @@ export default function LandScene({
           o.top.z,
         ).project(cam);
         const behind = world.z > 1;
-        const dimmed = selectedRef.current !== null && selectedRef.current !== o.code;
+        const dimmed =
+          selectedRef.current !== null && selectedRef.current !== o.code;
         el.style.transform = `translate3d(${((world.x + 1) / 2) * width}px, ${
           ((-world.y + 1) / 2) * height
         }px, 0) translate(-50%, -100%)`;
-        el.style.opacity = behind || dimmed ? '0' : '1';
-        el.style.pointerEvents = behind || dimmed ? 'none' : 'auto';
+        el.style.opacity = behind || dimmed ? "0" : "1";
+        el.style.pointerEvents = behind || dimmed ? "none" : "auto";
+        el.tabIndex = behind || dimmed ? -1 : 0;
       }
     };
 
@@ -431,8 +470,8 @@ export default function LandScene({
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      gl.domElement.removeEventListener('pointermove', onPointerMove);
-      gl.domElement.removeEventListener('pointerleave', onLeave);
+      gl.domElement.removeEventListener("pointermove", onPointerMove);
+      gl.domElement.removeEventListener("pointerleave", onLeave);
       orbit.dispose();
       for (const o of built) {
         o.solid.geometry.dispose();
@@ -440,6 +479,9 @@ export default function LandScene({
         o.outline.geometry.dispose();
         (o.outline.material as THREE.Material).dispose();
       }
+      ground.geometry.dispose();
+      ground.material.dispose();
+      key.shadow.dispose();
       gl.dispose();
       if (gl.domElement.parentNode === el) el.removeChild(gl.domElement);
     };
@@ -453,7 +495,9 @@ export default function LandScene({
 
   useEffect(() => {
     for (const o of objects.current) {
-      (o.solid.material as THREE.MeshStandardMaterial).color.set(colours[o.code]);
+      (o.solid.material as THREE.MeshStandardMaterial).color.set(
+        colours[o.code],
+      );
     }
   }, [colours]);
 
@@ -463,11 +507,20 @@ export default function LandScene({
     const cam = camera.current;
     if (!orbit || !cam) return;
 
-    const object = selected ? objects.current.find((o) => o.code === selected) : null;
+    intro.current = null;
+    setRotating(false);
+    orbit.autoRotate = false;
+    const object = selected
+      ? objects.current.find((o) => o.code === selected)
+      : null;
     if (selected && !object) return;
 
     const targetTo = object
-      ? new THREE.Vector3(object.top.x, Math.min(object.targetScale * 0.45, 9), object.top.z)
+      ? new THREE.Vector3(
+          object.top.x,
+          Math.min(object.targetScale * 0.45, 9),
+          object.top.z,
+        )
       : new THREE.Vector3(0, 0, 0);
 
     // Keep the viewer's current angle; only the framing changes.
@@ -477,32 +530,94 @@ export default function LandScene({
 
     // The detail panel covers the right of the viewport on wide screens, so shift
     // the framing to centre the province in what is actually visible.
-    if (object && window.innerWidth >= 640) {
+    if (object && window.innerWidth > 760) {
       // `direction` runs from the target to the camera, so its cross with up
       // points to the camera's left — negate it to push the framing left of centre.
-      const left = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0));
-      if (left.lengthSq() > 1e-6) targetTo.addScaledVector(left.normalize(), -13);
+      const left = new THREE.Vector3().crossVectors(
+        direction,
+        new THREE.Vector3(0, 1, 0),
+      );
+      if (left.lengthSq() > 1e-6)
+        targetTo.addScaledVector(left.normalize(), -13);
     }
 
     flight.current = {
       targetFrom: orbit.target.clone(),
       targetTo,
       cameraFrom: cam.position.clone(),
-      cameraTo: targetTo.clone().add(direction.multiplyScalar(selected ? 76 : 128)),
+      cameraTo: targetTo
+        .clone()
+        .add(direction.multiplyScalar(selected ? 76 : 128)),
       startedAt: performance.now(),
     };
   }, [selected]);
 
-  const click = useCallback(() => {
-    onSelect(hover && selectedRef.current !== hover ? hover : null);
-  }, [hover, onSelect]);
+  const click = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const start = pointerStart.current;
+      pointerStart.current = null;
+      if (
+        !start ||
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6
+      )
+        return;
+      const gl = renderer.current;
+      const cam = camera.current;
+      if (!gl || !cam) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      const location = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      raycaster.current.setFromCamera(location, cam);
+      const hit = raycaster.current.intersectObjects(
+        objects.current.map((o) => o.solid),
+        false,
+      )[0];
+      const code = hit?.object.userData.code as ProvinceCode | undefined;
+      onSelect(code && selectedRef.current !== code ? code : null);
+    },
+    [onSelect],
+  );
+
+  const changeView = (flat: boolean) => {
+    const cam = camera.current;
+    const orbit = controls.current;
+    if (!cam || !orbit) return;
+    intro.current = null;
+    flight.current = null;
+    setTopDown(flat);
+    setRotating(false);
+    orbit.autoRotate = false;
+    orbit.target.set(0, 0, 0);
+    cam.position.copy(flat ? new THREE.Vector3(0, 135, 0.1) : INTRO_TO);
+    orbit.update();
+  };
+
+  const zoom = (factor: number) => {
+    const cam = camera.current;
+    const orbit = controls.current;
+    if (!cam || !orbit) return;
+    intro.current = null;
+    flight.current = null;
+    const offset = cam.position.clone().sub(orbit.target);
+    offset.setLength(
+      THREE.MathUtils.clamp(
+        offset.length() * factor,
+        orbit.minDistance,
+        orbit.maxDistance,
+      ),
+    );
+    cam.position.copy(orbit.target).add(offset);
+    orbit.update();
+  };
 
   if (failed) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <p className="max-w-measure text-sm text-muted">
-          This browser could not start WebGL, so the 3D map is unavailable. The province figures and
-          offices below work without it.
+          This browser could not start WebGL, so the 3D map is unavailable. The
+          province figures and offices below work without it.
         </p>
       </div>
     );
@@ -512,35 +627,97 @@ export default function LandScene({
     <div className="relative h-full w-full">
       <div
         ref={mount}
+        onPointerDown={(event) => {
+          pointerStart.current = { x: event.clientX, y: event.clientY };
+          intro.current = null;
+          flight.current = null;
+          setRotating(false);
+          setTopDown(false);
+          if (controls.current) controls.current.autoRotate = false;
+        }}
+        onPointerCancel={() => {
+          pointerStart.current = null;
+        }}
         onClick={click}
-        className={cx('h-full w-full', hover ? 'cursor-pointer' : 'cursor-grab')}
+        className={cx(
+          "h-full w-full",
+          hover ? "cursor-pointer" : "cursor-grab",
+        )}
         role="application"
         aria-label="Three-dimensional map of South Africa. Province height and colour show the selected measure. Drag to orbit, scroll to zoom, click a province to open it."
       />
 
+      <p className="scene-instructions">
+        Drag to orbit · select a province to explore
+      </p>
+      <div className="scene-controls" role="group" aria-label="3D map controls">
+        <button type="button" aria-label="Zoom in" onClick={() => zoom(0.8)}>
+          +
+        </button>
+        <button type="button" aria-label="Zoom out" onClick={() => zoom(1.25)}>
+          −
+        </button>
+        <button
+          type="button"
+          aria-pressed={topDown}
+          onClick={() => changeView(!topDown)}
+        >
+          {topDown ? "3D view" : "Top view"}
+        </button>
+        <button
+          type="button"
+          aria-label={
+            rotating ? "Pause map rotation" : "Rotate map automatically"
+          }
+          aria-pressed={rotating}
+          onClick={() => {
+            if (!controls.current) return;
+            intro.current = null;
+            flight.current = null;
+            controls.current.autoRotate = !rotating;
+            controls.current.autoRotateSpeed = 0.7;
+            setRotating(!rotating);
+          }}
+        >
+          {rotating ? "Pause" : "Rotate"}
+        </button>
+        <button
+          type="button"
+          aria-label="Reset map view and selection"
+          onClick={() => {
+            onSelect(null);
+            changeView(false);
+          }}
+        >
+          Reset
+        </button>
+      </div>
       <div
         ref={tipRef}
         role="status"
         className={cx(
-          'pointer-events-none absolute left-0 top-0 z-20 w-[15rem] border border-ink/15 bg-raised p-3 shadow-lg transition-opacity duration-150',
-          hover && !selected ? 'opacity-100' : 'opacity-0',
+          "pointer-events-none absolute left-0 top-0 z-20 w-[15rem] border border-ink/15 bg-raised p-3 shadow-lg transition-opacity duration-150",
+          hover && !selected ? "opacity-100" : "opacity-0",
         )}
       >
         {hover && (
           <>
-            <p className="font-display text-lg leading-tight text-ink">{PROVINCES[hover].name}</p>
+            <p className="font-display text-lg leading-tight text-ink">
+              {PROVINCES[hover].name}
+            </p>
             <p className="mt-1 flex items-baseline justify-between gap-3 text-sm">
               <span className="text-muted">{active.label}</span>
               <span className="num text-ink">
                 {valueOf(hover, metric) === null
-                  ? '—'
-                  : metric === 'share'
+                  ? "—"
+                  : metric === "share"
                     ? `${valueOf(hover, metric)}%`
                     : `${group(valueOf(hover, metric)!)} ha`}
               </span>
             </p>
             <p className="mt-2 border-t border-rule pt-1.5 text-2xs leading-snug text-muted">
-              {PROVINCES[hover].commodities.slice(0, 3).join(' · ')} — click to open
+              {PROVINCES[hover].commodities.slice(0, 3).join(" · ")} — click to
+              open
             </p>
           </>
         )}
@@ -562,20 +739,24 @@ export default function LandScene({
             }}
             style={{ left: 0, top: 0, opacity: 0 }}
             className={cx(
-              'absolute z-10 whitespace-nowrap border border-rule/70 bg-paper/80 px-1.5 py-0.5 text-center backdrop-blur-[2px] transition-opacity duration-200',
-              ready ? '' : 'invisible',
+              "scene-label absolute z-10 whitespace-nowrap border border-rule/70 bg-paper/80 px-1.5 py-0.5 text-center backdrop-blur-[2px] transition-opacity duration-200",
+              ready ? "" : "invisible",
             )}
           >
             <span
               className={cx(
-                'block font-display text-sm leading-none',
-                selected === code || hover === code ? 'text-clay' : 'text-ink',
+                "block font-display text-sm leading-none",
+                selected === code || hover === code ? "text-clay" : "text-ink",
               )}
             >
               {PROVINCES[code].short}
             </span>
             <span className="num mt-0.5 block text-2xs leading-none text-muted">
-              {value === null ? '—' : metric === 'share' ? `${value}%` : group(value)}
+              {value === null
+                ? "—"
+                : metric === "share"
+                  ? `${value}%`
+                  : group(value)}
             </span>
           </button>
         );

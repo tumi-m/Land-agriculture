@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "data:topo": "node scripts/build-topo.mjs"
+    "data:topo": "node scripts/build-topo.mjs",
+    "test": "node scripts/test.mjs",
+    "build:sites": "opennextjs-cloudflare build && node scripts/stage-sites.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -19,6 +21,7 @@
     "topojson-client": "^3.1.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@types/d3-geo": "^3.1.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.1.13",
@@ -26,10 +29,12 @@
     "@types/three": "^0.171.0",
     "@types/topojson-client": "^3.1.5",
     "autoprefixer": "^10.4.20",
+    "esbuild": "^0.28.2",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "topojson-server": "^3.0.1",
     "topojson-simplify": "^3.0.3",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wrangler": "^4.129.1"
   }
 }

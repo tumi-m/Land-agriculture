@@ -38,7 +38,7 @@ const config: Config = {
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       fontSize: {
-        '2xs': ['0.6875rem', { lineHeight: '1.1rem', letterSpacing: '0.06em' }],
+        '2xs': ['0.75rem', { lineHeight: '1.1rem', letterSpacing: '0.06em' }],
         display: ['clamp(2.6rem, 6.2vw, 5.2rem)', { lineHeight: '0.94', letterSpacing: '-0.025em' }],
         opener: ['clamp(1.9rem, 3.4vw, 3rem)', { lineHeight: '1.04', letterSpacing: '-0.02em' }],
         figure: ['clamp(1.9rem, 3vw, 2.75rem)', { lineHeight: '1', letterSpacing: '-0.02em' }],

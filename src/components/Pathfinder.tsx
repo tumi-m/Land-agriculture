@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import BlockView from './blocks/BlockView';
-import { PROVINCES, PROVINCE_ORDER } from '@/content/provinces';
-import { cx } from '@/lib/format';
+import { useEffect, useMemo, useState } from "react";
+import BlockView from "./blocks/BlockView";
+import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
+import { cx } from "@/lib/format";
 import {
   EMPTY_ANSWERS,
   QUESTION_COUNT,
@@ -13,47 +13,69 @@ import {
   type Employment,
   type Entity,
   type Scale,
-} from '@/lib/pathfinder';
-import type { ProvinceCode } from '@/lib/types';
+} from "@/lib/pathfinder";
+import type { ProvinceCode } from "@/lib/types";
 
 const SCALES: { id: Scale; label: string; hint: string }[] = [
-  { id: 'household', label: 'To feed my household', hint: 'Little or no surplus sold' },
-  { id: 'smallholder', label: 'Household plus some sales', hint: 'Under about R1m a year' },
-  { id: 'medium', label: 'A commercial operation', hint: 'Roughly R1m – R10m a year' },
-  { id: 'large', label: 'A large agribusiness', hint: 'Above R10m a year' },
+  {
+    id: "household",
+    label: "To feed my household",
+    hint: "Little or no surplus sold",
+  },
+  {
+    id: "smallholder",
+    label: "Household plus some sales",
+    hint: "Under about R1m a year",
+  },
+  {
+    id: "medium",
+    label: "A commercial operation",
+    hint: "Roughly R1m – R10m a year",
+  },
+  { id: "large", label: "A large agribusiness", hint: "Above R10m a year" },
 ];
 
 const EMPLOYMENT: { id: Employment; label: string }[] = [
-  { id: 'none', label: 'None of these' },
-  { id: 'serving', label: 'I or my spouse work for the state or an SOE' },
-  { id: 'left-service', label: 'I left state employment in the last 2 years' },
-  { id: 'left-office', label: 'I left political office in the last year' },
+  { id: "none", label: "None of these" },
+  { id: "serving", label: "I or my spouse work for the state or an SOE" },
+  { id: "left-service", label: "I left state employment in the last 2 years" },
+  { id: "left-office", label: "I left political office in the last year" },
 ];
 
 const ENTITIES: { id: Entity; label: string; hint: string }[] = [
-  { id: 'individual', label: 'In my own name', hint: 'Natural person' },
-  { id: 'entity', label: 'Through a company, trust or co-op', hint: 'Juristic entity' },
+  { id: "individual", label: "In my own name", hint: "Natural person" },
+  {
+    id: "entity",
+    label: "Through a company, trust or co-op",
+    hint: "Juristic entity",
+  },
 ];
 
 const ENTERPRISES = [
-  'Poultry',
-  'Beef cattle',
-  'Goats',
-  'Sheep',
-  'Maize',
-  'Vegetables',
-  'Citrus',
-  'Sugar cane',
-  'Dairy',
-  'Piggery',
+  "Poultry",
+  "Beef cattle",
+  "Goats",
+  "Sheep",
+  "Maize",
+  "Vegetables",
+  "Citrus",
+  "Sugar cane",
+  "Dairy",
+  "Piggery",
 ];
 
 export default function Pathfinder({
   onProvinceChange,
+  selectedProvince,
 }: {
+  selectedProvince?: ProvinceCode | null;
   onProvinceChange?: (code: ProvinceCode) => void;
 }) {
   const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS);
+  useEffect(() => {
+    if (selectedProvince)
+      setAnswers((previous) => ({ ...previous, province: selectedProvince }));
+  }, [selectedProvince]);
   const blocks = useMemo(() => compose(answers), [answers]);
   const progress = answered(answers);
 
@@ -83,7 +105,7 @@ export default function Pathfinder({
                 key={code}
                 on={answers.province === code}
                 onClick={() => {
-                  set('province', code);
+                  set("province", code);
                   onProvinceChange?.(code);
                 }}
               >
@@ -96,7 +118,11 @@ export default function Pathfinder({
         <Question label="How do you farm, or plan to?">
           <div className="space-y-1.5">
             {SCALES.map((s) => (
-              <Row key={s.id} on={answers.scale === s.id} onClick={() => set('scale', s.id)}>
+              <Row
+                key={s.id}
+                on={answers.scale === s.id}
+                onClick={() => set("scale", s.id)}
+              >
                 <span className="text-ink">{s.label}</span>
                 <span className="text-xs text-muted">{s.hint}</span>
               </Row>
@@ -107,7 +133,11 @@ export default function Pathfinder({
         <Question label="How would you apply?">
           <div className="space-y-1.5">
             {ENTITIES.map((e) => (
-              <Row key={e.id} on={answers.entity === e.id} onClick={() => set('entity', e.id)}>
+              <Row
+                key={e.id}
+                on={answers.entity === e.id}
+                onClick={() => set("entity", e.id)}
+              >
                 <span className="text-ink">{e.label}</span>
                 <span className="text-xs text-muted">{e.hint}</span>
               </Row>
@@ -121,7 +151,7 @@ export default function Pathfinder({
               <Row
                 key={e.id}
                 on={answers.employment === e.id}
-                onClick={() => set('employment', e.id)}
+                onClick={() => set("employment", e.id)}
               >
                 <span className="text-ink">{e.label}</span>
               </Row>
@@ -137,7 +167,7 @@ export default function Pathfinder({
                 on={answers.enterprises.includes(e)}
                 onClick={() =>
                   set(
-                    'enterprises',
+                    "enterprises",
                     answers.enterprises.includes(e)
                       ? answers.enterprises.filter((x) => x !== e)
                       : [...answers.enterprises, e],
@@ -151,22 +181,29 @@ export default function Pathfinder({
         </Question>
 
         {progress > 0 && (
-          <button type="button" className="btn mt-5" onClick={() => setAnswers(EMPTY_ANSWERS)}>
+          <button
+            type="button"
+            className="btn mt-5"
+            onClick={() => setAnswers(EMPTY_ANSWERS)}
+          >
             Start again
           </button>
         )}
       </div>
 
-      <div aria-live="polite" className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+      <div
+        aria-live="polite"
+        className="min-w-0 lg:sticky lg:top-20 lg:self-start"
+      >
         {blocks.length === 0 ? (
           <div className="flex h-full min-h-[16rem] flex-col justify-center border border-dashed border-rule p-8">
             <p className="font-display text-opener leading-tight text-ink">
               Answer on the left and your route assembles here.
             </p>
             <p className="lede mt-3">
-              Which category you fall into, what lease and rent that carries, whether you can ever
-              own the land, what finance you qualify for, which office takes your form, and what to
-              attach to it.
+              Which category you fall into, what lease and rent that carries,
+              whether you can ever own the land, what finance you qualify for,
+              which office takes your form, and what to attach to it.
             </p>
           </div>
         ) : (
@@ -181,10 +218,18 @@ export default function Pathfinder({
   );
 }
 
-function Question({ label, children }: { label: string; children: React.ReactNode }) {
+function Question({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <fieldset className="mt-6">
-      <legend className="mb-2 font-display text-lg leading-tight text-ink">{label}</legend>
+      <legend className="mb-2 font-display text-lg leading-tight text-ink">
+        {label}
+      </legend>
       {children}
     </fieldset>
   );
@@ -205,10 +250,10 @@ function Choice({
       onClick={onClick}
       aria-pressed={on}
       className={cx(
-        'border px-2.5 py-1 text-sm transition-colors duration-150',
+        "border px-2.5 py-1 text-sm transition-colors duration-150",
         on
-          ? 'border-clay bg-clay text-paper'
-          : 'border-rule bg-raised text-muted hover:border-ink/30 hover:text-ink',
+          ? "border-clay bg-clay text-paper"
+          : "border-rule bg-raised text-muted hover:border-ink/30 hover:text-ink",
       )}
     >
       {children}
@@ -231,8 +276,10 @@ function Row({
       onClick={onClick}
       aria-pressed={on}
       className={cx(
-        'flex w-full flex-col items-start gap-0.5 border px-3 py-2 text-left text-sm transition-colors duration-150',
-        on ? 'border-clay bg-clay-soft/60' : 'border-rule bg-raised hover:border-ink/30',
+        "flex w-full flex-col items-start gap-0.5 border px-3 py-2 text-left text-sm transition-colors duration-150",
+        on
+          ? "border-clay bg-clay-soft/60"
+          : "border-rule bg-raised hover:border-ink/30",
       )}
     >
       {children}

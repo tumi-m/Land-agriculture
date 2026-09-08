@@ -147,3 +147,23 @@ below the map behind tabs, so only one section's text is on screen at a time.
 - Dark mode is re-stepped for the dark surface rather than inverted, and applied before first paint.
 - Number formatting and dates avoid `Intl` on purpose: ICU data differs between the Node build that
   renders the HTML and the browser that hydrates it.
+
+## September 2026 explorer update
+
+The explorer pairs a searchable province ranking with the interactive 3D map. Search matches
+province names and their documented commodities. Advertised, released and state-share measures
+update both views. Zoom, top view, optional rotation and reset controls are available without
+mouse gestures, and the province list remains usable when WebGL is unavailable.
+
+The map uses statistical extrusion, not terrain elevation. Historical release dates are visible
+beside the national figures and in province details. A connected feed with no records for the
+selected province is distinguished from a disconnected feed. Selecting a province also carries
+it into the route planner; changing reference tabs preserves the answers during the session.
+
+`npm test` checks ranking, search and feed-state presentation. `npm run build:sites` builds the
+same Next.js application through OpenNext and stages a Cloudflare Worker plus public assets
+for a private Sites preview. The existing Next.js development/build/start commands and Vercel
+configuration remain supported. The preview has no advert feed until the existing environment
+variables are configured. OpenNext's default cache overrides do not provide durable ISR;
+production deployments that use the feed should configure the appropriate cache bindings or
+continue using the existing Vercel deployment.
