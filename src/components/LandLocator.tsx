@@ -2,12 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LAND_JOURNEY } from "@/content/journey";
-import {
-  JourneyNarration,
-  JourneyHeading,
-  JourneyTimeline,
-} from "./LandJourney";
 import LiveStatus from "./LiveStatus";
 import Pathfinder from "./Pathfinder";
 import ProvincePanel from "./ProvincePanel";
@@ -29,17 +23,10 @@ import {
   rankProvinces,
 } from "@/lib/land-metrics";
 import { CONTENT_REVIEWED, SOURCE_NOTE } from "@/content/meta";
-import {
-  ADVERTISED_FARMS,
-  ADVERTISED_TOTAL_PUBLISHED,
-  PROVINCES,
-  PROVINCE_ORDER,
-} from "@/content/provinces";
+import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import { useLiveData } from "@/lib/useLiveData";
 import type { Dataset, ProvinceCode } from "@/lib/types";
-
-import LandProfile from "./LandProfile";
 
 const LandScene = dynamic(() => import("./LandScene"), {
   ssr: false,
@@ -69,9 +56,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
   const [mapView, setMapView] = useState<"atlas" | "data">("atlas");
-  const [guided, setGuided] = useState(true);
-  const [chapter, setChapter] = useState(0);
-  const [province, setProvince] = useState<ProvinceCode | null>(null);
+  const [province, setProvince] = useState<ProvinceCode | null>("LP");
   const [metric, setMetric] = useState<Metric>("advertised");
   const [tab, setTab] = useState<TabId>("route");
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -91,7 +76,6 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     const code = params.get("province")?.toUpperCase();
     if (code && (PROVINCE_ORDER as string[]).includes(code)) {
       setProvince(code as ProvinceCode);
-      setGuided(false);
     }
     setDark(document.documentElement.classList.contains("dark"));
     setUrlReady(true);
@@ -148,17 +132,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     [adverts, province],
   );
 
-  const step = LAND_JOURNEY[chapter];
-  const displayMetric = guided ? step.metric : metric;
+  const displayMetric = metric;
   const active = METRICS.find((m) => m.id === displayMetric)!;
-  const exploreJourney = () => {
-    setMetric(step.metric);
-    setProvince(step.province);
-    setGuided(false);
-  };
 
   return (
-    <div className={cx("relative z-[1]", guided && "documentary-mode")}>
+    <div className="relative z-[1] terrain-experience">
       <header className="app-header">
         <a className="brand" href="#map" aria-label="Asbonge Land Locator home">
           <span className="brand-mark" aria-hidden="true">
@@ -169,11 +147,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           </span>
         </a>
         <nav aria-label="Main navigation" className="main-nav">
-          <a
-            href="#map"
-            className="nav-current"
-            onClick={() => setGuided(false)}
-          >
+          <a href="#map" className="nav-current">
             Explore land
           </a>
           <button onClick={() => openTab("process")}>How to apply</button>
@@ -197,123 +171,26 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
       </header>
 
-      <div className={cx("workspace", guided && "guided-workspace")}>
-        <section className="explorer-intro" aria-labelledby="explorer-title">
-          <div>
-            <p className="eyebrow">
-              <span className="status-dot" /> SOUTH AFRICA · AGRICULTURAL LAND
-              EXPLORER
-            </p>
-            <h1 id="explorer-title">
-              Find your <em>ground.</em>
-            </h1>
-            <p>
-              Understand the land. Explore your options. Take your next step
-              into farming.
-            </p>
-          </div>
-          <div className="intro-note">
-            <span aria-hidden="true">↗</span>
-            <p>
-              From province to possibility.
-              <br />
-              <strong>A practical guide to state land.</strong>
-            </p>
-          </div>
-        </section>
-
-        <section
-          className="stat-strip"
-          style={guided ? { display: "none" } : undefined}
-          aria-label="Historical national land release overview"
-        >
-          <div>
-            <span className="stat-icon" aria-hidden="true">
-              ▧
-            </span>
-            <div>
-              <p className="eyebrow">HECTARES ADVERTISED</p>
-              <p className="stat-value">
-                {group(ADVERTISED_TOTAL_PUBLISHED)} <small>ha</small>
-              </p>
-              <p className="stat-caption">Published October 2020 total</p>
-            </div>
-          </div>
-          <div>
-            <span className="stat-icon" aria-hidden="true">
-              ⌖
-            </span>
-            <div>
-              <p className="eyebrow">STATE FARMS</p>
-              <p className="stat-value">{ADVERTISED_FARMS}</p>
-              <p className="stat-caption">In the October 2020 announcement</p>
-            </div>
-          </div>
-          <div>
-            <span className="stat-icon" aria-hidden="true">
-              ◷
-            </span>
-            <div>
-              <p className="eyebrow">LEASE FRAMEWORK</p>
-              <p className="stat-value">
-                30 <small>years</small>
-              </p>
-              <p className="stat-caption">
-                Terms depend on beneficiary category
-              </p>
-            </div>
-          </div>
-          <button className="stat-action" onClick={() => openTab("route")}>
-            <span className="eyebrow">YOUR STARTING POINT</span>
-            <strong>What could my route look like?</strong>
-            <span>
-              Answer four questions <span aria-hidden="true">↗</span>
-            </span>
-          </button>
-        </section>
-
+      <div className="workspace">
         <section
           id="map"
           className={cx(
             "explorer-shell",
-            guided && "journey-shell",
             mapView === "atlas" && "atlas-shell",
-            province && !guided && "has-province-detail",
+            province && "has-province-detail",
           )}
           aria-label="Explore South African provinces"
         >
           <div className="explorer-toolbar">
             <div>
-              <h2>{guided ? "The land journey" : "Explore the landscape"}</h2>
-              <p>
-                {guided
-                  ? "One map. Five steps from understanding to action."
-                  : "Choose a measure, then select a province."}
-              </p>
-            </div>
-            <div
-              className="explorer-mode"
-              role="group"
-              aria-label="Explorer mode"
-            >
-              <button
-                type="button"
-                aria-pressed={guided}
-                onClick={() => setGuided(true)}
-              >
-                Journey
-              </button>
-              <button
-                type="button"
-                aria-pressed={!guided}
-                onClick={() => setGuided(false)}
-              >
-                Explore freely
-              </button>
+              <p className="eyebrow">SOUTH AFRICA / LAND EXPLORER</p>
+              <h1>
+                Explore the land in 3D<span>.</span>
+              </h1>
             </div>
             <div
               role="group"
-              aria-label="Map measure"
+              aria-label="Historical province measure"
               className="metric-switch"
             >
               {METRICS.map((m) => (
@@ -323,7 +200,6 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   aria-pressed={displayMetric === m.id}
                   onClick={() => {
                     setMetric(m.id);
-                    setGuided(false);
                   }}
                   className={cx(displayMetric === m.id && "is-active")}
                 >
@@ -340,20 +216,20 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <button
               aria-pressed={mapView === "atlas"}
               onClick={() => setMapView("atlas")}
-              aria-label="Geographic atlas"
+              aria-label="3D terrain"
             >
-              Atlas
+              3D terrain
             </button>
             <button
               aria-pressed={mapView === "data"}
               onClick={() => setMapView("data")}
-              aria-label="3D comparison"
+              aria-label="Compare provincial land figures"
             >
-              3D data
+              Compare area
             </button>
           </div>
           <div className="explorer-body">
-            {!guided && (
+            {
               <aside
                 className="province-browser"
                 aria-label="Province selector"
@@ -421,59 +297,37 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 <div className="province-browser-note">
                   <span className="status-dot" />
                   <p>
-                    All 9 provinces. Select one for farming systems and the
-                    local application office.
+                    Regional views show the landscape. These are provincial
+                    figures, not farm listings.
                   </p>
                 </div>
               </aside>
-            )}
-            {guided && (
-              <JourneyNarration
-                chapter={chapter}
-                onExplore={exploreJourney}
-                onRoute={() => openTab("route")}
-              />
-            )}
+            }
             <div className="map-stage">
-              {guided && <JourneyHeading chapter={chapter} />}
-              {guided && mapView === "atlas" && <LandProfile />}
-              <div className="map-heading">
-                <span className="map-badge">
-                  {mapView === "atlas"
-                    ? "AGRICULTURAL LAND · SOUTH AFRICA"
-                    : "3D DATA MAP"}
-                </span>
-                <span>ZA / 09 PROVINCES</span>
-              </div>
               {mapView === "atlas" ? (
                 <AtlasMap
                   metric={displayMetric}
-                  selected={guided ? step.province : province}
-                  narrationOverlay={guided}
+                  selected={province}
                   onSelect={(code) => {
                     setMetric(displayMetric);
                     setProvince(code);
-                    setGuided(false);
                   }}
                   onFallback={() => {
-                    setGuided(false);
                     setMapView("data");
                   }}
                 />
               ) : (
                 <LandScene
                   metric={displayMetric}
-                  selected={guided ? step.province : province}
-                  narrationOverlay={guided}
+                  selected={province}
                   onSelect={(code) => {
                     setMetric(displayMetric);
                     setProvince(code);
-                    setGuided(false);
                   }}
-                  dark={guided ? false : dark}
+                  dark={dark}
                 />
               )}
-              <div className="map-legend">
+              <div className="map-legend" hidden={mapView === "atlas"}>
                 <div>
                   <span className="legend-ramp" />
                   <span>Lower</span>
@@ -490,12 +344,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </p>
               </div>
             </div>
-            {guided && mapView === "atlas" && (
-              <div className="documentary-mobile-profile">
-                <LandProfile />
-              </div>
-            )}
-            {province && !guided && (
+            {province && (
               <div className="province-detail">
                 <ProvincePanel
                   code={province}
@@ -509,9 +358,6 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </div>
             )}
           </div>
-          {guided && (
-            <JourneyTimeline chapter={chapter} onChange={setChapter} />
-          )}
           <div className="explorer-footnote">
             <p>
               <strong>
@@ -620,9 +466,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <Pathfinder
               onProvinceChange={(code) => {
                 setProvince(code);
-                setGuided(false);
               }}
-              selectedProvince={guided ? null : province}
+              selectedProvince={province}
             />
           </Panel>
 

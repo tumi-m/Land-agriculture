@@ -137,28 +137,11 @@ ship.
 The long-form reference — your route, applying, money, history, what goes wrong, offices — sits
 below the map behind tabs, so only one section's text is on screen at a time.
 
-## Design notes
+## 3D land explorer
 
-- One display serif (Fraunces), one grotesque (Inter), one mono (IBM Plex) — mono is reserved for
-  figures in tables, codes and phone numbers, never for running prose.
-- Green is a **sequential ramp for magnitude only**, never for identity; clay is the single accent
-  for selection and emphasis. Both ramps were validated for lightness monotonicity, step separation
-  and contrast in light and dark, and every text token clears WCAG AA on both surfaces.
-- Dark mode is re-stepped for the dark surface rather than inverted, and applied before first paint.
-- Number formatting and dates avoid `Intl` on purpose: ICU data differs between the Node build that
-  renders the HTML and the browser that hydrates it.
+The default map opens a regional view of Limpopo with satellite imagery draped over actual elevation. Select another province to fly to its landscape. Map controls provide zoom, rotation, 2D/3D pitch, satellite/relief, rivers and a provincial data overlay. The separate Compare area view uses statistical extrusion for the selected historical measure. It does not represent terrain elevation.
 
-## September 2026 explorer update
-
-The explorer pairs a searchable province ranking with the interactive 3D map. Search matches
-province names and their documented commodities. Advertised, released and state-share measures
-update both views. Zoom, top view, optional rotation and reset controls are available without
-mouse gestures, and the province list remains usable when WebGL is unavailable.
-
-The map uses statistical extrusion, not terrain elevation. Historical release dates are visible
-beside the national figures and in province details. A connected feed with no records for the
-selected province is distinguished from a disconnected feed. Selecting a province also carries
-it into the route planner; changing reference tabs preserves the answers during the session.
+The workspace uses Manrope and Inter with mint accents and supports light/dark themes. On phones, the map comes first and province selection and details follow below. Desktop details sit beside the map. Selecting a province carries it into the route planner; changing reference tabs preserves answers.
 
 `npm test` checks ranking, search and feed-state presentation. `npm run build:sites` builds the
 same Next.js application through OpenNext and stages a Cloudflare Worker plus public assets
@@ -168,16 +151,6 @@ variables are configured. OpenNext's default cache overrides do not provide dura
 production deployments that use the feed should configure the appropriate cache bindings or
 continue using the existing Vercel deployment.
 
-### Guided land journey
+### Geographic data
 
-The default view offers five documentary-style chapters inspired by vhavenda.com's linked map
-and narration: the national snapshot, North West's concentration, separate release dates,
-Limpopo's farming profile, and application preparation. Chapter changes frame the same 3D map
-and explain its active measure. Tour focus is separate from the user's province selection and
-application answers. Readers can switch to free exploration, select a province, or enter the
-route planner at any time. Motion is not advanced automatically. Province URL links open directly
-in free exploration.
-
-### Documentary map sources
-
-The river overlay is a regional subset of Natural Earth 1:50m rivers and lake centerlines (public domain), retrieved from the Natural Earth vector repository. Rivers provide geographic orientation, not irrigation availability or water-use rights. The soil cutaway is an AI-generated illustration, not a farm listing. Provincial statistics retain their original reporting dates.
+Elevation uses Mapzen Terrain Tiles on AWS (global SRTM / GMTED data courtesy of USGS), accessed 2026-09-08. Terrarium elevation is displayed with 1.6× relief; centre readouts remove that exaggeration. Elevation is approximate, not a site survey. Satellite imagery is EOX Sentinel 2016–17. The river overlay is a regional subset of Natural Earth 1:50m rivers and lake centerlines (public domain); it does not indicate irrigation rights or availability. Provincial statistics retain their original reporting dates, and the map does not invent individual farm boundaries or listings.

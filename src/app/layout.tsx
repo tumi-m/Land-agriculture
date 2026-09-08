@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, IBM_Plex_Mono, Inter } from "next/font/google";
+import { IBM_Plex_Mono, Manrope, Inter } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -9,11 +9,10 @@ const sans = Inter({
   variable: "--font-sans",
 });
 
-const display = Cormorant_Garamond({
+const display = Manrope({
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "600"],
-  style: ["normal", "italic"],
   variable: "--font-display",
 });
 

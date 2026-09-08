@@ -68,44 +68,7 @@ test("province details distinguish historical rounds and expose the application 
   assert.match(html, /href="tel:/);
 });
 
-import { LAND_JOURNEY } from "../src/content/journey";
-import {
-  JourneyNarration,
-  JourneyTimeline,
-} from "../src/components/LandJourney";
-
-test("the release chapter explains that February and October are separate rounds", () => {
-  const chapter = LAND_JOURNEY.findIndex((step) => step.id === "release");
-  const html = renderToStaticMarkup(
-    <JourneyNarration
-      chapter={chapter}
-      onExplore={() => {}}
-      onRoute={() => {}}
-    />,
-  );
-  assert.equal(LAND_JOURNEY[chapter].metric, "released");
-  assert.match(html, /separate rounds/);
-  assert.match(html, /not give a valid completion rate/);
-});
-
-test("the journey ends with application preparation and a usable restart", () => {
-  const chapter = LAND_JOURNEY.length - 1;
-  const html = renderToStaticMarkup(
-    <JourneyNarration
-      chapter={chapter}
-      onExplore={() => {}}
-      onRoute={() => {}}
-    />,
-  );
-  const navigation = renderToStaticMarkup(
-    <JourneyTimeline chapter={chapter} onChange={() => {}} />,
-  );
-  assert.match(html, /Build my route/);
-  assert.match(navigation, /Start again/);
-  assert.equal((navigation.match(/aria-current="step"/g) ?? []).length, 1);
-});
-
-import { provinceBounds, atlasPadding } from "../src/lib/atlas";
+import { provinceBounds } from "../src/lib/atlas";
 
 test("every province fits within the national geographic extent", () => {
   const national = provinceBounds(null);
@@ -120,10 +83,24 @@ test("every province fits within the national geographic extent", () => {
   }
 });
 
-test("map framing reserves desktop panels and releases space on tablet and phone", () => {
-  assert.equal(atlasPadding(1440, true, false).left, 130);
-  assert.equal(atlasPadding(768, true, false).left, 40);
-  assert.equal(atlasPadding(1440, false, true).right, 390);
-  assert.equal(atlasPadding(375, false, true).right, 55);
-  assert.equal(atlasPadding(768, false, true).right, 55);
+import { PROVINCE_VIEWS, groundElevation } from "../src/lib/terrain";
+
+test("regional camera views remain inside their province bounds", () => {
+  for (const code of PROVINCE_ORDER) {
+    const { center, zoom } = PROVINCE_VIEWS[code];
+    const bounds = provinceBounds(code);
+    assert.ok(zoom >= 7 && zoom <= 12);
+    for (const axis of [0, 1])
+      assert.ok(
+        center[axis] >= bounds[0][axis] && center[axis] <= bounds[1][axis],
+        code,
+      );
+  }
+});
+
+test("elevation readings remove display exaggeration and preserve missing values", () => {
+  assert.equal(groundElevation(1600), 1000);
+  assert.equal(groundElevation(-160), -100);
+  assert.equal(groundElevation(null), null);
+  assert.equal(groundElevation(NaN), null);
 });

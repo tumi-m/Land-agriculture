@@ -2,16 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { Map as LibreMap, GeoJSONSource } from "maplibre-gl";
-import rivers from "@/data/sa-rivers.json";
+import type { Map as LibreMap } from "maplibre-gl";
 import { PROVINCE_SHAPES } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
+import rivers from "@/data/sa-rivers.json";
+import { provinceBounds, ATLAS_ATTRIBUTION, TILE_BASE } from "@/lib/atlas";
 import {
-  atlasPadding,
-  provinceBounds,
-  ATLAS_ATTRIBUTION,
-  TILE_BASE,
-} from "@/lib/atlas";
+  PROVINCE_VIEWS,
+  TERRAIN_EXAGGERATION,
+  ELEVATION_TILES,
+  ELEVATION_ATTRIBUTION,
+  groundElevation,
+} from "@/lib/terrain";
 import { valueOf, type Metric } from "@/lib/land-metrics";
 import { group } from "@/lib/format";
 import type { ProvinceCode } from "@/lib/types";
@@ -19,80 +21,60 @@ import type { ProvinceCode } from "@/lib/types";
 export default function AtlasMap({
   metric,
   selected,
-  narrationOverlay,
   onSelect,
   onFallback,
 }: {
   metric: Metric;
   selected: ProvinceCode | null;
-  narrationOverlay: boolean;
   onSelect: (code: ProvinceCode | null) => void;
   onFallback: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
-  const latest = useRef({ metric, selected, narrationOverlay, onSelect });
-  latest.current = { metric, selected, narrationOverlay, onSelect };
+  const latest = useRef({ selected, onSelect, flat: false });
   const markers = useRef<
     {
       code: ProvinceCode;
       marker: maplibregl.Marker;
       button: HTMLButtonElement;
-      value: HTMLSpanElement;
     }[]
   >([]);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [tileError, setTileError] = useState(false);
+  const [demError, setDemError] = useState(false);
+  const [flat, setFlat] = useState(false);
   const [satellite, setSatellite] = useState(true);
-  const [tilted, setTilted] = useState(false);
+  const [dataOverlay, setDataOverlay] = useState(false);
+  const [water, setWater] = useState(true);
+  const [elevation, setElevation] = useState<number | null>(null);
+  latest.current = { selected, onSelect, flat };
 
-  const declutter = () => {
-    const occupied: DOMRect[] = [];
-    markers.current.forEach(({ button }) =>
-      button.classList.remove("is-compact"),
-    );
-    [...markers.current]
-      .sort(
-        (a, b) =>
-          (valueOf(b.code, latest.current.metric) ?? -1) -
-          (valueOf(a.code, latest.current.metric) ?? -1),
-      )
-      .forEach(({ button }) => {
-        if (button.hidden) return;
-        const rect = button.getBoundingClientRect();
-        const overlaps = occupied.some(
-          (other) =>
-            rect.left < other.right + 5 &&
-            rect.right > other.left - 5 &&
-            rect.top < other.bottom + 5 &&
-            rect.bottom > other.top - 5,
-        );
-        if (overlaps && !button.classList.contains("is-active"))
-          button.classList.add("is-compact");
-        else occupied.push(rect);
-      });
-  };
-
-  const frame = (duration = 850) => {
+  const frame = (duration = 1400) => {
     const instance = map.current;
     if (!instance || !host.current) return;
-    const { selected: code, narrationOverlay: guided } = latest.current;
-    const width = host.current.clientWidth;
-    const padding = atlasPadding(window.innerWidth, guided, !!code);
-    // In free exploration the map is narrower than the page because of the province index.
-    if (width < 600) {
-      padding.left = 25;
-      padding.right = 25;
-      padding.bottom = 110;
+    const code = latest.current.selected;
+    const time = matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 0
+      : duration;
+    if (code) {
+      instance.flyTo({
+        ...PROVINCE_VIEWS[code],
+        zoom:
+          PROVINCE_VIEWS[code].zoom -
+          (host.current.clientWidth < 500 ? 0.5 : 0),
+        bearing: -24,
+        pitch: latest.current.flat ? 0 : 62,
+        duration: time,
+      });
+    } else {
+      instance.fitBounds(provinceBounds(null), {
+        padding: { top: 65, bottom: 90, left: 25, right: 25 },
+        pitch: latest.current.flat ? 0 : 38,
+        bearing: 0,
+        duration: time,
+      });
     }
-    instance.fitBounds(provinceBounds(code), {
-      padding,
-      duration: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? 0
-        : duration,
-      maxZoom: code ? 7.3 : 5.1,
-    });
   };
 
   useEffect(() => {
@@ -101,13 +83,16 @@ export default function AtlasMap({
     try {
       instance = new maplibregl.Map({
         container: host.current,
-        center: [25, -29],
-        zoom: 4.5,
+        center: [30.05, -23.82],
+        zoom: 8.5,
+        pitch: 62,
+        bearing: -24,
+        maxPitch: 75,
         minZoom: 3,
-        maxZoom: 12,
+        maxZoom: 15,
         maxBounds: [
-          [8, -40],
-          [43, -15],
+          [10, -40],
+          [42, -16],
         ],
         renderWorldCopies: false,
         attributionControl: false,
@@ -115,6 +100,14 @@ export default function AtlasMap({
         style: {
           version: 8,
           sources: {
+            elevation: {
+              type: "raster-dem",
+              encoding: "terrarium",
+              tiles: [ELEVATION_TILES],
+              tileSize: 256,
+              maxzoom: 15,
+              attribution: ELEVATION_ATTRIBUTION,
+            },
             satellite: {
               type: "raster",
               tiles: [`${TILE_BASE}s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`],
@@ -122,7 +115,7 @@ export default function AtlasMap({
               maxzoom: 14,
               attribution: ATLAS_ATTRIBUTION,
             },
-            terrain: {
+            relief: {
               type: "raster",
               tiles: [`${TILE_BASE}terrain_3857/default/g/{z}/{y}/{x}.jpg`],
               tileSize: 256,
@@ -131,24 +124,24 @@ export default function AtlasMap({
           },
           layers: [
             {
-              id: "paper",
+              id: "base",
               type: "background",
-              paint: { "background-color": "#d9cea0" },
+              paint: { "background-color": "#162c32" },
             },
             {
-              id: "terrain",
+              id: "relief",
               type: "raster",
-              source: "terrain",
-              paint: { "raster-opacity": 0, "raster-saturation": -0.35 },
+              source: "relief",
+              paint: { "raster-opacity": 0 },
             },
             {
               id: "satellite",
               type: "raster",
               source: "satellite",
               paint: {
-                "raster-opacity": 0.6,
-                "raster-saturation": -0.15,
-                "raster-contrast": 0.02,
+                "raster-opacity": 1,
+                "raster-saturation": 0.08,
+                "raster-contrast": 0.12,
               },
             },
           ],
@@ -164,18 +157,75 @@ export default function AtlasMap({
       "bottom-right",
     );
     instance.addControl(
-      new maplibregl.ScaleControl({ maxWidth: 100 }),
+      new maplibregl.ScaleControl({ maxWidth: 85 }),
       "bottom-left",
     );
     instance.on("error", (event) => {
-      if (
-        "sourceId" in event &&
-        (event.sourceId === "satellite" || event.sourceId === "terrain")
-      )
-        setTileError(true);
+      if ("sourceId" in event) {
+        if (event.sourceId === "elevation") setDemError(true);
+        if (event.sourceId === "satellite" || event.sourceId === "relief")
+          setTileError(true);
+      }
     });
-    instance.on("moveend", declutter);
+    const syncLabels = () => {
+      const code = latest.current.selected;
+      for (const item of markers.current)
+        item.button.hidden = !!code || instance.getZoom() > 7.1;
+      const value = instance.isSourceLoaded("elevation")
+        ? instance.queryTerrainElevation(instance.getCenter())
+        : null;
+      setElevation(groundElevation(value));
+    };
+    instance.on("moveend", syncLabels);
+    instance.on("idle", syncLabels);
     instance.on("load", () => {
+      instance.setTerrain({
+        source: "elevation",
+        exaggeration: TERRAIN_EXAGGERATION,
+      });
+      instance.setSky({
+        "sky-color": "#b4d8ed",
+        "horizon-color": "#e7ede2",
+        "fog-color": "#d4e5df",
+        "fog-ground-blend": 0.6,
+        "horizon-fog-blend": 0.7,
+        "sky-horizon-blend": 0.65,
+      });
+      instance.addSource("provinces", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: PROVINCE_SHAPES.map((shape) => ({
+            type: "Feature",
+            properties: { code: shape.code },
+            geometry: shape.geometry,
+          })),
+        },
+      });
+      instance.addLayer({
+        id: "province-fill",
+        type: "fill",
+        source: "provinces",
+        paint: { "fill-color": "#5bdbad", "fill-opacity": 0 },
+      });
+      instance.addLayer({
+        id: "province-borders",
+        type: "line",
+        source: "provinces",
+        paint: {
+          "line-color": "#f4f8df",
+          "line-width": 1.2,
+          "line-opacity": 0.5,
+          "line-dasharray": [3, 3],
+        },
+      });
+      instance.addLayer({
+        id: "province-focus",
+        type: "line",
+        source: "provinces",
+        filter: ["==", ["get", "code"], ""],
+        paint: { "line-color": "#b8f6d9", "line-width": 2.5 },
+      });
       instance.addSource("rivers", {
         type: "geojson",
         data: {
@@ -195,113 +245,41 @@ export default function AtlasMap({
         type: "line",
         source: "rivers",
         paint: {
-          "line-color": "#688b88",
-          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1, 8, 2.4],
-          "line-opacity": 0.75,
+          "line-color": "#73cce1",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1, 10, 2.5],
+          "line-opacity": 0.8,
         },
-      });
-      instance.addSource("provinces", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: PROVINCE_SHAPES.map((shape) => ({
-            type: "Feature",
-            properties: {
-              code: shape.code,
-              value: valueOf(shape.code, latest.current.metric) ?? 0,
-            },
-            geometry: shape.geometry,
-          })),
-        },
-      });
-      instance.addLayer({
-        id: "province-fill",
-        type: "fill",
-        source: "provinces",
-        paint: { "fill-color": "#9c874f", "fill-opacity": 0.15 },
-      });
-      instance.addLayer({
-        id: "province-borders",
-        type: "line",
-        source: "provinces",
-        paint: {
-          "line-color": "#514d32",
-          "line-width": 1,
-          "line-opacity": 0.5,
-          "line-dasharray": [4, 3],
-        },
-      });
-      instance.addLayer({
-        id: "province-focus",
-        type: "line",
-        source: "provinces",
-        filter: ["==", ["get", "code"], ""],
-        paint: { "line-color": "#98432b", "line-width": 2.5 },
       });
       instance.on("click", "province-fill", (event) => {
         const code = event.features?.[0]?.properties?.code as
           ProvinceCode | undefined;
-        if (code) latest.current.onSelect(code);
-      });
-      instance.on("mouseenter", "province-fill", () => {
-        instance.getCanvas().style.cursor = "pointer";
-      });
-      instance.on("mouseleave", "province-fill", () => {
-        instance.getCanvas().style.cursor = "";
+        if (code && code !== latest.current.selected)
+          latest.current.onSelect(code);
       });
       markers.current = PROVINCE_SHAPES.map((shape) => {
         const bounds = provinceBounds(shape.code);
-        const center: [number, number] = [
-          (bounds[0][0] + bounds[1][0]) / 2,
-          (bounds[0][1] + bounds[1][1]) / 2,
-        ];
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "atlas-pin";
-        const name = document.createElement("span");
-        name.textContent = shape.name;
-        const value = document.createElement("span");
-        value.className = "atlas-pin-value";
-        button.append(name, value);
-        button.title = shape.name;
+        button.className = "terrain-pin";
+        button.textContent = shape.name;
         button.addEventListener("click", (event) => {
           event.stopPropagation();
           latest.current.onSelect(shape.code);
         });
-        const marker = new maplibregl.Marker({
-          element: button,
-          anchor: "center",
-        })
-          .setLngLat(center)
+        const marker = new maplibregl.Marker({ element: button })
+          .setLngLat([
+            (bounds[0][0] + bounds[1][0]) / 2,
+            (bounds[0][1] + bounds[1][1]) / 2,
+          ])
           .addTo(instance);
-        return { code: shape.code, marker, button, value };
+        return { code: shape.code, marker, button };
       });
-      const riverNames = new Set<string>();
-      for (const feature of rivers.features) {
-        const name = feature.properties.name;
-        if (riverNames.has(name) || name === "Okavango") continue;
-        riverNames.add(name);
-        const points = feature.geometry.coordinates.flat();
-        const middle = points[Math.floor(points.length / 2)];
-        const label = document.createElement("span");
-        label.className = "atlas-river-name";
-        label.textContent = `${name} River`;
-        new maplibregl.Marker({ element: label })
-          .setLngLat(middle as [number, number])
-          .addTo(instance);
-      }
       setLoaded(true);
       frame(0);
     });
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    const observer = new ResizeObserver(() => {
-      instance.resize();
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => frame(0), 120);
-    });
+    const observer = new ResizeObserver(() => instance.resize());
     observer.observe(host.current);
     return () => {
-      clearTimeout(resizeTimer);
       observer.disconnect();
       markers.current.forEach((item) => item.marker.remove());
       markers.current = [];
@@ -313,86 +291,91 @@ export default function AtlasMap({
   useEffect(() => {
     const instance = map.current;
     if (!loaded || !instance) return;
-    (instance.getSource("provinces") as GeoJSONSource).setData({
-      type: "FeatureCollection",
-      features: PROVINCE_SHAPES.map((shape) => ({
-        type: "Feature",
-        properties: {
-          code: shape.code,
-          value: valueOf(shape.code, metric) ?? 0,
-        },
-        geometry: shape.geometry,
-      })),
-    });
-    const maximum = Math.max(
-      ...PROVINCE_SHAPES.map((shape) => valueOf(shape.code, metric) ?? 0),
-      1,
-    );
-    instance.setPaintProperty("province-fill", "fill-opacity", [
-      "interpolate",
-      ["linear"],
-      ["get", "value"],
-      0,
-      0.02,
-      maximum,
-      0.12,
-    ]);
     instance.setFilter("province-focus", [
       "==",
       ["get", "code"],
       selected ?? "",
     ]);
-    markers.current.forEach(({ code, button, value }) => {
-      const n = valueOf(code, metric);
-      value.textContent =
-        n === null
-          ? "Not recorded"
-          : `${group(n)}${metric === "share" ? "%" : " ha"}`;
-      button.classList.toggle("is-active", selected === code);
-      button.hidden = !!selected && selected !== code;
-      button.setAttribute(
+    const maximum = Math.max(
+      ...PROVINCE_SHAPES.map((shape) => valueOf(shape.code, metric) ?? 0),
+      1,
+    );
+    const opacity: maplibregl.ExpressionSpecification = [
+      "match",
+      ["get", "code"],
+      PROVINCE_SHAPES[0].code,
+      0.05 + ((valueOf(PROVINCE_SHAPES[0].code, metric) ?? 0) / maximum) * 0.4,
+      ...PROVINCE_SHAPES.slice(1).flatMap((shape) => [
+        shape.code,
+        0.05 + ((valueOf(shape.code, metric) ?? 0) / maximum) * 0.4,
+      ]),
+      0,
+    ];
+    instance.setPaintProperty(
+      "province-fill",
+      "fill-opacity",
+      dataOverlay ? opacity : 0,
+    );
+    markers.current.forEach((item) => {
+      const value = valueOf(item.code, metric);
+      item.button.setAttribute(
         "aria-label",
-        `${PROVINCES[code].name}: ${value.textContent}. Explore province`,
+        `${PROVINCES[item.code].name}, ${value === null ? "not recorded" : group(value)} ${metric === "share" ? "percent" : "hectares"}. Explore terrain`,
       );
     });
-    declutter();
-  }, [loaded, metric, selected]);
-
+  }, [loaded, selected, metric, dataOverlay]);
   useEffect(() => {
     if (loaded) frame();
-  }, [loaded, selected, narrationOverlay]);
+  }, [loaded, selected]);
 
   return (
-    <div className="atlas-map">
+    <div className="terrain-map">
       <div
         ref={host}
-        className="atlas-canvas"
-        aria-label="Geographic agricultural land map of South Africa"
+        className="terrain-canvas"
+        aria-label="Interactive 3D terrain map of South Africa"
       />
       {!loaded && !failed && (
-        <p className="atlas-loading">Opening the agricultural atlas…</p>
+        <div className="terrain-loading">
+          <span className="terrain-spinner" />
+          <strong>Bringing the landscape into view</strong>
+          <span>Satellite imagery + real elevation</span>
+        </div>
       )}
       {failed && (
         <div className="atlas-fallback">
-          <p>The geographic map could not start on this device.</p>
+          <p>The terrain map could not start on this device.</p>
           <button className="btn" onClick={onFallback}>
-            Use province data instead
+            Open the province comparison
           </button>
         </div>
       )}
-      {tileError && loaded && (
-        <div className="atlas-tile-note" role="status">
-          Some imagery could not load. Province boundaries and figures remain
-          available.
-        </div>
+      {(tileError || demError) && loaded && (
+        <p className="terrain-notice" role="status">
+          {demError
+            ? "Some elevation tiles could not load; relief may be incomplete."
+            : "Some map imagery could not load. Try the relief layer."}
+        </p>
       )}
+      <div className="terrain-place">
+        <span className="terrain-live-dot" />
+        <div>
+          <strong>
+            {selected ? PROVINCES[selected].name : "South Africa"}
+          </strong>
+          <span>
+            {selected
+              ? PROVINCES[selected].commodities.slice(0, 3).join(" · ")
+              : "Choose a province to explore its landscape"}
+          </span>
+        </div>
+      </div>
       <div
-        className="atlas-tools"
+        className="terrain-navigation"
         role="group"
-        aria-label="Geographic map controls"
+        aria-label="3D terrain navigation"
       >
         <button
-          type="button"
           disabled={!loaded}
           onClick={() => map.current?.zoomIn()}
           aria-label="Zoom in"
@@ -400,7 +383,6 @@ export default function AtlasMap({
           +
         </button>
         <button
-          type="button"
           disabled={!loaded}
           onClick={() => map.current?.zoomOut()}
           aria-label="Zoom out"
@@ -408,54 +390,109 @@ export default function AtlasMap({
           −
         </button>
         <button
-          type="button"
           disabled={!loaded}
-          onClick={() => {
-            map.current?.easeTo({ bearing: 0, pitch: 0, duration: 0 });
-            setTilted(false);
-            frame();
-          }}
-          aria-label="Reset map orientation and framing"
+          onClick={() =>
+            map.current?.rotateTo((map.current?.getBearing() ?? 0) - 30)
+          }
+          aria-label="Rotate left"
         >
-          N ↑
+          ↶
         </button>
         <button
-          type="button"
           disabled={!loaded}
-          aria-pressed={tilted}
+          onClick={() =>
+            map.current?.rotateTo((map.current?.getBearing() ?? 0) + 30)
+          }
+          aria-label="Rotate right"
+        >
+          ↷
+        </button>
+        <button
+          disabled={!loaded}
+          aria-pressed={!flat}
           onClick={() => {
             map.current?.easeTo({
-              pitch: tilted ? 0 : 45,
+              pitch: flat ? 62 : 0,
+              bearing: flat ? -24 : 0,
               duration: matchMedia("(prefers-reduced-motion: reduce)").matches
                 ? 0
-                : 500,
+                : 700,
             });
-            setTilted(!tilted);
+            setFlat(!flat);
           }}
         >
-          {tilted ? "Flat" : "Tilt"}
+          {flat ? "3D" : "2D"}
         </button>
         <button
-          type="button"
           disabled={!loaded}
+          onClick={() => frame()}
+          aria-label="Reset regional view"
+        >
+          ⌖
+        </button>
+      </div>
+      <div className="terrain-layers" role="group" aria-label="Map layers">
+        <button
+          disabled={!loaded}
+          aria-pressed={satellite}
           onClick={() => {
-            const next = !satellite;
-            setSatellite(next);
+            setSatellite(!satellite);
             setTileError(false);
             map.current?.setPaintProperty(
               "satellite",
               "raster-opacity",
-              next ? 0.6 : 0,
+              satellite ? 0 : 1,
             );
             map.current?.setPaintProperty(
-              "terrain",
+              "relief",
               "raster-opacity",
-              next ? 0 : 0.85,
+              satellite ? 1 : 0,
             );
           }}
         >
-          {satellite ? "Terrain" : "Satellite"}
+          {satellite ? "◉ Satellite" : "◉ Relief"}
         </button>
+        <button
+          disabled={!loaded}
+          aria-pressed={dataOverlay}
+          onClick={() => setDataOverlay(!dataOverlay)}
+        >
+          Land data
+        </button>
+        <button
+          disabled={!loaded}
+          aria-pressed={water}
+          onClick={() => {
+            setWater(!water);
+            map.current?.setLayoutProperty(
+              "rivers",
+              "visibility",
+              water ? "none" : "visible",
+            );
+          }}
+        >
+          Rivers
+        </button>
+        <button
+          disabled={!loaded}
+          onClick={() => {
+            if (selected) onSelect(null);
+            else frame();
+          }}
+        >
+          All South Africa ↗
+        </button>
+      </div>
+      <div className="terrain-readout">
+        <span>
+          {elevation === null
+            ? "Elevation loading"
+            : `Centre ≈ ${group(elevation)} m`}
+        </span>
+        <span>Relief ×{TERRAIN_EXAGGERATION}</span>
+        <span className="terrain-gesture">
+          Drag to explore · right-drag to orbit
+        </span>
       </div>
     </div>
   );
