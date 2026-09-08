@@ -3,7 +3,11 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAND_JOURNEY } from "@/content/journey";
-import { JourneyNarration, JourneyTimeline } from "./LandJourney";
+import {
+  JourneyNarration,
+  JourneyHeading,
+  JourneyTimeline,
+} from "./LandJourney";
 import LiveStatus from "./LiveStatus";
 import Pathfinder from "./Pathfinder";
 import ProvincePanel from "./ProvincePanel";
@@ -34,6 +38,8 @@ import {
 import { cx, group } from "@/lib/format";
 import { useLiveData } from "@/lib/useLiveData";
 import type { Dataset, ProvinceCode } from "@/lib/types";
+
+import LandProfile from "./LandProfile";
 
 const LandScene = dynamic(() => import("./LandScene"), {
   ssr: false,
@@ -152,7 +158,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   };
 
   return (
-    <div className="relative z-[1]">
+    <div className={cx("relative z-[1]", guided && "documentary-mode")}>
       <header className="app-header">
         <a className="brand" href="#map" aria-label="Asbonge Land Locator home">
           <span className="brand-mark" aria-hidden="true">
@@ -429,6 +435,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               />
             )}
             <div className="map-stage">
+              {guided && <JourneyHeading chapter={chapter} />}
+              {guided && mapView === "atlas" && <LandProfile />}
               <div className="map-heading">
                 <span className="map-badge">
                   {mapView === "atlas"
@@ -462,7 +470,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     setProvince(code);
                     setGuided(false);
                   }}
-                  dark={dark}
+                  dark={guided ? false : dark}
                 />
               )}
               <div className="map-legend">
@@ -482,6 +490,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </p>
               </div>
             </div>
+            {guided && mapView === "atlas" && (
+              <div className="documentary-mobile-profile">
+                <LandProfile />
+              </div>
+            )}
             {province && !guided && (
               <div className="province-detail">
                 <ProvincePanel

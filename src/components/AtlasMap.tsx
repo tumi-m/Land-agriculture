@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as LibreMap, GeoJSONSource } from "maplibre-gl";
+import rivers from "@/data/sa-rivers.json";
 import { PROVINCE_SHAPES } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
 import {
@@ -132,7 +133,7 @@ export default function AtlasMap({
             {
               id: "paper",
               type: "background",
-              paint: { "background-color": "#ddd8b7" },
+              paint: { "background-color": "#d9cea0" },
             },
             {
               id: "terrain",
@@ -145,9 +146,9 @@ export default function AtlasMap({
               type: "raster",
               source: "satellite",
               paint: {
-                "raster-opacity": 0.68,
-                "raster-saturation": -0.55,
-                "raster-contrast": -0.12,
+                "raster-opacity": 0.6,
+                "raster-saturation": -0.15,
+                "raster-contrast": 0.02,
               },
             },
           ],
@@ -175,6 +176,30 @@ export default function AtlasMap({
     });
     instance.on("moveend", declutter);
     instance.on("load", () => {
+      instance.addSource("rivers", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: rivers.features.map((feature) => ({
+            type: "Feature",
+            properties: feature.properties,
+            geometry: {
+              type: "MultiLineString",
+              coordinates: feature.geometry.coordinates,
+            },
+          })),
+        },
+      });
+      instance.addLayer({
+        id: "rivers",
+        type: "line",
+        source: "rivers",
+        paint: {
+          "line-color": "#688b88",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1, 8, 2.4],
+          "line-opacity": 0.75,
+        },
+      });
       instance.addSource("provinces", {
         type: "geojson",
         data: {
@@ -193,7 +218,7 @@ export default function AtlasMap({
         id: "province-fill",
         type: "fill",
         source: "provinces",
-        paint: { "fill-color": "#7d8c48", "fill-opacity": 0.15 },
+        paint: { "fill-color": "#9c874f", "fill-opacity": 0.15 },
       });
       instance.addLayer({
         id: "province-borders",
@@ -251,6 +276,20 @@ export default function AtlasMap({
           .addTo(instance);
         return { code: shape.code, marker, button, value };
       });
+      const riverNames = new Set<string>();
+      for (const feature of rivers.features) {
+        const name = feature.properties.name;
+        if (riverNames.has(name) || name === "Okavango") continue;
+        riverNames.add(name);
+        const points = feature.geometry.coordinates.flat();
+        const middle = points[Math.floor(points.length / 2)];
+        const label = document.createElement("span");
+        label.className = "atlas-river-name";
+        label.textContent = `${name} River`;
+        new maplibregl.Marker({ element: label })
+          .setLngLat(middle as [number, number])
+          .addTo(instance);
+      }
       setLoaded(true);
       frame(0);
     });
@@ -294,9 +333,9 @@ export default function AtlasMap({
       ["linear"],
       ["get", "value"],
       0,
-      0.04,
+      0.02,
       maximum,
-      0.3,
+      0.12,
     ]);
     instance.setFilter("province-focus", [
       "==",
@@ -406,7 +445,7 @@ export default function AtlasMap({
             map.current?.setPaintProperty(
               "satellite",
               "raster-opacity",
-              next ? 0.68 : 0,
+              next ? 0.6 : 0,
             );
             map.current?.setPaintProperty(
               "terrain",

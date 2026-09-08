@@ -177,3 +177,7 @@ and explain its active measure. Tour focus is separate from the user's province 
 application answers. Readers can switch to free exploration, select a province, or enter the
 route planner at any time. Motion is not advanced automatically. Province URL links open directly
 in free exploration.
+
+### Documentary map sources
+
+The river overlay is a regional subset of Natural Earth 1:50m rivers and lake centerlines (public domain), retrieved from the Natural Earth vector repository. Rivers provide geographic orientation, not irrigation availability or water-use rights. The soil cutaway is an AI-generated illustration, not a farm listing. Provincial statistics retain their original reporting dates.

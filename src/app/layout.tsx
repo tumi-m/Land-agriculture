@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Cormorant_Garamond, IBM_Plex_Mono, Inter } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -9,7 +9,7 @@ const sans = Inter({
   variable: "--font-sans",
 });
 
-const display = Fraunces({
+const display = Cormorant_Garamond({
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "600"],
