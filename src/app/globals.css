@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  /* Without this an intrinsically wide image widens the document, and a phone
+     renders the whole page zoomed out to fit it. */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
   :root {
     --paper: 246 248 247;
     --surface: 255 255 255;
@@ -2392,5 +2400,142 @@ footer {
   }
   .documentary-mode .journey-navigation .btn-solid {
     min-width: 7rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Phone layout for the map area.
+
+   The controls sit over the canvas, which is fine on a desktop and crowded on a
+   390px screen: the journey heading ran under the mode switches and the tile
+   attribution sat on top of the atlas tools. Below, the chrome is pushed clear
+   of each other, the map gets a predictable share of the viewport, and every
+   control clears a 44px touch target.
+--------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  /* One compact row of switches at the top, heading clear underneath. */
+  .explorer-toolbar,
+  .documentary-mode .journey-shell .explorer-toolbar,
+  .map-view-switch,
+  .documentary-mode .journey-shell .map-view-switch {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .documentary-mode .journey-shell .explorer-toolbar button,
+  .documentary-mode .journey-shell .map-view-switch button,
+  .map-view-switch button,
+  .explorer-toolbar button,
+  .metric-switch button,
+  .measure-switch button {
+    min-height: 44px;
+    padding-inline: 0.7rem;
+  }
+
+  .documentary-mode .journey-heading {
+    top: 8.6rem;
+  }
+
+  /* The atlas tools sit bottom-right, clear of the heading above and the
+     attribution below, which owns the bottom edge outright. */
+  .documentary-mode .journey-shell .atlas-tools,
+  .atlas-tools {
+    top: auto;
+    bottom: 3.9rem;
+    right: 0.6rem;
+    left: auto;
+    flex-direction: row;
+  }
+
+  .documentary-mode .journey-shell .atlas-tools button,
+  .atlas-tools button {
+    min-height: 44px;
+    min-width: 40px;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.7rem;
+    border-bottom: 0;
+    border-right: 1px solid #ded5bc;
+  }
+
+  .atlas-tile-note {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: none;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
+
+  /* A predictable slice of the viewport for the map itself. */
+  .map-stage {
+    height: 62svh;
+    min-height: 24rem;
+  }
+
+  /* Touch targets. The row is centred and allowed to wrap so it never runs off
+     the right edge of a 390px screen. */
+  .scene-controls {
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    gap: 2px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .scene-controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.75rem;
+  }
+
+  .scene-instructions {
+    top: 3.2rem;
+    left: 0.9rem;
+    right: 0.9rem;
+    font-size: 0.68rem;
+    line-height: 1.35;
+  }
+
+  .map-legend {
+    left: 0.9rem;
+    bottom: 4.9rem;
+  }
+
+  .map-legend p {
+    font-size: 0.65rem;
+  }
+
+  /* The five journey steps cannot share 390px. Left as a flex row they widened
+     the document, and a phone then rendered the whole page zoomed out to fit.
+     They scroll sideways instead. */
+  .journey-timeline {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 0.8rem 1rem;
+  }
+
+  .journey-timeline ol {
+    flex: 1 1 100%;
+    gap: 1rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .journey-timeline ol::-webkit-scrollbar {
+    display: none;
+  }
+
+  .journey-timeline li {
+    flex: 0 0 auto;
+  }
+
+  .journey-timeline li button {
+    white-space: nowrap;
+    font-size: 0.78rem;
+    padding-block: 0.45rem;
   }
 }

@@ -518,8 +518,8 @@ export default function LandScene({
 
           // A phone has a strip of map, not a stage: the burst travels less far
           // and rises less, or it climbs straight out of view.
-          const spread = narrowRef.current ? SPREAD * 0.62 : SPREAD;
-          const climb = narrowRef.current ? LIFT * 0.4 : LIFT;
+          const spread = SPREAD;
+          const climb = narrowRef.current ? LIFT * 0.7 : LIFT;
           const reach = eased * spread * (isPicked ? 1.25 : 1);
           piece.reach = reach;
 
@@ -736,10 +736,11 @@ export default function LandScene({
       : null;
     if (selected && !object) return;
 
-    // Keep country context on phones; province details sit below the map.
-    // Wider screens can frame the selected province beside its detail panel.
+    // The detail panel stacks below the map on a phone rather than covering it,
+    // so there is nothing to frame around: zoom in at every width. A narrow
+    // canvas just needs more distance to hold the exploded spread.
     const narrow = window.innerWidth < 640;
-    const zoomIn = Boolean(object) && !narrow;
+    const zoomIn = Boolean(object);
 
     const targetTo =
       zoomIn && object
@@ -777,7 +778,11 @@ export default function LandScene({
       cameraFrom: cam.position.clone(),
       cameraTo: targetTo
         .clone()
-        .add(direction.multiplyScalar(zoomIn ? 92 : narrow ? 152 : 128)),
+        .add(
+          direction.multiplyScalar(
+            zoomIn ? (narrow ? 118 : 92) : narrow ? 152 : 128,
+          ),
+        ),
       startedAt: performance.now(),
     };
   }, [selected, narrationOverlay]);
@@ -850,6 +855,26 @@ export default function LandScene({
     orbit.update();
   };
 
+  const districtName = useMemo(
+    () =>
+      selected && district
+        ? (DISTRICTS_BY_PROVINCE[selected]
+            .find((d) => d.id === district)
+            ?.name.replace(/ (District|Metro)$/, "") ?? null)
+        : null,
+    [selected, district],
+  );
+
+  const hoveredDistrictName = useMemo(
+    () =>
+      selected && hoverDistrict
+        ? (DISTRICTS_BY_PROVINCE[selected]
+            .find((d) => d.id === hoverDistrict)
+            ?.name.replace(/ (District|Metro)$/, "") ?? null)
+        : null,
+    [selected, hoverDistrict],
+  );
+
   if (failed) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
@@ -886,7 +911,13 @@ export default function LandScene({
       />
 
       <p className="scene-instructions">
-        Drag to orbit · select a province to explore
+        {selected
+          ? hoveredDistrictName
+            ? hoveredDistrictName
+            : district
+              ? `${districtName ?? "District"} · tap another block`
+              : `${PROVINCES[selected].name} · tap a district block`
+          : "Drag to orbit · select a province to explore"}
       </p>
       <div className="scene-controls" role="group" aria-label="3D map controls">
         <button type="button" aria-label="Zoom in" onClick={() => zoom(0.8)}>
