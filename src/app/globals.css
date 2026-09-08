@@ -4,31 +4,53 @@
 
 @layer base {
   :root {
-    --paper: 246 243 235;
-    --surface: 252 250 245;
+    --paper: 244 241 232;
+    --surface: 251 249 243;
     --raised: 255 255 255;
-    --ink: 20 24 27;
-    --muted: 88 95 99;
-    --faint: 140 146 149;
-    --rule: 219 213 199;
-    --signal: 193 84 30;
-    --signal-soft: 245 226 213;
-    --veld: 47 107 63;
-    --alert: 168 46 46;
+    --ink: 20 23 15;
+    --muted: 85 89 76;
+    --faint: 133 137 123;
+    --rule: 221 216 199;
+    --clay: 179 73 26;
+    --clay-deep: 148 56 15;
+    --clay-soft: 244 228 216;
+    --good: 42 107 63;
+    --critical: 163 39 31;
+
+    /* Sequential land ramp, light surface: light = near zero, dark = most. */
+    --land-50: 233 238 225;
+    --land-100: 211 222 197;
+    --land-200: 186 202 166;
+    --land-300: 160 182 135;
+    --land-400: 136 169 114;
+    --land-500: 104 143 83;
+    --land-600: 79 117 64;
+    --land-700: 42 69 36;
   }
 
   .dark {
-    --paper: 15 18 19;
-    --surface: 22 26 27;
-    --raised: 30 35 36;
-    --ink: 238 235 227;
-    --muted: 160 166 168;
-    --faint: 112 119 121;
-    --rule: 51 58 60;
-    --signal: 226 122 61;
-    --signal-soft: 62 38 24;
-    --veld: 116 176 122;
-    --alert: 226 106 106;
+    --paper: 18 20 15;
+    --surface: 25 28 22;
+    --raised: 33 37 29;
+    --ink: 237 234 224;
+    --muted: 166 170 155;
+    --faint: 117 121 108;
+    --rule: 51 55 41;
+    --clay: 224 121 63;
+    --clay-deep: 240 153 106;
+    --clay-soft: 58 34 20;
+    --good: 127 191 146;
+    --critical: 230 122 114;
+
+    /* Re-stepped for the dark surface rather than inverted. */
+    --land-50: 35 45 30;
+    --land-100: 46 63 38;
+    --land-200: 59 83 47;
+    --land-300: 74 107 57;
+    --land-400: 92 133 70;
+    --land-500: 116 161 89;
+    --land-600: 144 188 119;
+    --land-700: 180 212 158;
   }
 
   * {
@@ -37,94 +59,109 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
     background-color: rgb(var(--paper));
     color: rgb(var(--ink));
-    font-feature-settings: 'cv05' 1, 'ss01' 1;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Survey-paper grid, sits behind everything */
+  /* Paper tooth. Fine enough to feel, not to see. */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: 0;
     pointer-events: none;
-    background-image:
-      linear-gradient(rgb(var(--rule) / 0.35) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(var(--rule) / 0.35) 1px, transparent 1px);
-    background-size: 88px 88px;
-    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 20%, transparent 78%);
+    opacity: 0.5;
+    background-image: radial-gradient(rgb(var(--ink) / 0.055) 0.5px, transparent 0.5px);
+    background-size: 3px 3px;
+  }
+
+  .dark body::before {
+    opacity: 0.35;
   }
 
   :focus-visible {
-    outline: 2px solid rgb(var(--signal));
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline: 2px solid rgb(var(--clay));
+    outline-offset: 3px;
+    border-radius: 1px;
   }
 
   ::selection {
-    background: rgb(var(--signal) / 0.24);
+    background: rgb(var(--clay) / 0.22);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 }
 
 @layer components {
-  .label {
-    @apply font-mono text-2xs uppercase tracking-[0.14em] text-faint;
+  .eyebrow {
+    @apply font-mono text-2xs uppercase tracking-[0.18em] text-muted;
   }
 
-  .rule-t {
-    @apply border-t border-rule;
-  }
-
-  .card {
-    @apply border border-rule bg-surface;
-  }
-
-  .btn {
-    @apply inline-flex items-center gap-2 border border-rule bg-raised px-3 py-2 font-mono text-2xs uppercase tracking-[0.12em] text-ink transition-colors duration-150 hover:border-ink/40 hover:bg-signal-soft disabled:pointer-events-none disabled:opacity-40;
-  }
-
-  .btn-solid {
-    @apply inline-flex items-center gap-2 bg-ink px-3 py-2 font-mono text-2xs uppercase tracking-[0.12em] text-paper transition-opacity duration-150 hover:opacity-85;
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 border border-rule bg-raised px-2 py-1 font-mono text-2xs uppercase tracking-[0.1em] text-muted;
+  .figure {
+    @apply font-sans text-figure font-semibold text-ink;
+    font-variant-numeric: proportional-nums;
   }
 
   .num {
     @apply font-mono tabular-nums;
   }
+
+  .lede {
+    @apply max-w-measure text-[1.0625rem] leading-[1.62] text-muted;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 border border-rule bg-raised px-3.5 py-2 text-sm text-ink transition-colors duration-150 hover:border-ink/35 hover:bg-clay-soft disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-solid {
+    @apply inline-flex items-center gap-2 bg-ink px-3.5 py-2 text-sm text-paper transition-opacity duration-150 hover:opacity-85;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 border border-rule px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.1em] text-muted;
+  }
+
+  /* Section opener: a numbered rule across the page. */
+  .opener {
+    @apply flex items-baseline gap-4 border-t-2 border-ink pt-3;
+  }
 }
 
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: rgb(var(--rule)) transparent;
+  .hair {
+    @apply border-t border-rule;
   }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgb(var(--rule));
-    border-radius: 99px;
+  .stack > * + * {
+    margin-top: var(--stack, 1rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }

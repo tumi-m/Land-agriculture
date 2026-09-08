@@ -60,8 +60,8 @@ export default function FieldPlate({
           <path d="M40 0H0V40" fill="none" stroke="rgb(var(--rule))" strokeWidth="1" opacity="0.55" />
         </pattern>
         <linearGradient id={`wash-${seed}-${variant}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="rgb(var(--veld))" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="rgb(var(--signal))" stopOpacity="0.1" />
+          <stop offset="0%" stopColor="rgb(var(--land-500))" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="rgb(var(--clay))" stopOpacity="0.1" />
         </linearGradient>
       </defs>
 
@@ -75,7 +75,7 @@ export default function FieldPlate({
             key={i}
             d={blob(400, 260, 40 + i * 32, 0.22, rand)}
             fill="none"
-            stroke="rgb(var(--veld))"
+            stroke="rgb(var(--land-500))"
             strokeOpacity={0.2 + i * 0.06}
             strokeWidth={i === 3 ? 2 : 1}
           />
@@ -90,9 +90,9 @@ export default function FieldPlate({
               <path
                 key={i}
                 d={`M60 ${y} L${740 + skew} ${y - 18} L${740 + skew} ${y + 24} L60 ${y + 38} Z`}
-                fill="rgb(var(--veld))"
+                fill="rgb(var(--land-500))"
                 fillOpacity={i % 3 === 0 ? 0.2 : 0.09}
-                stroke="rgb(var(--veld))"
+                stroke="rgb(var(--land-500))"
                 strokeOpacity="0.35"
               />
             );
@@ -104,16 +104,16 @@ export default function FieldPlate({
         <g>
           <path
             d={blob(250, 330, 78, 0.3, rand)}
-            fill="rgb(var(--signal))"
+            fill="rgb(var(--clay))"
             fillOpacity="0.12"
-            stroke="rgb(var(--signal))"
+            stroke="rgb(var(--clay))"
             strokeOpacity="0.5"
           />
           <path
             d={blob(600, 180, 52, 0.35, rand)}
-            fill="rgb(var(--signal))"
+            fill="rgb(var(--clay))"
             fillOpacity="0.12"
-            stroke="rgb(var(--signal))"
+            stroke="rgb(var(--clay))"
             strokeOpacity="0.5"
           />
           <path
@@ -128,7 +128,7 @@ export default function FieldPlate({
             [250, 330],
             [600, 180],
           ].map(([x, y]) => (
-            <circle key={x} cx={x} cy={y} r="6" fill="rgb(var(--signal))" />
+            <circle key={x} cx={x} cy={y} r="6" fill="rgb(var(--clay))" />
           ))}
         </g>
       )}
@@ -151,7 +151,7 @@ export default function FieldPlate({
                 />
                 <path
                   d={`M${x} 160 L${x + 52} 118 L${x + 104} 160`}
-                  fill="rgb(var(--signal))"
+                  fill="rgb(var(--clay))"
                   fillOpacity="0.16"
                   stroke="rgb(var(--ink))"
                   strokeOpacity="0.4"
@@ -176,9 +176,9 @@ export default function FieldPlate({
         <g>
           <path
             d={blob(400, 260, 150, 0.18, rand)}
-            fill="rgb(var(--veld))"
+            fill="rgb(var(--land-500))"
             fillOpacity="0.14"
-            stroke="rgb(var(--signal))"
+            stroke="rgb(var(--clay))"
             strokeWidth="2.5"
           />
           {Array.from({ length: 5 }, (_, i) => (
@@ -190,7 +190,7 @@ export default function FieldPlate({
               strokeOpacity="0.12"
             />
           ))}
-          <circle cx="400" cy="260" r="5" fill="rgb(var(--signal))" />
+          <circle cx="400" cy="260" r="5" fill="rgb(var(--clay))" />
         </g>
       )}
 

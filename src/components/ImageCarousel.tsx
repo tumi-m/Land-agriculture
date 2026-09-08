@@ -152,7 +152,7 @@ export default function ImageCarousel({
                 aria-current={i === index}
                 className={cx(
                   'h-1.5 w-8 transition-colors duration-150',
-                  i === index ? 'bg-signal' : 'bg-rule hover:bg-faint',
+                  i === index ? 'bg-clay' : 'bg-rule hover:bg-faint',
                 )}
               />
             ))}
@@ -174,7 +174,7 @@ export default function ImageCarousel({
           }}
         >
           <div className="mb-3 flex items-center justify-between gap-4">
-            <p className="font-mono text-2xs uppercase tracking-[0.14em] text-paper/70">
+            <p className="font-mono font-mono text-2xs uppercase tracking-[0.14em] text-paper/70">
               {label} — {index + 1} / {count}
             </p>
             <button

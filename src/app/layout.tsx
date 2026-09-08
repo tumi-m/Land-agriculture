@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Fraunces, IBM_Plex_Mono, Inter } from 'next/font/google';
 import './globals.css';
 
 const sans = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
+});
+
+const display = Fraunces({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
 });
 
 const mono = IBM_Plex_Mono({
@@ -38,8 +46,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f6f3eb' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f1213' },
+    { media: '(prefers-color-scheme: light)', color: '#f4f1e8' },
+    { media: '(prefers-color-scheme: dark)', color: '#12140f' },
   ],
 };
 
@@ -48,7 +56,7 @@ const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('all-theme');va
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-ZA" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en-ZA" className={`${sans.variable} ${mono.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

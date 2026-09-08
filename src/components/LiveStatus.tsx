@@ -5,6 +5,7 @@ import { cx, relativeTime } from '@/lib/format';
 import type { Dataset } from '@/lib/types';
 import type { LiveState } from '@/lib/useLiveData';
 
+/** Says whether an advert feed is attached and how fresh it is. */
 export default function LiveStatus({
   dataset,
   state,
@@ -18,8 +19,7 @@ export default function LiveStatus({
   lastCheckedAt: number;
   onRefresh: () => void;
 }) {
-  // Relative times depend on the clock, so they are client-only: rendering them
-  // during SSR would hand the browser a timestamp that is already stale.
+  // Relative times are client-only: the HTML may have been rendered hours ago.
   const [mounted, setMounted] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => {
@@ -28,42 +28,41 @@ export default function LiveStatus({
     return () => window.clearInterval(timer);
   }, []);
 
-  const dotColour =
-    state === 'error' ? 'bg-alert' : changed ? 'bg-signal' : state === 'checking' ? 'bg-faint' : 'bg-veld';
+  const live = dataset.source === 'remote';
+  const dot =
+    state === 'error' ? 'bg-critical' : changed ? 'bg-clay' : live ? 'bg-good' : 'bg-faint';
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          {state !== 'error' && (
-            <span
-              className={cx('absolute inline-flex h-full w-full animate-pulse-ring rounded-full', dotColour)}
-            />
-          )}
-          <span className={cx('relative inline-flex h-2 w-2 rounded-full', dotColour)} />
-        </span>
-        <span className="label text-muted">
-          {state === 'error'
-            ? 'Reconnecting'
-            : changed
-              ? 'Updated just now'
-              : dataset.source === 'remote'
-                ? 'Live feed'
-                : 'Seed dataset'}
-        </span>
+    <div className="flex items-center gap-2">
+      <span className="relative flex h-2 w-2" aria-hidden="true">
+        {live && state !== 'error' && (
+          <span className={cx('absolute inline-flex h-full w-full animate-halo rounded-full', dot)} />
+        )}
+        <span className={cx('relative inline-flex h-2 w-2 rounded-full', dot)} />
       </span>
-
-      <span className="label hidden sm:inline" title={dataset.updatedAt} suppressHydrationWarning>
-        {mounted
-          ? `Data ${relativeTime(dataset.updatedAt)} · checked ${relativeTime(
-              new Date(lastCheckedAt).toISOString(),
-            )}`
-          : 'Checking feed'}
+      <span className="eyebrow">
+        {state === 'error'
+          ? 'Reconnecting'
+          : changed
+            ? 'Adverts updated'
+            : live
+              ? 'Advert feed live'
+              : 'No advert feed'}
       </span>
-
-      <button type="button" onClick={onRefresh} className="label underline decoration-rule underline-offset-4 hover:text-ink">
-        Check now
-      </button>
+      {live && (
+        <>
+          <span className="eyebrow hidden lg:inline" suppressHydrationWarning>
+            {mounted ? relativeTime(new Date(lastCheckedAt).toISOString()) : '—'}
+          </span>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="eyebrow underline decoration-rule underline-offset-4 hover:text-ink"
+          >
+            Check
+          </button>
+        </>
+      )}
     </div>
   );
 }

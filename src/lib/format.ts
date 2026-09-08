@@ -3,7 +3,7 @@
  * differs between the Node build that renders the HTML and the browser that
  * hydrates it, and en-ZA grouping is one of the pairs that disagree.
  */
-const GROUP = '\u00a0'; // non-breaking space, the South African thousands separator
+const GROUP = '\u202f'; // narrow no-break space — the South African separator, tight enough to read as one number
 
 export function group(n: number): string {
   const [whole, fraction] = Math.abs(n).toFixed(0).split('.');

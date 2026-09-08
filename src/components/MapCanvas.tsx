@@ -12,7 +12,7 @@ import {
   cachedPath,
   project,
 } from '@/lib/geo';
-import { PROVINCES } from '@/lib/provinces';
+import { PROVINCES } from '@/content/provinces';
 import { cx, group } from '@/lib/format';
 import type { Listing, ProvinceCode } from '@/lib/types';
 
@@ -27,6 +27,22 @@ const MIN_K = 1;
 const MAX_K = 16;
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
+/**
+ * Sequential bins over hectares advertised in the October 2020 tranche.
+ * One hue, light to dark: the reader never has to learn a colour key by identity.
+ */
+const BINS = [
+  { min: 1, max: 10_000, step: 'bg-land-100', token: '--land-100', label: 'under 10k' },
+  { min: 10_000, max: 50_000, step: 'bg-land-300', token: '--land-300', label: '10k – 50k' },
+  { min: 50_000, max: 150_000, step: 'bg-land-500', token: '--land-500', label: '50k – 150k' },
+  { min: 150_000, max: Infinity, step: 'bg-land-700', token: '--land-700', label: '150k +' },
+];
+
+function binOf(hectares: number) {
+  if (hectares <= 0) return null;
+  return BINS.find((b) => hectares >= b.min && hectares < b.max) ?? BINS[BINS.length - 1];
+}
+
 function fitTo(box: { cx: number; cy: number; width: number; height: number }, pad = 44): View {
   const k = Math.max(
     MIN_K,
@@ -36,74 +52,46 @@ function fitTo(box: { cx: number; cy: number; width: number; height: number }, p
 }
 
 export default function MapCanvas({
-  listings,
   selected,
   onSelectProvince,
-  activeListingId,
-  onSelectListing,
+  adverts,
+  activeAdvertId,
+  onSelectAdvert,
 }: {
-  listings: Listing[];
   selected: ProvinceCode | null;
   onSelectProvince: (code: ProvinceCode | null) => void;
-  activeListingId: string | null;
-  onSelectListing: (id: string) => void;
+  adverts: Listing[];
+  activeAdvertId: string | null;
+  onSelectAdvert: (id: string) => void;
 }) {
   const [view, setView] = useState<View>(IDENTITY);
   const [hover, setHover] = useState<ProvinceCode | null>(null);
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  // User units per CSS pixel. Map furniture — strokes, labels, markers — is sized
-  // in screen pixels, so it stays legible whether the map is 1 100 px wide or 350.
   const [pxScale, setPxScale] = useState(1);
   const frame = useRef<number | null>(null);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const counts = useMemo(() => {
-    const map = new Map<ProvinceCode, { parcels: number; hectares: number }>();
-    for (const l of listings) {
-      const entry = map.get(l.province) ?? { parcels: 0, hectares: 0 };
-      entry.parcels += 1;
-      entry.hectares += l.sizeHa;
-      map.set(l.province, entry);
-    }
-    return map;
-  }, [listings]);
-
-  // Shade by extent rather than count: hectares are what an applicant is choosing between.
-  const maxHectares = useMemo(
-    () => Math.max(1, ...Array.from(counts.values(), (c) => c.hectares)),
-    [counts],
-  );
-
-  const markers = useMemo(
-    () =>
-      listings.map((l) => {
-        const [x, y] = project(l.coordinates);
-        return {
-          id: l.id,
-          x,
-          y,
-          province: l.province,
-          status: l.status,
-          label: `${l.title} — ${group(Math.round(l.sizeHa))} ha`,
-        };
-      }),
-    [listings],
-  );
-
-  // animateTo reads the live view without re-binding on every frame.
   const viewRef = useRef(view);
   viewRef.current = view;
 
+  const markers = useMemo(
+    () =>
+      adverts.map((l) => {
+        const [x, y] = project(l.coordinates);
+        return { id: l.id, x, y, province: l.province, label: l.title };
+      }),
+    [adverts],
+  );
+
   const animateTo = useCallback((target: View) => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
-    const start = performance.now();
     const from = viewRef.current;
-    const duration =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 0
-        : 620;
+    const start = performance.now();
+    const reduced =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const duration = reduced ? 0 : 640;
 
     const step = (now: number) => {
       const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
@@ -122,20 +110,19 @@ export default function MapCanvas({
     animateTo(selected ? fitTo(PROVINCE_BOXES[selected]) : IDENTITY);
   }, [selected, animateTo]);
 
-  useEffect(() => () => {
-    if (frame.current !== null) cancelAnimationFrame(frame.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
 
   const zoomBy = useCallback((factor: number, origin?: { x: number; y: number }) => {
     const v = viewRef.current;
     const k = Math.max(MIN_K, Math.min(MAX_K, v.k * factor));
     const px = origin?.x ?? MAP_WIDTH / 2;
     const py = origin?.y ?? MAP_HEIGHT / 2;
-    setView({
-      k,
-      x: px - ((px - v.x) / v.k) * k,
-      y: py - ((py - v.y) / v.k) * k,
-    });
+    setView({ k, x: px - ((px - v.x) / v.k) * k, y: py - ((py - v.y) / v.k) * k });
   }, []);
 
   const toSvg = useCallback((clientX: number, clientY: number) => {
@@ -159,7 +146,6 @@ export default function MapCanvas({
     return () => observer.disconnect();
   }, []);
 
-  // Non-passive so the page does not scroll while zooming the map.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -173,8 +159,8 @@ export default function MapCanvas({
   }, [zoomBy, toSvg]);
 
   const zoomed = view.k > 1.02;
-  const showDistricts = selected !== null || view.k > 2.6;
   const hairline = pxScale / view.k;
+  const hovered = hover ? PROVINCES[hover] : null;
 
   return (
     <div className="relative h-full w-full">
@@ -187,7 +173,7 @@ export default function MapCanvas({
           dragging ? 'cursor-grabbing' : zoomed ? 'cursor-grab' : 'cursor-default',
         )}
         role="application"
-        aria-label="Map of South Africa. Select a province to isolate it and list its parcels."
+        aria-label="Map of South Africa shaded by hectares of state agricultural land advertised in October 2020. Select a province for its figures and application office."
         onPointerDown={(e) => {
           if (!zoomed) return;
           (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -195,9 +181,10 @@ export default function MapCanvas({
           setDragging(true);
         }}
         onPointerMove={(e) => {
+          const rect = svgRef.current?.getBoundingClientRect();
+          if (rect) setPointer({ x: e.clientX - rect.left, y: e.clientY - rect.top });
           const d = drag.current;
-          if (!d || !svgRef.current) return;
-          const rect = svgRef.current.getBoundingClientRect();
+          if (!d || !rect) return;
           const scale = MAP_WIDTH / rect.width;
           setView((v) => ({
             ...v,
@@ -213,67 +200,76 @@ export default function MapCanvas({
           drag.current = null;
           setDragging(false);
           setHover(null);
+          setPointer(null);
         }}
       >
         <defs>
           <filter id="lift" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="rgb(var(--ink))" floodOpacity="0.14" />
+            <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="rgb(var(--ink))" floodOpacity="0.16" />
           </filter>
         </defs>
 
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
-          {PROVINCE_SHAPES.map((province) => {
-            const stats = counts.get(province.code);
-            const parcels = stats?.parcels ?? 0;
-            const intensity =
-              parcels === 0 ? 0 : 0.14 + ((stats?.hectares ?? 0) / maxHectares) * 0.4;
-            const isSelected = selected === province.code;
+          {PROVINCE_SHAPES.map((shape) => {
+            const record = PROVINCES[shape.code];
+            const bin = binOf(record.advertised2020);
+            const isSelected = selected === shape.code;
             const isDimmed = selected !== null && !isSelected;
-            const isHovered = hover === province.code;
+            const isHovered = hover === shape.code && !isDimmed;
 
             return (
               <path
-                key={province.code}
-                d={cachedPath(`p-${province.code}`, province.geometry)}
+                key={shape.code}
+                d={cachedPath(`p-${shape.code}`, shape.geometry)}
                 tabIndex={0}
                 role="button"
                 aria-pressed={isSelected}
-                aria-label={`${PROVINCES[province.code].name}, ${parcels} ${
-                  parcels === 1 ? 'parcel' : 'parcels'
+                aria-label={`${record.name}. ${
+                  record.advertised2020 > 0
+                    ? `${group(record.advertised2020)} hectares advertised.`
+                    : 'Not included in the October 2020 tranche.'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectProvince(isSelected ? null : province.code);
+                  onSelectProvince(isSelected ? null : shape.code);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    onSelectProvince(isSelected ? null : province.code);
+                    onSelectProvince(isSelected ? null : shape.code);
                   }
                 }}
-                onPointerEnter={() => setHover(province.code)}
+                onPointerEnter={() => setHover(shape.code)}
                 fill={
-                  parcels === 0
-                    ? 'rgb(var(--raised))'
-                    : `rgb(var(--veld) / ${isHovered && !isDimmed ? intensity + 0.14 : intensity})`
+                  isDimmed
+                    ? 'rgb(var(--rule))'
+                    : bin
+                      ? `rgb(var(${bin.token}))`
+                      : 'rgb(var(--raised))'
                 }
-                stroke={isSelected ? 'rgb(var(--signal))' : 'rgb(var(--ink) / 0.5)'}
-                strokeWidth={(isSelected ? 2.4 : 0.9) * hairline}
+                stroke={
+                  isSelected || isHovered
+                    ? 'rgb(var(--clay))'
+                    : isDimmed
+                      ? 'rgb(var(--ink) / 0.15)'
+                      : 'rgb(var(--ink) / 0.45)'
+                }
+                strokeWidth={(isSelected ? 2.6 : isHovered ? 2 : 0.8) * hairline}
                 strokeLinejoin="round"
-                opacity={isDimmed ? 0.16 : 1}
+                opacity={isDimmed ? 0.5 : 1}
                 filter={isSelected ? 'url(#lift)' : undefined}
-                className="cursor-pointer transition-[opacity,fill] duration-300 ease-out focus:outline-none focus-visible:stroke-signal"
+                className="cursor-pointer transition-[opacity,stroke] duration-300 ease-out focus:outline-none focus-visible:stroke-clay"
               />
             );
           })}
 
-          {showDistricts &&
-            (selected ? DISTRICTS_BY_PROVINCE[selected] : []).map((district) => (
+          {selected &&
+            DISTRICTS_BY_PROVINCE[selected].map((district) => (
               <path
                 key={district.id}
                 d={cachedPath(`d-${district.id}`, district.geometry)}
                 fill="none"
-                stroke="rgb(var(--ink) / 0.45)"
+                stroke="rgb(var(--ink) / 0.4)"
                 strokeWidth={1.1 * hairline}
                 strokeDasharray={`${4 * hairline} ${3 * hairline}`}
                 pointerEvents="none"
@@ -293,7 +289,7 @@ export default function MapCanvas({
                   className="fill-muted font-mono uppercase"
                   paintOrder="stroke"
                   stroke="rgb(var(--surface))"
-                  strokeWidth={3}
+                  strokeWidth={2.4}
                   strokeLinejoin="round"
                   style={{ fontSize: 10, letterSpacing: '0.1em' }}
                 >
@@ -303,29 +299,27 @@ export default function MapCanvas({
             })}
 
           {markers.map((m) => {
-            const dimmed = selected !== null && m.province !== selected;
-            const active = activeListingId === m.id;
-            if (dimmed) return null;
+            if (selected !== null && m.province !== selected) return null;
+            const active = activeAdvertId === m.id;
             return (
               <g key={m.id} transform={`translate(${m.x} ${m.y})`}>
                 {active && (
                   <circle
                     r={6 * hairline}
-                    fill="rgb(var(--signal))"
-                    className="origin-center animate-pulse-ring"
+                    fill="rgb(var(--clay))"
+                    className="origin-center animate-halo"
                     style={{ transformBox: 'fill-box' }}
                   />
                 )}
                 <circle
-                  r={(active ? 6 : 4.2) * hairline}
-                  fill="rgb(var(--signal))"
-                  fillOpacity={active ? 1 : 0.9}
-                  stroke="rgb(var(--paper))"
+                  r={(active ? 6 : 4.5) * hairline}
+                  fill="rgb(var(--clay))"
+                  stroke="rgb(var(--surface))"
                   strokeWidth={2 * hairline}
                   className="cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelectListing(m.id);
+                    onSelectAdvert(m.id);
                   }}
                 >
                   <title>{m.label}</title>
@@ -335,37 +329,33 @@ export default function MapCanvas({
           })}
 
           {PROVINCE_LABELS.map(({ code, x, y }) => {
-            const stats = counts.get(code);
             if (selected !== null) return null;
+            const record = PROVINCES[code];
+            const dark = record.advertised2020 >= 150_000;
             return (
-              <g
-                key={code}
-                transform={`translate(${x} ${y}) scale(${hairline})`}
-                pointerEvents="none"
-                className="transition-opacity duration-300"
-              >
+              <g key={code} transform={`translate(${x} ${y}) scale(${hairline})`} pointerEvents="none">
                 <text
                   textAnchor="middle"
-                  className="fill-ink font-mono uppercase"
+                  className={dark ? 'fill-paper' : 'fill-ink'}
                   paintOrder="stroke"
-                  stroke="rgb(var(--surface))"
-                  strokeWidth={3.5}
+                  stroke={dark ? 'rgb(var(--land-700))' : 'rgb(var(--surface))'}
+                  strokeWidth={2.4}
                   strokeLinejoin="round"
-                  style={{ fontSize: 13, letterSpacing: '0.12em' }}
+                  style={{ fontSize: 12.5, letterSpacing: '0.02em', fontWeight: 600 }}
                 >
-                  {PROVINCES[code].short}
+                  {record.short}
                 </text>
                 <text
-                  y={16}
+                  y={15}
                   textAnchor="middle"
-                  className="fill-muted font-mono tabular-nums"
+                  className={dark ? 'fill-paper/85' : 'fill-muted'}
                   paintOrder="stroke"
-                  stroke="rgb(var(--surface))"
-                  strokeWidth={3.5}
+                  stroke={dark ? 'rgb(var(--land-700))' : 'rgb(var(--surface))'}
+                  strokeWidth={2.4}
                   strokeLinejoin="round"
-                  style={{ fontSize: 11 }}
+                  style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)' }}
                 >
-                  {stats ? `${stats.parcels} · ${group(Math.round(stats.hectares))} ha` : '—'}
+                  {record.advertised2020 > 0 ? `${group(record.advertised2020)} ha` : '—'}
                 </text>
               </g>
             );
@@ -373,40 +363,73 @@ export default function MapCanvas({
         </g>
       </svg>
 
-      <div className="pointer-events-none absolute bottom-3 right-3 flex flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={() => zoomBy(1.5)}
-          className="btn pointer-events-auto justify-center px-2.5"
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          onClick={() => zoomBy(1 / 1.5)}
-          className="btn pointer-events-auto justify-center px-2.5"
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onSelectProvince(null);
-            animateTo(IDENTITY);
+      {hovered && pointer && !dragging && (
+        <div
+          role="status"
+          className="pointer-events-none absolute z-10 w-[17rem] border border-ink/15 bg-raised p-3 shadow-lg"
+          style={{
+            left: Math.min(pointer.x + 16, 999),
+            top: pointer.y + 16,
+            transform: pointer.x > 320 ? 'translateX(-100%) translateX(-32px)' : undefined,
           }}
-          className="btn pointer-events-auto justify-center px-2.5"
-          aria-label="Reset view"
-          disabled={!zoomed && selected === null}
         >
-          ⤾
-        </button>
-      </div>
+          <p className="font-display text-lg leading-tight text-ink">{hovered.name}</p>
+          <dl className="mt-2 space-y-1 text-xs">
+            <Reading label="Advertised 2020" value={hovered.advertised2020 > 0 ? `${group(hovered.advertised2020)} ha` : 'excluded'} />
+            <Reading label="Released Feb 2020" value={hovered.released2020 !== null ? `${group(hovered.released2020)} ha` : '—'} />
+            {hovered.stateLandSharePct !== null && (
+              <Reading label="State land" value={`${hovered.stateLandSharePct}%`} />
+            )}
+          </dl>
+          <p className="mt-2 border-t border-rule pt-1.5 text-2xs leading-snug text-muted">
+            {hovered.commodities.slice(0, 3).join(' · ')}
+          </p>
+        </div>
+      )}
 
-      <p className="pointer-events-none absolute bottom-3 left-3 max-w-[22ch] font-mono text-2xs uppercase leading-relaxed tracking-[0.1em] text-faint">
-        Scroll to zoom · drag to pan · click a province
-      </p>
+      <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-wrap items-end justify-between gap-3">
+        <div className="pointer-events-auto border border-rule bg-surface/90 px-2.5 py-2 backdrop-blur">
+          <p className="eyebrow mb-1.5">Hectares advertised, Oct 2020</p>
+          <div className="flex items-center gap-0">
+            {BINS.map((b) => (
+              <div key={b.label} className="flex flex-col items-start">
+                <span className={cx('block h-2.5 w-12', b.step)} />
+                <span className="num mt-1 pr-2 text-2xs text-muted">{b.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="pointer-events-auto flex gap-1.5">
+          <button type="button" onClick={() => zoomBy(1.5)} className="btn px-2.5 py-1.5" aria-label="Zoom in">
+            +
+          </button>
+          <button type="button" onClick={() => zoomBy(1 / 1.5)} className="btn px-2.5 py-1.5" aria-label="Zoom out">
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onSelectProvince(null);
+              animateTo(IDENTITY);
+            }}
+            className="btn px-2.5 py-1.5"
+            aria-label="Reset the map"
+            disabled={!zoomed && selected === null}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Reading({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 whitespace-nowrap">
+      <dt className="text-muted">{label}</dt>
+      <dd className="num text-ink">{value}</dd>
     </div>
   );
 }

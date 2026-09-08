@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "data:topo": "node scripts/build-topo.mjs",
-    "data:listings": "node scripts/build-listings.mjs"
+    "data:topo": "node scripts/build-topo.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",

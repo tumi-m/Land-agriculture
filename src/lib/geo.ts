@@ -7,7 +7,7 @@ import type {
   Topology,
 } from 'topojson-specification';
 import topo from '@/data/sa-districts.topo.json';
-import { PROVINCE_ORDER, PROVINCES } from './provinces';
+import { PROVINCES, PROVINCE_ORDER } from '@/content/provinces';
 import type { ProvinceCode } from './types';
 
 interface DistrictProps {

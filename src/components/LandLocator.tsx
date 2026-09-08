@@ -1,88 +1,63 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Filters, { EMPTY_FILTERS, SIZE_BUCKETS, isFiltered, type FilterState } from './Filters';
 import LiveStatus from './LiveStatus';
 import MapCanvas from './MapCanvas';
-import ParcelCard from './ParcelCard';
-import ProvincePanel from './ProvincePanel';
-import { closingLabel, cx, daysUntil, hectares } from '@/lib/format';
-import { NATIONAL_PORTAL, PROVINCES, PROVINCE_ORDER } from '@/lib/provinces';
+import Pathfinder from './Pathfinder';
+import ProvinceDossier from './ProvinceDossier';
+import ProvinceRanking from './ProvinceRanking';
+import {
+  CaseStudies,
+  CategoryTable,
+  Directory,
+  FinanceSection,
+  PolicySection,
+  ProcessSection,
+  RiskSection,
+  WhoHandlesWhat,
+} from './Sections';
+import { CONTENT_REVIEWED, SOURCE_NOTE } from '@/content/meta';
+import { NATIONAL_FIGURES } from '@/content/policy';
+import {
+  ADVERTISED_FARMS,
+  ADVERTISED_TOTAL_PUBLISHED,
+  PROVINCES,
+  PROVINCE_ORDER,
+  RELEASED_PRODUCERS,
+  RELEASED_SPLIT,
+  RELEASED_TOTAL,
+} from '@/content/provinces';
+import { cx, group } from '@/lib/format';
 import { useLiveData } from '@/lib/useLiveData';
-import { useMountedNow } from '@/lib/useMountedNow';
-import type { Dataset, Listing, ProvinceCode } from '@/lib/types';
+import type { Dataset, ProvinceCode } from '@/lib/types';
 
-const SHORTLIST_KEY = 'all-shortlist';
 const THEME_KEY = 'all-theme';
 
-function matches(listing: Listing, filters: FilterState): boolean {
-  if (filters.openOnly && listing.status !== 'open' && listing.status !== 'closing-soon') {
-    return false;
-  }
-  if (!SIZE_BUCKETS[filters.sizeBucket].test(listing.sizeHa)) return false;
-  if (
-    filters.enterprises.length > 0 &&
-    !filters.enterprises.some((e) => listing.enterprises.includes(e))
-  ) {
-    return false;
-  }
-  const q = filters.query.trim().toLowerCase();
-  if (q === '') return true;
-  const haystack = [
-    listing.title,
-    listing.reference,
-    listing.district,
-    listing.municipality,
-    listing.summary,
-    PROVINCES[listing.province].name,
-    ...listing.enterprises,
-  ]
-    .join(' ')
-    .toLowerCase();
-  return q.split(/\s+/).every((term) => haystack.includes(term));
-}
+const SECTIONS = [
+  { id: 'land', n: '01', label: 'The land' },
+  { id: 'route', n: '02', label: 'Your route' },
+  { id: 'process', n: '03', label: 'The process' },
+  { id: 'money', n: '04', label: 'The money' },
+  { id: 'history', n: '05', label: 'How we got here' },
+  { id: 'reality', n: '06', label: 'What goes wrong' },
+  { id: 'offices', n: '07', label: 'Offices' },
+];
 
-function sortListings(listings: Listing[], sort: FilterState['sort']): Listing[] {
-  const out = [...listings];
-  switch (sort) {
-    case 'size-desc':
-      return out.sort((a, b) => b.sizeHa - a.sizeHa);
-    case 'size-asc':
-      return out.sort((a, b) => a.sizeHa - b.sizeHa);
-    case 'updated':
-      return out.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-    default:
-      return out.sort((a, b) => Date.parse(a.closesOn) - Date.parse(b.closesOn));
-  }
-}
-
-export default function LandLocator({
-  initial,
-  pollHint,
-}: {
-  initial: Dataset;
-  pollHint: number;
-}) {
+export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } = useLiveData(initial);
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [province, setProvince] = useState<ProvinceCode | null>(null);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const [shortlist, setShortlist] = useState<Set<string>>(new Set());
-  const [showShortlist, setShowShortlist] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [dark, setDark] = useState(false);
 
-  // Restore province from the URL and the shortlist from this browser.
+  const hasFeed = dataset.source === 'remote';
+  const adverts = useMemo(() => (hasFeed ? dataset.listings : []), [hasFeed, dataset.listings]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('province')?.toUpperCase();
     if (code && (PROVINCE_ORDER as string[]).includes(code)) setProvince(code as ProvinceCode);
-    try {
-      const saved = localStorage.getItem(SHORTLIST_KEY);
-      if (saved) setShortlist(new Set(JSON.parse(saved) as string[]));
-      setDark(document.documentElement.classList.contains('dark'));
-    } catch {
-      /* storage unavailable — the app works without it */
-    }
+    setDark(document.documentElement.classList.contains('dark'));
   }, []);
 
   useEffect(() => {
@@ -91,20 +66,6 @@ export default function LandLocator({
     else url.searchParams.delete('province');
     window.history.replaceState(null, '', url);
   }, [province]);
-
-  const toggleShortlist = useCallback((id: string) => {
-    setShortlist((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      try {
-        localStorage.setItem(SHORTLIST_KEY, JSON.stringify([...next]));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
 
   const toggleOpen = useCallback((id: string) => {
     setOpenIds((prev) => {
@@ -122,81 +83,46 @@ export default function LandLocator({
     try {
       localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
     } catch {
-      /* ignore */
+      /* private mode — the toggle still works for this session */
     }
   };
 
-  const visible = useMemo(
-    () => sortListings(dataset.listings.filter((l) => matches(l, filters)), filters.sort),
-    [dataset.listings, filters],
+  const provinceAdverts = useMemo(
+    () => (province ? adverts.filter((l) => l.province === province) : adverts),
+    [adverts, province],
   );
 
-  const inProvince = useMemo(
-    () => (province ? visible.filter((l) => l.province === province) : visible),
-    [visible, province],
-  );
-
-  const now = useMountedNow();
-  const clock = now ?? Date.parse(dataset.updatedAt);
-
-  const totals = useMemo(() => {
-    const openNow = visible.filter((l) => l.status === 'open' || l.status === 'closing-soon');
-    return {
-      parcels: visible.length,
-      hectares: visible.reduce((s, l) => s + l.sizeHa, 0),
-      openNow: openNow.length,
-      closingIn14: visible.filter((l) => {
-        if (l.status === 'allocated') return false;
-        const days = daysUntil(l.closesOn, clock);
-        return days >= 0 && days <= 14;
-      }).length,
-    };
-  }, [visible, clock]);
-
-  const byProvince = useMemo(() => {
-    const map = new Map<ProvinceCode, Listing[]>();
-    for (const l of visible) {
-      const list = map.get(l.province) ?? [];
-      list.push(l);
-      map.set(l.province, list);
-    }
-    return map;
-  }, [visible]);
-
-  const shortlisted = useMemo(
-    () => dataset.listings.filter((l) => shortlist.has(l.id)),
-    [dataset.listings, shortlist],
-  );
-
-  const focusListing = useCallback(
-    (id: string) => {
-      const listing = dataset.listings.find((l) => l.id === id);
-      if (!listing) return;
-      setProvince(listing.province);
-      setOpenIds((prev) => new Set(prev).add(id));
-      window.requestAnimationFrame(() => {
-        document
-          .getElementById(`parcel-${id}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-    },
-    [dataset.listings],
-  );
-
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const jumpToLand = useCallback((code: ProvinceCode) => {
+    setProvince(code);
+    document.getElementById('land')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] px-4 pb-16 lg:px-8">
-      <header className="sticky top-0 z-30 -mx-4 mb-5 border-b border-rule bg-paper/85 px-4 backdrop-blur lg:-mx-8 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-3">
-          <div className="flex items-baseline gap-3">
-            <span className="font-mono text-sm uppercase tracking-[0.3em] text-signal">Asbonge</span>
-            <span className="font-mono text-sm uppercase tracking-[0.22em] text-ink">
-              Land Locator
-            </span>
-          </div>
+    <div className="relative z-[1]">
+      <header className="sticky top-0 z-30 border-b border-rule bg-paper/90 backdrop-blur">
+        <div className="mx-auto flex max-w-[92rem] flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-2.5 lg:px-8">
+          <a href="#top" className="flex items-baseline gap-2.5">
+            <span className="font-display text-lg leading-none text-ink">Asbonge</span>
+            <span className="eyebrow">Land Locator</span>
+          </a>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <nav aria-label="Sections" className="order-3 -mx-1 w-full overflow-x-auto lg:order-2 lg:w-auto">
+            <ul className="flex items-center gap-1 whitespace-nowrap">
+              {SECTIONS.map((s) => (
+                <li key={s.id}>
+                  <a
+                    href={`#${s.id}`}
+                    className="flex items-baseline gap-1.5 px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+                  >
+                    <span className="num text-2xs text-faint">{s.n}</span>
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="order-2 flex items-center gap-4 lg:order-3">
             <LiveStatus
               dataset={dataset}
               state={state}
@@ -206,16 +132,8 @@ export default function LandLocator({
             />
             <button
               type="button"
-              onClick={() => setShowShortlist((v) => !v)}
-              className="btn"
-              aria-expanded={showShortlist}
-            >
-              ★ Shortlist <span className="num text-signal">{shortlist.size}</span>
-            </button>
-            <button
-              type="button"
               onClick={toggleTheme}
-              className="btn"
+              className="btn px-2.5 py-1.5"
               aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
             >
               {dark ? '☀' : '☾'}
@@ -224,210 +142,249 @@ export default function LandLocator({
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(440px,44%)]">
-        <div className="lg:sticky lg:top-[68px] lg:self-start">
-          <div className="card h-[52vh] overflow-hidden sm:h-[62vh] lg:h-[calc(100dvh-92px)]">
-            <MapCanvas
-              listings={visible}
-              selected={province}
-              onSelectProvince={(code) => {
-                setProvince(code);
-                setActiveId(null);
-              }}
-              activeListingId={activeId}
-              onSelectListing={(id) => {
-                setActiveId(id);
-                focusListing(id);
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="min-w-0 space-y-5">
-          <section>
-            <h1 className="max-w-[26ch] text-2xl font-medium leading-[1.15] tracking-tight text-ink">
-              State agricultural land released for farming, province by province.
+      <main id="top" className="mx-auto max-w-[92rem] px-4 pb-24 lg:px-8">
+        {/* Hero */}
+        <section className="grid gap-x-12 gap-y-8 pb-10 pt-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:pt-16">
+          <div>
+            <p className="eyebrow">State agricultural land · South Africa</p>
+            <h1 className="mt-4 font-display text-display text-ink">
+              The state owns the farm.
+              <br />
+              <span className="italic text-clay">You lease it.</span>
             </h1>
-            <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted">
-              Click a province to isolate it. Every parcel carries its extent, tenure, enterprise
-              mix, the application process and the office that handles it — and the page follows its
-              source, so a change reaches an open browser within{' '}
-              <span className="num">{pollHint}</span> seconds.
+            <p className="lede mt-6">
+              Since 2006 the government buys farms and keeps the title deed. What it hands out is a
+              lease — for R1 a year or for 2% of the farm’s agricultural value, depending on which of
+              four categories it puts you in. This page sets out where that land is, how the
+              allocation is decided, what it costs, and what tends to go wrong.
             </p>
-
-            <dl className="mt-4 grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-4">
-              {[
-                ['Parcels', String(totals.parcels)],
-                ['Open now', String(totals.openNow)],
-                ['Extent', `${hectares(totals.hectares)} ha`],
-                ['≤14 days', String(totals.closingIn14)],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-surface px-3 py-2">
-                  <dt className="label">{label}</dt>
-                  <dd className="num mt-0.5 text-lg leading-tight text-ink">{value}</dd>
-                </div>
-              ))}
-            </dl>
-
-            {dataset.source === 'seed' && (
-              <p className="mt-3 border-l-2 border-signal bg-signal-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
-                <strong className="font-medium">Sample dataset.</strong> Geography — provinces,
-                districts, coordinates, rainfall — is real; parcels and contact blocks are
-                placeholders flagged &ldquo;Sample&rdquo; on every card. Set{' '}
-                <code className="num">LAND_DATA_URL</code> to serve a live feed instead.
-                {dataset.sourceError && (
-                  <span className="ml-1 text-alert">Feed unreadable: {dataset.sourceError}</span>
-                )}
-              </p>
-            )}
-          </section>
-
-          {showShortlist && (
-            <section className="animate-fade-up border border-rule bg-surface p-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="label text-ink">Your shortlist ({shortlisted.length})</h2>
-                <button type="button" onClick={() => setShowShortlist(false)} className="btn">
-                  Close
-                </button>
-              </div>
-              {shortlisted.length === 0 ? (
-                <p className="mt-3 text-sm text-muted">
-                  Nothing shortlisted yet. Open a parcel and choose ☆ Shortlist to keep it here — it
-                  is stored in this browser only.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {shortlisted.map((l) => (
-                    <li
-                      key={l.id}
-                      className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm text-ink">{l.title}</p>
-                        <p className="label mt-0.5">
-                          {PROVINCES[l.province].name} · {hectares(l.sizeHa)} ha ·{' '}
-                          {closingLabel(l.closesOn, clock)}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button type="button" className="btn" onClick={() => focusListing(l.id)}>
-                          Open
-                        </button>
-                        <button type="button" className="btn" onClick={() => toggleShortlist(l.id)}>
-                          Remove
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          <div className="card p-4">
-            <Filters value={filters} onChange={setFilters} resultCount={visible.length} />
+            <div className="mt-7 flex flex-wrap gap-2">
+              <a href="#route" className="btn-solid">
+                Find your route
+              </a>
+              <a href="#land" className="btn">
+                See the map
+              </a>
+            </div>
           </div>
 
-          {province ? (
-            <ProvincePanel
-              code={province}
-              listings={inProvince}
-              openIds={openIds}
-              onToggle={toggleOpen}
-              shortlist={shortlist}
-              onShortlist={toggleShortlist}
-              onClose={() => setProvince(null)}
-              filtered={isFiltered(filters)}
-            />
-          ) : (
-            <section aria-label="All provinces">
-              <h2 className="label">Provinces</h2>
-              <ul className="mt-2 divide-y divide-rule border border-rule bg-surface">
-                {PROVINCE_ORDER.map((code) => {
-                  const list = byProvince.get(code) ?? [];
-                  const ha = list.reduce((s, l) => s + l.sizeHa, 0);
-                  return (
-                    <li key={code}>
-                      <button
-                        type="button"
-                        onClick={() => setProvince(code)}
-                        disabled={list.length === 0}
-                        className={cx(
-                          'flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors duration-150',
-                          list.length === 0
-                            ? 'cursor-not-allowed opacity-45'
-                            : 'hover:bg-signal-soft/50',
-                        )}
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-sm font-medium text-ink">
-                            {PROVINCES[code].name}
-                          </span>
-                          <span className="label mt-0.5 block">{PROVINCES[code].capital}</span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-4">
-                          <span className="num text-sm text-muted">{hectares(ha)} ha</span>
-                          <span
-                            className={cx(
-                              'num flex h-7 w-7 items-center justify-center border text-2xs',
-                              list.length > 0
-                                ? 'border-signal/50 bg-signal/10 text-signal'
-                                : 'border-rule text-faint',
-                            )}
-                          >
-                            {list.length}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+          <div className="self-end">
+            <p className="eyebrow">October 2020 land release</p>
+            <p className="figure mt-2 text-[clamp(3rem,7vw,4.5rem)] leading-[0.9]">
+              {group(ADVERTISED_TOTAL_PUBLISHED)}
+              <span className="ml-2 font-sans text-lg font-normal text-muted">hectares</span>
+            </p>
+            <p className="mt-2 max-w-measure text-sm leading-relaxed text-muted">
+              advertised across <span className="font-medium text-ink">{ADVERTISED_FARMS}</span> state-owned
+              farms in seven provinces, on 30-year leases. Earlier that year{' '}
+              <span className="font-medium text-ink">{group(RELEASED_TOTAL)} ha</span> went to{' '}
+              <span className="font-medium text-ink">{RELEASED_PRODUCERS}</span> producers —{' '}
+              {RELEASED_SPLIT.women} women, {RELEASED_SPLIT.youth} young people and one person with a
+              disability.
+            </p>
+          </div>
+        </section>
 
-              <h2 className="label mt-6">Closing soonest</h2>
-              <div className="mt-2 space-y-2">
-                {visible.slice(0, 4).map((listing) => (
-                  <div key={listing.id} id={`parcel-${listing.id}`} className="scroll-mt-24">
-                    <ParcelCard
-                      listing={listing}
-                      open={openIds.has(listing.id)}
-                      onToggle={() => toggleOpen(listing.id)}
-                      shortlisted={shortlist.has(listing.id)}
-                      onShortlist={() => toggleShortlist(listing.id)}
-                    />
-                  </div>
-                ))}
-                {visible.length === 0 && (
-                  <p className="card p-6 text-center text-sm text-muted">
-                    Nothing matches those filters. Clear one and try again.
-                  </p>
-                )}
+        <dl className="grid gap-px border-y border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
+          {NATIONAL_FIGURES.filter((f) => !f.label.startsWith('Advertised')).map((f) => (
+            <div key={f.label} className="bg-paper px-4 py-4">
+              <dt className="eyebrow min-h-[2.2em]">{f.label}</dt>
+              <dd className="figure mt-1.5 text-2xl">{f.value}</dd>
+              <dd className="mt-1.5 text-xs leading-relaxed text-muted">{f.detail}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* 01 The land */}
+        <Section id="land" n="01" title="Where the land is">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
+            <div className="lg:sticky lg:top-20 lg:self-start">
+              <div className="h-[52vh] overflow-hidden border border-rule bg-surface sm:h-[62vh] lg:h-[min(74vh,46rem)]">
+                <MapCanvas
+                  selected={province}
+                  onSelectProvince={(code) => {
+                    setProvince(code);
+                    setActiveId(null);
+                  }}
+                  adverts={adverts}
+                  activeAdvertId={activeId}
+                  onSelectAdvert={(id) => setActiveId(id)}
+                />
               </div>
-            </section>
-          )}
-        </div>
-      </div>
+            </div>
 
-      <footer className="mt-12 border-t border-rule pt-5">
-        <p className="max-w-prose text-sm leading-relaxed text-muted">
-          Applications, closing dates and contact details are set by the issuing office. Always
-          confirm a listing against the{' '}
-          <a
-            href={NATIONAL_PORTAL.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="underline decoration-rule underline-offset-4 hover:text-ink"
-          >
-            {NATIONAL_PORTAL.name}
-          </a>{' '}
-          or the provincial department before you submit anything. No application is ever charged
-          for on this site.
-        </p>
-        <p className="label mt-3">
-          Boundaries: district municipalities, simplified · Dataset revision{' '}
-          <span className="num">{dataset.revision}</span>
-        </p>
+            <div className="min-w-0">
+              {province ? (
+                <ProvinceDossier
+                  code={province}
+                  adverts={provinceAdverts}
+                  openIds={openIds}
+                  onToggle={toggleOpen}
+                  onClose={() => setProvince(null)}
+                />
+              ) : (
+                <>
+                  <p className="lede">
+                    Half of KwaZulu-Natal’s registered surface is state land; the Free State’s is
+                    seven per cent. That, more than anything, decides where a lease is realistic.
+                    Pick a province on the map or in the table.
+                  </p>
+                  <div className="mt-6">
+                    <ProvinceRanking selected={province} onSelect={setProvince} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </Section>
+
+        {/* 02 Route */}
+        <Section
+          id="route"
+          n="02"
+          title="Which category are you?"
+          standfirst="The answer decides your lease length, your rent, whether you can ever own the land, and how much of your finance is a grant. Four questions, and the route below assembles itself."
+        >
+          <Pathfinder onProvinceChange={jumpToLand} />
+        </Section>
+
+        {/* 03 Process */}
+        <Section
+          id="process"
+          n="03"
+          title="What happens to your form"
+          standfirst="Sealed envelope, tender box, then three committees. The categories set the terms; the committees decide who gets them — and since 2024 the land and the support for it come from two different departments."
+        >
+          <WhoHandlesWhat />
+          <div className="mt-12">
+            <ProcessSection />
+          </div>
+          <div className="mt-12">
+            <h3 className="font-display text-opener leading-tight text-ink">The four categories</h3>
+            <div className="mt-5">
+              <CategoryTable />
+            </div>
+          </div>
+        </Section>
+
+        {/* 04 Money */}
+        <Section
+          id="money"
+          n="04"
+          title="Why the grants exist"
+          standfirst="A lease you cannot pledge is a lease no bank will lend against. Everything in this section is the state working around that."
+        >
+          <FinanceSection />
+        </Section>
+
+        {/* 05 History */}
+        <Section
+          id="history"
+          n="05"
+          title="How the state became the landlord"
+          standfirst="Three decades of policy, and the reason you are offered a lease rather than a title deed."
+        >
+          <PolicySection />
+          <div className="mt-14">
+            <h3 className="font-display text-opener leading-tight text-ink">What has worked</h3>
+            <div className="mt-6">
+              <CaseStudies />
+            </div>
+          </div>
+        </Section>
+
+        {/* 06 Reality */}
+        <Section
+          id="reality"
+          n="06"
+          title="What goes wrong"
+          standfirst="Worth knowing before you spend money on a farm you do not own."
+        >
+          <RiskSection />
+        </Section>
+
+        {/* 07 Offices */}
+        <Section
+          id="offices"
+          n="07"
+          title="Who to talk to"
+          standfirst="Land comes from one department, the support that makes it productive from another. You will deal with both."
+        >
+          <Directory />
+          <div className="mt-12">
+            <h3 className="font-display text-opener leading-tight text-ink">
+              Provincial shared service centres
+            </h3>
+            <p className="lede mt-3">
+              Applications go to the centre for the district where the farm is. Pick a province for
+              its address, switchboard and the officials who handle allocation.
+            </p>
+            <ul className="mt-6 grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
+              {PROVINCE_ORDER.map((code) => {
+                const p = PROVINCES[code];
+                return (
+                  <li key={code}>
+                    <button
+                      type="button"
+                      onClick={() => jumpToLand(code)}
+                      className={cx(
+                        'flex h-full w-full flex-col items-start gap-1 bg-surface p-4 text-left transition-colors hover:bg-clay-soft/40',
+                      )}
+                    >
+                      <span className="font-display text-lg leading-none text-ink">{p.name}</span>
+                      <span className="num text-2xs text-muted">
+                        {p.pssc.phones[0]} · {p.pssc.officials.length} contacts
+                      </span>
+                      <span className="mt-1 line-clamp-2 text-xs leading-snug text-muted">
+                        {p.pssc.address}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </Section>
+      </main>
+
+      <footer className="border-t border-ink">
+        <div className="mx-auto max-w-[92rem] px-4 py-8 lg:px-8">
+          <p className="max-w-reading text-sm leading-relaxed text-muted">{SOURCE_NOTE}</p>
+          <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink">
+            No application is ever charged for on this site, and nothing here is an offer. Confirm
+            every figure, closing date and contact with the department before you act on it.
+          </p>
+          <p className="eyebrow mt-5">
+            Content reviewed {CONTENT_REVIEWED} · boundaries: 52 district municipalities, simplified
+            · dataset revision <span className="num">{dataset.revision}</span>
+          </p>
+        </div>
       </footer>
     </div>
+  );
+}
+
+function Section({
+  id,
+  n,
+  title,
+  standfirst,
+  children,
+}: {
+  id: string;
+  n: string;
+  title: string;
+  standfirst?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-16 pt-16 lg:pt-24">
+      <div className="opener">
+        <span className="num text-2xs text-clay">{n}</span>
+        <h2 className="font-display text-opener leading-none text-ink">{title}</h2>
+      </div>
+      {standfirst && <p className="lede mt-4 max-w-reading">{standfirst}</p>}
+      <div className="mt-8">{children}</div>
+    </section>
   );
 }
