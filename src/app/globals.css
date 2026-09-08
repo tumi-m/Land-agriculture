@@ -1025,3 +1025,15 @@ footer {
     transform: none;
   }
 }
+
+@media (max-width: 760px) {
+  .brand-sub { display: none; }
+  .brand { font-size: 1.3rem; gap: .5rem; }
+  .brand-mark { width: 2.2rem; height: 2.2rem; font-size: 1.6rem; }
+  .app-header { gap: .5rem; }
+  .theme-toggle { width: 2.2rem; height: 2.2rem; }
+}
+@media (max-width: 360px) {
+  .app-header { padding-inline: .65rem; }
+  .route-cta { padding-inline: .6rem; gap: .3rem; }
+}
