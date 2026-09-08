@@ -48,12 +48,29 @@ Section 02 composes a personalised route rather than rendering a fixed template.
 That separation is the point: swapping the engine for a model later changes the source of the
 blocks, not a single renderer.
 
-## Interactive tools
+## The map
 
-- **Map** — a choropleth of hectares advertised, one sequential hue, with a hover readout and a
-  legend. Click a province to isolate it: the map flies to its bounds, dims the rest, and reveals
-  district outlines and labels. Provinces are keyboard-reachable. Map furniture is sized in screen
-  pixels, so labels stay legible from 350px to full width.
+The map is the page, and it is a solid. Each province is extruded to the measure you pick, in
+three.js:
+
+- **Height is linear.** North West's 300 000 ha really does tower over KwaZulu-Natal's 3 684 rather
+  than being flattened into comparability — that disproportion is the story of the October 2020
+  release. Colour carries the same value on a square-rooted step so small provinces stay
+  distinguishable from empty ones, and the reading survives a flat viewing angle.
+- **Three measures**, switched live: hectares advertised (Oct 2020), hectares released (Feb 2020),
+  and the share of each province already owned by the state. Heights tween between them.
+- **Orbit, zoom, hover, click.** Hovering lifts a province and opens a readout; clicking flies the
+  camera in, ghosts the rest, and slides in that province's figures, farming systems and shared
+  service centre. Escape closes it. The framing is offset so the province centres in the space the
+  panel leaves.
+- **Province outlines are simplified for the solid** (Douglas–Peucker, ~2 km) — the flat detail that
+  suits a map turns each extruded wall into a moiré fan.
+- Tweens run on the wall clock rather than accumulated frame deltas, so a slow renderer plays them
+  at the right speed instead of in slow motion. Labels are written straight to the DOM each frame
+  rather than through React state.
+- If WebGL will not start, the map says so and the rest of the page still works.
+
+## Other interactive tools
 - **Form ALA pre-flight** — a working checklist of the annexures, switching on whether you apply in
   your own name or through an entity, remembered in the browser.
 - **SG code check** — validates the length of a 21-character Surveyor-General code and says where to
@@ -116,6 +133,9 @@ Downloads the district boundary source on first run, simplifies it to about 5% o
 (23 400 points, 177 KB, 47 KB over the wire) and quantises the coordinates. Province outlines are
 merged from the district arcs at runtime, so shared borders stay exact and there is one file to
 ship.
+
+The long-form reference — your route, applying, money, history, what goes wrong, offices — sits
+below the map behind tabs, so only one section's text is on screen at a time.
 
 ## Design notes
 
