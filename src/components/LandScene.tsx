@@ -166,8 +166,9 @@ export default function LandScene({
     const sc = new THREE.Scene();
     scene.current = sc;
 
+    const narrow = el.clientWidth < 640;
     const cam = new THREE.PerspectiveCamera(
-      38,
+      narrow ? 48 : 38,
       el.clientWidth / el.clientHeight,
       1,
       800,
@@ -175,7 +176,9 @@ export default function LandScene({
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    cam.position.copy(reduced ? INTRO_TO : INTRO_FROM);
+    // A portrait canvas is constrained horizontally, so stand further back.
+    const pull = narrow ? 1.18 : 1;
+    cam.position.copy(reduced ? INTRO_TO : INTRO_FROM).multiplyScalar(pull);
     if (!reduced) intro.current = performance.now();
     camera.current = cam;
 
@@ -345,6 +348,7 @@ export default function LandScene({
       const w = el.clientWidth;
       const h = el.clientHeight;
       cam.aspect = w / h;
+      cam.fov = w < 640 ? 48 : 38;
       cam.updateProjectionMatrix();
       gl.setSize(w, h);
     };
@@ -370,6 +374,7 @@ export default function LandScene({
     gl.domElement.addEventListener("pointermove", onPointerMove);
     gl.domElement.addEventListener("pointerleave", onLeave);
 
+    const introPull = pull;
     let frame = 0;
     const clock = new THREE.Clock();
 
@@ -381,7 +386,9 @@ export default function LandScene({
 
       if (intro.current !== null) {
         const t = Math.min(1, (now - intro.current) / 1400);
-        cam.position.lerpVectors(INTRO_FROM, INTRO_TO, 1 - Math.pow(1 - t, 4));
+        cam.position
+          .lerpVectors(INTRO_FROM, INTRO_TO, 1 - Math.pow(1 - t, 4))
+          .multiplyScalar(introPull);
         if (t >= 1) intro.current = null;
       }
 
@@ -454,15 +461,15 @@ export default function LandScene({
           o.currentScale + o.group.position.y + 1.6,
           o.top.z,
         ).project(cam);
-        const behind = world.z > 1;
-        const dimmed =
-          selectedRef.current !== null && selectedRef.current !== o.code;
+        // Any open panel hides every label: the panel names the province, and a
+        // label floating over its contact list reads as a stray control.
+        const hidden = world.z > 1 || selectedRef.current !== null;
         el.style.transform = `translate3d(${((world.x + 1) / 2) * width}px, ${
           ((-world.y + 1) / 2) * height
         }px, 0) translate(-50%, -100%)`;
-        el.style.opacity = behind || dimmed ? "0" : "1";
-        el.style.pointerEvents = behind || dimmed ? "none" : "auto";
-        el.tabIndex = behind || dimmed ? -1 : 0;
+        el.style.opacity = hidden ? "0" : "1";
+        el.style.pointerEvents = hidden ? "none" : "auto";
+        el.tabIndex = hidden ? -1 : 0;
       }
     };
 
@@ -517,22 +524,31 @@ export default function LandScene({
       : null;
     if (selected && !object) return;
 
-    const targetTo = object
-      ? new THREE.Vector3(
-          object.top.x,
-          Math.min(object.targetScale * 0.45, 9),
-          object.top.z,
-        )
-      : new THREE.Vector3(0, 0, 0);
+    // Keep country context on phones; province details sit below the map.
+    // Wider screens can frame the selected province beside its detail panel.
+    const narrow = window.innerWidth < 640;
+    const zoomIn = Boolean(object) && !narrow;
+
+    const targetTo =
+      zoomIn && object
+        ? new THREE.Vector3(
+            object.top.x,
+            Math.min(object.targetScale * 0.45, 9),
+            object.top.z,
+          )
+        : new THREE.Vector3(0, 0, 0);
 
     // Keep the viewer's current angle; only the framing changes.
     const direction = cam.position.clone().sub(orbit.target);
     if (direction.lengthSq() < 1e-6) direction.set(-0.12, 0.62, 0.78);
     direction.normalize();
 
-    // The detail panel covers the right of the viewport on wide screens, so shift
-    // the framing to centre the province in what is actually visible.
-    if ((object || narrationOverlay) && window.innerWidth > 760) {
+    // The detail panel covers the right of a wide viewport, so bias the framing
+    // left to centre the province in what is actually visible.
+    if (
+      (zoomIn && window.innerWidth > 760) ||
+      (narrationOverlay && window.innerWidth > 1100)
+    ) {
       // `direction` runs from the target to the camera, so its cross with up
       // points to the camera's left — negate it to push the framing left of centre.
       const left = new THREE.Vector3().crossVectors(
@@ -549,7 +565,7 @@ export default function LandScene({
       cameraFrom: cam.position.clone(),
       cameraTo: targetTo
         .clone()
-        .add(direction.multiplyScalar(selected ? 76 : 128)),
+        .add(direction.multiplyScalar(zoomIn ? 76 : narrow ? 152 : 128)),
       startedAt: performance.now(),
     };
   }, [selected, narrationOverlay]);
