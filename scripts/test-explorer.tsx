@@ -67,3 +67,40 @@ test("province details distinguish historical rounds and expose the application 
   assert.match(html, /61 Biccard Street/);
   assert.match(html, /href="tel:/);
 });
+
+import { LAND_JOURNEY } from "../src/content/journey";
+import {
+  JourneyNarration,
+  JourneyTimeline,
+} from "../src/components/LandJourney";
+
+test("the release chapter explains that February and October are separate rounds", () => {
+  const chapter = LAND_JOURNEY.findIndex((step) => step.id === "release");
+  const html = renderToStaticMarkup(
+    <JourneyNarration
+      chapter={chapter}
+      onExplore={() => {}}
+      onRoute={() => {}}
+    />,
+  );
+  assert.equal(LAND_JOURNEY[chapter].metric, "released");
+  assert.match(html, /separate rounds/);
+  assert.match(html, /not give a valid completion rate/);
+});
+
+test("the journey ends with application preparation and a usable restart", () => {
+  const chapter = LAND_JOURNEY.length - 1;
+  const html = renderToStaticMarkup(
+    <JourneyNarration
+      chapter={chapter}
+      onExplore={() => {}}
+      onRoute={() => {}}
+    />,
+  );
+  const navigation = renderToStaticMarkup(
+    <JourneyTimeline chapter={chapter} onChange={() => {}} />,
+  );
+  assert.match(html, /Build my route/);
+  assert.match(navigation, /Start again/);
+  assert.equal((navigation.match(/aria-current="step"/g) ?? []).length, 1);
+});

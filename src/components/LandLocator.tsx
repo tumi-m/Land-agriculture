@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LAND_JOURNEY } from "@/content/journey";
+import { JourneyNarration, JourneyTimeline } from "./LandJourney";
 import LiveStatus from "./LiveStatus";
 import Pathfinder from "./Pathfinder";
 import ProvincePanel from "./ProvincePanel";
@@ -58,6 +60,8 @@ const TABS: { id: TabId; n: string; label: string }[] = [
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
+  const [guided, setGuided] = useState(true);
+  const [chapter, setChapter] = useState(0);
   const [province, setProvince] = useState<ProvinceCode | null>(null);
   const [metric, setMetric] = useState<Metric>("advertised");
   const [tab, setTab] = useState<TabId>("route");
@@ -76,8 +80,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("province")?.toUpperCase();
-    if (code && (PROVINCE_ORDER as string[]).includes(code))
+    if (code && (PROVINCE_ORDER as string[]).includes(code)) {
       setProvince(code as ProvinceCode);
+      setGuided(false);
+    }
     setDark(document.documentElement.classList.contains("dark"));
     setUrlReady(true);
   }, []);
@@ -133,7 +139,14 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     [adverts, province],
   );
 
-  const active = METRICS.find((m) => m.id === metric)!;
+  const step = LAND_JOURNEY[chapter];
+  const displayMetric = guided ? step.metric : metric;
+  const active = METRICS.find((m) => m.id === displayMetric)!;
+  const exploreJourney = () => {
+    setMetric(step.metric);
+    setProvince(step.province);
+    setGuided(false);
+  };
 
   return (
     <div className="relative z-[1]">
@@ -147,7 +160,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           </span>
         </a>
         <nav aria-label="Main navigation" className="main-nav">
-          <a href="#map" className="nav-current">
+          <a
+            href="#map"
+            className="nav-current"
+            onClick={() => setGuided(false)}
+          >
             Explore land
           </a>
           <button onClick={() => openTab("process")}>How to apply</button>
@@ -171,7 +188,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
       </header>
 
-      <div className="workspace">
+      <div className={cx("workspace", guided && "guided-workspace")}>
         <section className="explorer-intro" aria-labelledby="explorer-title">
           <div>
             <p className="eyebrow">
@@ -198,6 +215,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
         <section
           className="stat-strip"
+          style={guided ? { display: "none" } : undefined}
           aria-label="Historical national land release overview"
         >
           <div>
@@ -247,13 +265,37 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
         <section
           id="map"
-          className="explorer-shell"
+          className={cx("explorer-shell", guided && "journey-shell")}
           aria-label="Explore South African provinces"
         >
           <div className="explorer-toolbar">
             <div>
-              <h2>Explore the landscape</h2>
-              <p>Choose a measure, then select a province.</p>
+              <h2>{guided ? "The land journey" : "Explore the landscape"}</h2>
+              <p>
+                {guided
+                  ? "One map. Five steps from understanding to action."
+                  : "Choose a measure, then select a province."}
+              </p>
+            </div>
+            <div
+              className="explorer-mode"
+              role="group"
+              aria-label="Explorer mode"
+            >
+              <button
+                type="button"
+                aria-pressed={guided}
+                onClick={() => setGuided(true)}
+              >
+                Guided journey
+              </button>
+              <button
+                type="button"
+                aria-pressed={!guided}
+                onClick={() => setGuided(false)}
+              >
+                Explore freely
+              </button>
             </div>
             <div
               role="group"
@@ -264,9 +306,12 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 <button
                   key={m.id}
                   type="button"
-                  aria-pressed={metric === m.id}
-                  onClick={() => setMetric(m.id)}
-                  className={cx(metric === m.id && "is-active")}
+                  aria-pressed={displayMetric === m.id}
+                  onClick={() => {
+                    setMetric(m.id);
+                    setGuided(false);
+                  }}
+                  className={cx(displayMetric === m.id && "is-active")}
                 >
                   {m.label}
                 </button>
@@ -274,84 +319,101 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             </div>
           </div>
           <div className="explorer-body">
-            <aside className="province-browser" aria-label="Province selector">
-              <label className="province-search">
-                <span aria-hidden="true">⌕</span>
-                <input
-                  type="search"
-                  aria-label="Search provinces or farming commodities"
-                  placeholder="Province or crop…"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-              <div className="ranking-label">
-                <span>PROVINCE</span>
-                <span>{metric === "share" ? "STATE SHARE" : "HECTARES"}</span>
-              </div>
-              <div className="province-list">
-                {rankProvinces(metric, query).map((code) => {
-                  const value = valueOf(code, metric);
-                  const max = Math.max(
-                    ...PROVINCE_ORDER.map((c) => valueOf(c, metric) ?? 0),
-                    1,
-                  );
-                  return (
-                    <button
-                      key={code}
-                      className={cx(
-                        "province-row",
-                        province === code && "is-selected",
-                      )}
-                      aria-pressed={province === code}
-                      onClick={() =>
-                        setProvince(province === code ? null : code)
-                      }
-                    >
-                      <span className="province-row-title">
-                        <span>{PROVINCES[code].name}</span>
-                        <strong>
-                          {value === null
-                            ? "—"
-                            : metric === "share"
-                              ? `${value}%`
-                              : group(value)}
-                        </strong>
-                      </span>
-                      <span className="province-bar">
-                        <span
-                          style={{ width: `${((value ?? 0) / max) * 100}%` }}
-                        />
-                      </span>
-                    </button>
-                  );
-                })}
-                {rankProvinces(metric, query).length === 0 && (
-                  <div className="search-empty">
-                    <p>No matching province or crop.</p>
-                    <button className="btn mt-3" onClick={() => setQuery("")}>
-                      Clear search
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="province-browser-note">
-                <span className="status-dot" />
-                <p>
-                  All 9 provinces. Select one for farming systems and the local
-                  application office.
-                </p>
-              </div>
-            </aside>
+            {!guided && (
+              <aside
+                className="province-browser"
+                aria-label="Province selector"
+              >
+                <label className="province-search">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    type="search"
+                    aria-label="Search provinces or farming commodities"
+                    placeholder="Province or crop…"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </label>
+                <div className="ranking-label">
+                  <span>PROVINCE</span>
+                  <span>{metric === "share" ? "STATE SHARE" : "HECTARES"}</span>
+                </div>
+                <div className="province-list">
+                  {rankProvinces(metric, query).map((code) => {
+                    const value = valueOf(code, metric);
+                    const max = Math.max(
+                      ...PROVINCE_ORDER.map((c) => valueOf(c, metric) ?? 0),
+                      1,
+                    );
+                    return (
+                      <button
+                        key={code}
+                        className={cx(
+                          "province-row",
+                          province === code && "is-selected",
+                        )}
+                        aria-pressed={province === code}
+                        onClick={() =>
+                          setProvince(province === code ? null : code)
+                        }
+                      >
+                        <span className="province-row-title">
+                          <span>{PROVINCES[code].name}</span>
+                          <strong>
+                            {value === null
+                              ? "—"
+                              : metric === "share"
+                                ? `${value}%`
+                                : group(value)}
+                          </strong>
+                        </span>
+                        <span className="province-bar">
+                          <span
+                            style={{ width: `${((value ?? 0) / max) * 100}%` }}
+                          />
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {rankProvinces(metric, query).length === 0 && (
+                    <div className="search-empty">
+                      <p>No matching province or crop.</p>
+                      <button className="btn mt-3" onClick={() => setQuery("")}>
+                        Clear search
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="province-browser-note">
+                  <span className="status-dot" />
+                  <p>
+                    All 9 provinces. Select one for farming systems and the
+                    local application office.
+                  </p>
+                </div>
+              </aside>
+            )}
+            {guided && (
+              <JourneyNarration
+                chapter={chapter}
+                onExplore={exploreJourney}
+                onRoute={() => openTab("route")}
+              />
+            )}
             <div className="map-stage">
               <div className="map-heading">
                 <span className="map-badge">3D DATA MAP</span>
                 <span>ZA / 09 PROVINCES</span>
               </div>
               <LandScene
-                metric={metric}
-                selected={province}
-                onSelect={setProvince}
+                metric={displayMetric}
+                selected={guided ? step.province : province}
+                narrationOverlay={guided}
+                onSelect={(code) => {
+                  setMetric(displayMetric);
+                  setProvince(code);
+                  setGuided(false);
+                }}
                 dark={dark}
               />
               <div className="map-legend">
@@ -366,7 +428,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </p>
               </div>
             </div>
-            {province && (
+            {province && !guided && (
               <div className="province-detail">
                 <ProvincePanel
                   code={province}
@@ -380,18 +442,21 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </div>
             )}
           </div>
+          {guided && (
+            <JourneyTimeline chapter={chapter} onChange={setChapter} />
+          )}
           <div className="explorer-footnote">
             <p>
               <strong>
-                {metric === "advertised"
+                {displayMetric === "advertised"
                   ? "October 2020"
-                  : metric === "released"
+                  : displayMetric === "released"
                     ? "February 2020"
                     : "Historical land audit"}
                 .
               </strong>{" "}
               {active.note} These figures do not indicate current availability.
-              {metric === "released" &&
+              {displayMetric === "released" &&
                 " The February and October figures are separate rounds."}
             </p>
             <LiveStatus
@@ -486,8 +551,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         <main className="mx-auto max-w-[96rem] px-4 pb-20 pt-10 lg:px-6">
           <Panel id="route" tab={tab} title="Which category are you?">
             <Pathfinder
-              onProvinceChange={setProvince}
-              selectedProvince={province}
+              onProvinceChange={(code) => {
+                setProvince(code);
+                setGuided(false);
+              }}
+              selectedProvince={guided ? null : province}
             />
           </Panel>
 

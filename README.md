@@ -167,3 +167,13 @@ configuration remain supported. The preview has no advert feed until the existin
 variables are configured. OpenNext's default cache overrides do not provide durable ISR;
 production deployments that use the feed should configure the appropriate cache bindings or
 continue using the existing Vercel deployment.
+
+### Guided land journey
+
+The default view offers five documentary-style chapters inspired by vhavenda.com's linked map
+and narration: the national snapshot, North West's concentration, separate release dates,
+Limpopo's farming profile, and application preparation. Chapter changes frame the same 3D map
+and explain its active measure. Tour focus is separate from the user's province selection and
+application answers. Readers can switch to free exploration, select a province, or enter the
+route planner at any time. Motion is not advanced automatically. Province URL links open directly
+in free exploration.

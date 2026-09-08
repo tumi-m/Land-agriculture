@@ -61,11 +61,13 @@ export default function LandScene({
   selected,
   onSelect,
   dark,
+  narrationOverlay = false,
 }: {
   metric: Metric;
   selected: ProvinceCode | null;
   onSelect: (code: ProvinceCode | null) => void;
   dark: boolean;
+  narrationOverlay?: boolean;
 }) {
   const mount = useRef<HTMLDivElement | null>(null);
   const scene = useRef<THREE.Scene | null>(null);
@@ -530,7 +532,7 @@ export default function LandScene({
 
     // The detail panel covers the right of the viewport on wide screens, so shift
     // the framing to centre the province in what is actually visible.
-    if (object && window.innerWidth > 760) {
+    if ((object || narrationOverlay) && window.innerWidth > 760) {
       // `direction` runs from the target to the camera, so its cross with up
       // points to the camera's left — negate it to push the framing left of centre.
       const left = new THREE.Vector3().crossVectors(
@@ -538,7 +540,7 @@ export default function LandScene({
         new THREE.Vector3(0, 1, 0),
       );
       if (left.lengthSq() > 1e-6)
-        targetTo.addScaledVector(left.normalize(), -13);
+        targetTo.addScaledVector(left.normalize(), narrationOverlay ? 18 : -13);
     }
 
     flight.current = {
@@ -550,7 +552,7 @@ export default function LandScene({
         .add(direction.multiplyScalar(selected ? 76 : 128)),
       startedAt: performance.now(),
     };
-  }, [selected]);
+  }, [selected, narrationOverlay]);
 
   const click = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
