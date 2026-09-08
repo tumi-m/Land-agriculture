@@ -27,7 +27,7 @@ export const LAND_JOURNEY: JourneyStep[] = [
     label: "The big picture",
     period: "OCTOBER 2020 · NATIONAL ANNOUNCEMENT",
     title: "Start with the land. Then find your way in.",
-    narration: `${ADVERTISED_FARMS} state farms were included in the October 2020 announcement. The map shows where the advertised hectares were concentrated. Taller provinces represent more land in that release, not higher mountains.`,
+    narration: `${ADVERTISED_FARMS} state farms were included in the October 2020 announcement. The map shows where the advertised hectares were concentrated. Province shading represents more land in that release. Switch to 3D comparison to compare the figures by height.`,
     figure: `${group(ADVERTISED_TOTAL_PUBLISHED)} ha`,
     figureLabel: "Published national total",
     reading:
@@ -71,7 +71,7 @@ export const LAND_JOURNEY: JourneyStep[] = [
     figure: PROVINCES.LP.commodities.slice(0, 3).join(" · "),
     figureLabel: "Part of the provincial farming profile",
     reading:
-      "The coloured height shows the state-owned share of registered provincial land, not crop suitability. Confirm conditions for an individual farm.",
+      "The active measure shows the state-owned share of registered provincial land, not crop suitability. Confirm conditions for an individual farm.",
     metric: "share",
     province: "LP",
   },

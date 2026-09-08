@@ -104,3 +104,25 @@ test("the journey ends with application preparation and a usable restart", () =>
   assert.match(navigation, /Start again/);
   assert.equal((navigation.match(/aria-current="step"/g) ?? []).length, 1);
 });
+
+import { provinceBounds, atlasPadding } from "../src/lib/atlas";
+
+test("every province fits within the national geographic extent", () => {
+  const national = provinceBounds(null);
+  for (const code of PROVINCE_ORDER) {
+    const bounds = provinceBounds(code);
+    for (const axis of [0, 1]) {
+      assert.ok(Number.isFinite(bounds[0][axis]));
+      assert.ok(bounds[0][axis] < bounds[1][axis]);
+      assert.ok(bounds[0][axis] >= national[0][axis]);
+      assert.ok(bounds[1][axis] <= national[1][axis]);
+    }
+  }
+});
+
+test("map framing reserves desktop panels and releases space on tablet and phone", () => {
+  assert.equal(atlasPadding(1440, true, false).left, 420);
+  assert.equal(atlasPadding(768, true, false).left, 40);
+  assert.equal(atlasPadding(1440, false, true).right, 390);
+  assert.equal(atlasPadding(375, false, true).right, 55);
+});

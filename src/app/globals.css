@@ -1310,3 +1310,504 @@ footer {
     font-size: 2.5rem;
   }
 }
+
+/* A continuous atlas with a reading panel, like a field documentary. */
+:root:not(.dark) {
+  --paper: 241 237 219;
+  --surface: 249 246 232;
+  --raised: 255 252 241;
+  --rule: 212 207 186;
+  --clay: 136 65 44;
+  --clay-deep: 111 49 32;
+  --clay-soft: 238 222 202;
+}
+.atlas-shell {
+  position: relative;
+}
+.atlas-map,
+.atlas-canvas {
+  position: absolute;
+  inset: 0;
+}
+.atlas-map {
+  background: #dedab9;
+}
+.atlas-canvas .maplibregl-canvas {
+  outline-offset: -4px;
+}
+.atlas-loading,
+.atlas-tile-note {
+  position: absolute;
+  bottom: 2.2rem;
+  right: 1rem;
+  padding: 0.5rem 0.8rem;
+  background: rgb(var(--surface) / 0.92);
+  max-width: 20rem;
+  font-size: 0.75rem;
+  color: rgb(var(--muted));
+}
+.atlas-fallback {
+  position: absolute;
+  inset: 25% 10%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgb(var(--surface) / 0.9);
+  text-align: center;
+  padding: 1rem;
+  z-index: 25;
+}
+.atlas-pin {
+  background: #f8f2dded;
+  color: #343926;
+  border: 1px solid #827c57;
+  padding: 0.35rem 0.55rem;
+  box-shadow: 0 3px 12px #25271326;
+  font-family: var(--font-display), Georgia, serif;
+  line-height: 1.15;
+  font-size: 0.875rem;
+  border-radius: 3px;
+  min-height: 44px;
+}
+.atlas-pin:before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: #955039;
+  border: 2px solid #f9f3df;
+  outline: 1px solid #955039;
+  border-radius: 50%;
+  position: absolute;
+  left: calc(50% - 4px);
+  bottom: -10px;
+}
+.atlas-pin.is-active {
+  background: #88412c;
+  color: #fff9e7;
+  border-color: #fff5d8;
+  box-shadow: 0 0 0 4px #88412c30;
+  z-index: 2;
+}
+.atlas-pin-value {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+}
+.atlas-tools {
+  position: absolute;
+  top: 4.5rem;
+  right: 1.2rem;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  background: #f6f0dfee;
+  border: 1px solid #beb59a;
+  box-shadow: 0 5px 15px #34352115;
+}
+.atlas-tools button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid #ded5bc;
+  color: #453e2a;
+  font-size: 0.8rem;
+}
+.atlas-tools button:hover,
+.atlas-tools button[aria-pressed="true"] {
+  background: #e6dcc3;
+}
+.map-view-switch {
+  position: absolute;
+  right: 1.2rem;
+  top: 5.5rem;
+  z-index: 25;
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid rgb(var(--rule));
+  background: rgb(var(--surface) / 0.94);
+}
+.map-view-switch button {
+  min-height: 36px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  color: rgb(var(--muted));
+}
+.map-view-switch [aria-pressed="true"] {
+  background: rgb(var(--clay));
+  color: rgb(var(--surface));
+}
+.guided-workspace {
+  padding: 0;
+  max-width: none;
+}
+.guided-workspace .explorer-intro {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.guided-workspace .journey-shell {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.journey-shell .explorer-toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1.2rem;
+  z-index: 24;
+  padding: 0;
+  border: 0;
+}
+.journey-shell .explorer-toolbar > div:first-child {
+  display: none;
+}
+.journey-shell .explorer-mode {
+  background: rgb(var(--surface) / 0.92);
+  border-radius: 0;
+}
+.journey-shell .explorer-mode button {
+  border-radius: 0;
+}
+.journey-shell .map-view-switch {
+  top: 4.6rem;
+}
+.journey-shell .explorer-body {
+  height: calc(100svh - 10.5rem);
+  min-height: 37rem;
+}
+.journey-shell .map-stage {
+  height: 100%;
+  min-height: 0;
+}
+.journey-shell .journey-narration {
+  top: 4rem;
+  bottom: 3.8rem;
+  left: 2.4rem;
+  width: 22rem;
+  background: rgb(var(--surface) / 0.94);
+  padding: 1.3rem 1.5rem;
+  border-radius: 0;
+  border-top: 2px solid rgb(var(--clay));
+}
+.journey-shell .journey-narration h2 {
+  font-size: 2rem;
+}
+.journey-shell .journey-body {
+  font-family: var(--font-display), Georgia, serif;
+  color: rgb(var(--ink));
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+.journey-shell .journey-period {
+  margin-top: 0.75rem;
+}
+.journey-shell .journey-figure {
+  padding: 0.6rem 0;
+}
+.journey-shell .journey-reading {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.journey-shell .map-heading {
+  top: 1.4rem;
+  left: 2.4rem;
+  right: auto;
+}
+.journey-shell .map-heading > span:last-child {
+  display: none;
+}
+.journey-shell .atlas-tools {
+  top: 8.2rem;
+}
+.journey-shell .map-legend {
+  right: 1.2rem;
+  bottom: 3.8rem;
+  background: #f8f2dfdd;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #c5bfa5;
+  color: #3b422d;
+}
+.journey-shell .map-legend p {
+  color: #3b422d;
+}
+.journey-shell .journey-timeline {
+  min-height: 6rem;
+  border-top: 1px solid rgb(var(--rule));
+  background: rgb(var(--paper));
+  padding: 0.8rem 2.4rem;
+  gap: 1.5rem;
+}
+.journey-stop {
+  border-radius: 0;
+  transform: rotate(45deg);
+  width: 0.65rem;
+  height: 0.65rem;
+  font-size: 0;
+  background: rgb(var(--rule));
+  margin-right: 0.3rem;
+}
+.journey-timeline li {
+  position: relative;
+}
+.journey-timeline li:after {
+  content: "";
+  position: absolute;
+  top: 0.83rem;
+  left: 0.5rem;
+  right: 0;
+  height: 1px;
+  background: rgb(var(--rule));
+  pointer-events: none;
+}
+.journey-timeline li button {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  position: relative;
+  z-index: 1;
+  padding: 0.55rem 0.3rem;
+}
+.journey-timeline .journey-navigation button {
+  min-height: 44px;
+  border-radius: 0;
+}
+.guided-workspace .next-steps {
+  margin: 1.5rem 2.4rem;
+}
+.maplibregl-ctrl-attrib {
+  font:
+    12px/1.5 var(--font-sans),
+    sans-serif !important;
+  max-width: min(85vw, 600px);
+}
+.maplibregl-ctrl-scale {
+  background: #f8f2dfcf !important;
+  color: #4a492e;
+  font-size: 12px !important;
+}
+@media (max-width: 1100px) {
+  .journey-shell .explorer-body {
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .journey-shell .map-stage {
+    height: clamp(26rem, 56svh, 40rem);
+    min-height: 0;
+    order: 0;
+    flex: none;
+  }
+  .journey-shell .journey-narration {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    order: 1;
+    max-height: none;
+    overflow: visible;
+    border-inline: 0;
+    border-bottom: 0;
+    padding: 1.4rem 2rem;
+  }
+  .journey-copy {
+    column-count: 2;
+    column-gap: 2rem;
+  }
+  .journey-copy h2,
+  .journey-copy p,
+  .journey-copy .journey-figure {
+    break-inside: avoid;
+  }
+  .journey-shell .journey-narration h2 {
+    font-size: 2rem;
+  }
+  .journey-action {
+    width: auto;
+    gap: 2rem;
+  }
+  .journey-shell .journey-timeline {
+    padding-inline: 2rem;
+  }
+  .journey-shell .map-heading {
+    left: 1.2rem;
+    top: 1.4rem;
+  }
+  .explorer-toolbar > .metric-switch {
+    flex-basis: 100%;
+  }
+  .atlas-shell:not(.journey-shell) .map-view-switch {
+    top: 9.5rem;
+  }
+}
+@media (max-width: 640px) {
+  .app-header {
+    height: 4rem;
+  }
+  .brand {
+    font-family: var(--font-display), Georgia, serif;
+  }
+  .route-cta {
+    font-size: 0.75rem;
+  }
+  .journey-shell .map-stage {
+    height: clamp(26rem, 57svh, 35rem);
+  }
+  .journey-shell .explorer-toolbar {
+    top: 0.6rem;
+    left: 0.7rem;
+    right: auto;
+  }
+  .journey-shell .explorer-mode {
+    width: auto;
+  }
+  .journey-shell .explorer-mode button {
+    min-height: 40px;
+    font-size: 0.75rem;
+    padding-inline: 0.6rem;
+  }
+  .journey-shell .map-heading {
+    top: 4rem;
+    left: 0.7rem;
+  }
+  .journey-shell .map-heading .map-badge {
+    font-size: 0.6rem;
+    padding: 0.3rem;
+    letter-spacing: 0.02em;
+  }
+  .journey-shell .map-view-switch {
+    top: 0.6rem;
+    right: 0.7rem;
+  }
+  .journey-shell .map-view-switch button {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.7rem;
+    min-height: 40px;
+  }
+  .journey-shell .map-view-switch button:first-child {
+    max-width: 4.8rem;
+  }
+  .journey-shell .map-view-switch button:last-child {
+    max-width: 4.5rem;
+  }
+  .journey-shell .atlas-tools {
+    top: 6rem;
+    right: 0.7rem;
+  }
+  .journey-shell .map-legend {
+    display: none;
+  }
+  .journey-shell .journey-narration {
+    padding: 1.25rem 1.1rem;
+  }
+  .journey-copy {
+    column-count: 1;
+  }
+  .journey-shell .journey-narration h2 {
+    font-size: 1.8rem;
+  }
+  .journey-shell .journey-timeline {
+    padding: 0.7rem 1rem;
+  }
+  .journey-timeline ol {
+    scrollbar-width: thin;
+  }
+  .journey-timeline li {
+    flex-basis: 7.4rem;
+  }
+  .journey-shell .journey-navigation {
+    width: 100%;
+  }
+  .journey-shell .journey-navigation .btn-solid {
+    margin-left: auto;
+  }
+  .guided-workspace .next-steps {
+    margin: 1rem;
+  }
+  .atlas-shell:not(.journey-shell) .map-view-switch {
+    position: relative;
+    inset: auto;
+    justify-content: center;
+    border-inline: 0;
+  }
+  .atlas-shell:not(.journey-shell) .map-stage {
+    min-height: 30rem;
+  }
+  .atlas-pin {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.4rem;
+  }
+  .atlas-pin-value {
+    font-size: 0.65rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-pin {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .journey-shell .map-view-switch button {
+    min-width: 44px;
+  }
+  .journey-shell .map-heading {
+    top: 4.2rem;
+  }
+  .atlas-pin-value {
+    font-size: 0.75rem;
+  }
+  .journey-shell .map-heading .map-badge {
+    font-size: 0.75rem;
+    max-width: 15rem;
+  }
+}
+
+/* Dense neighbouring provinces collapse to discoverable map points. */
+.atlas-pin.is-compact {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: #955039;
+  border: 5px solid #f8f2dd;
+}
+.atlas-pin.is-compact span {
+  display: none;
+}
+.atlas-pin.is-compact:before {
+  display: none;
+}
+.atlas-pin.is-compact:focus-visible,
+.atlas-pin.is-compact:hover {
+  outline: 3px solid #955039;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .atlas-tools,
+  .journey-shell .atlas-tools {
+    top: auto;
+    bottom: 2.5rem;
+    right: 0.7rem;
+    flex-direction: row;
+  }
+  .atlas-tools button {
+    border-bottom: 0;
+    border-right: 1px solid #ded5bc;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1100px) {
+  .journey-shell .map-legend {
+    left: 1.2rem;
+    right: auto;
+  }
+}

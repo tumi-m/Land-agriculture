@@ -44,6 +44,8 @@ const LandScene = dynamic(() => import("./LandScene"), {
   ),
 });
 
+const AtlasMap = dynamic(() => import("./AtlasMap"), { ssr: false });
+
 const THEME_KEY = "all-theme";
 
 type TabId = "route" | "process" | "money" | "history" | "reality" | "offices";
@@ -60,6 +62,7 @@ const TABS: { id: TabId; n: string; label: string }[] = [
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
+  const [mapView, setMapView] = useState<"atlas" | "data">("atlas");
   const [guided, setGuided] = useState(true);
   const [chapter, setChapter] = useState(0);
   const [province, setProvince] = useState<ProvinceCode | null>(null);
@@ -265,7 +268,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
         <section
           id="map"
-          className={cx("explorer-shell", guided && "journey-shell")}
+          className={cx(
+            "explorer-shell",
+            guided && "journey-shell",
+            mapView === "atlas" && "atlas-shell",
+          )}
           aria-label="Explore South African provinces"
         >
           <div className="explorer-toolbar">
@@ -287,7 +294,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 aria-pressed={guided}
                 onClick={() => setGuided(true)}
               >
-                Guided journey
+                Journey
               </button>
               <button
                 type="button"
@@ -317,6 +324,26 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </button>
               ))}
             </div>
+          </div>
+          <div
+            className="map-view-switch"
+            role="group"
+            aria-label="Map presentation"
+          >
+            <button
+              aria-pressed={mapView === "atlas"}
+              onClick={() => setMapView("atlas")}
+              aria-label="Geographic atlas"
+            >
+              Atlas
+            </button>
+            <button
+              aria-pressed={mapView === "data"}
+              onClick={() => setMapView("data")}
+              aria-label="3D comparison"
+            >
+              3D data
+            </button>
           </div>
           <div className="explorer-body">
             {!guided && (
@@ -402,20 +429,41 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             )}
             <div className="map-stage">
               <div className="map-heading">
-                <span className="map-badge">3D DATA MAP</span>
+                <span className="map-badge">
+                  {mapView === "atlas"
+                    ? "AGRICULTURAL LAND · SOUTH AFRICA"
+                    : "3D DATA MAP"}
+                </span>
                 <span>ZA / 09 PROVINCES</span>
               </div>
-              <LandScene
-                metric={displayMetric}
-                selected={guided ? step.province : province}
-                narrationOverlay={guided}
-                onSelect={(code) => {
-                  setMetric(displayMetric);
-                  setProvince(code);
-                  setGuided(false);
-                }}
-                dark={dark}
-              />
+              {mapView === "atlas" ? (
+                <AtlasMap
+                  metric={displayMetric}
+                  selected={guided ? step.province : province}
+                  narrationOverlay={guided}
+                  onSelect={(code) => {
+                    setMetric(displayMetric);
+                    setProvince(code);
+                    setGuided(false);
+                  }}
+                  onFallback={() => {
+                    setGuided(false);
+                    setMapView("data");
+                  }}
+                />
+              ) : (
+                <LandScene
+                  metric={displayMetric}
+                  selected={guided ? step.province : province}
+                  narrationOverlay={guided}
+                  onSelect={(code) => {
+                    setMetric(displayMetric);
+                    setProvince(code);
+                    setGuided(false);
+                  }}
+                  dark={dark}
+                />
+              )}
               <div className="map-legend">
                 <div>
                   <span className="legend-ramp" />
@@ -423,8 +471,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   <span>Higher</span>
                 </div>
                 <p>
-                  Height & colour show {active.label.toLowerCase()}.<br />
-                  This is a data model, not terrain elevation.
+                  {mapView === "atlas"
+                    ? "Province shading shows "
+                    : "Height & colour show "}
+                  {active.label.toLowerCase()}.<br />
+                  {mapView === "atlas"
+                    ? "Provincial figures, not individual farm boundaries."
+                    : "Statistical heights, not terrain elevation."}
                 </p>
               </div>
             </div>
