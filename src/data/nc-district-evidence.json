@@ -1,0 +1,106 @@
+{
+  "checked": "2026-09-09",
+  "source": "https://dffeportal.environment.gov.za/hosting/rest/services/CSG_Cadaster/CSG_Cadastral_Data/MapServer/1",
+  "method": "Matching cadastral identifiers, farm names, province and portions. Reference points intersected with the bundled district boundaries. These points are used only for district grouping, not as verified lease locations. Aasvogelpan excluded because its area differs substantially.",
+  "records": [
+    {
+      "ID": "C03100000000029100006",
+      "FARMNAME": "KHEIS",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "HAY",
+      "PARCEL_NO": 291,
+      "PORTION": 6,
+      "TAG_X": 22.08868,
+      "TAG_Y": -28.843121,
+      "GEOM_AREA": 5937.84
+    },
+    {
+      "ID": "C03100000000029100006",
+      "FARMNAME": "KHEIS",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "HAY",
+      "PARCEL_NO": 291,
+      "PORTION": 6,
+      "TAG_X": 22.086552,
+      "TAG_Y": -28.846429,
+      "GEOM_AREA": 287467.1
+    },
+    {
+      "ID": "C06300000000010700003",
+      "FARMNAME": "SCHIET KRAAL",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "RICHMOND",
+      "PARCEL_NO": 107,
+      "PORTION": 3,
+      "TAG_X": 23.982331,
+      "TAG_Y": -31.620666,
+      "GEOM_AREA": 23036747.49
+    },
+    {
+      "ID": "C06300000000010800000",
+      "FARMNAME": "KANONKRANS",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "RICHMOND",
+      "PARCEL_NO": 108,
+      "PORTION": 0,
+      "TAG_X": 23.945403,
+      "TAG_Y": -31.561859,
+      "GEOM_AREA": 15587411.8
+    },
+    {
+      "ID": "C03300000000028800000",
+      "FARMNAME": "AASVOGEL PAN",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "HOPETOWN",
+      "PARCEL_NO": 288,
+      "PORTION": 0,
+      "TAG_X": 24.02171,
+      "TAG_Y": -29.753634,
+      "GEOM_AREA": 16041359.35
+    },
+    {
+      "ID": "C02800000000038700001",
+      "FARMNAME": "ROOI SAND",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "GORDONIA",
+      "PARCEL_NO": 387,
+      "PORTION": 1,
+      "TAG_X": 22.042222,
+      "TAG_Y": -28.854455,
+      "GEOM_AREA": 458548.97
+    },
+    {
+      "ID": "C02800000000038700005",
+      "FARMNAME": "ROOI SAND",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "GORDONIA",
+      "PARCEL_NO": 387,
+      "PORTION": 5,
+      "TAG_X": 22.038915,
+      "TAG_Y": -28.859536,
+      "GEOM_AREA": 286424.1
+    },
+    {
+      "ID": "C02800000000038700007",
+      "FARMNAME": "ROOI SAND",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "GORDONIA",
+      "PARCEL_NO": 387,
+      "PORTION": 7,
+      "TAG_X": 22.033838,
+      "TAG_Y": -28.867227,
+      "GEOM_AREA": 423284.81
+    },
+    {
+      "ID": "C03100000000029100005",
+      "FARMNAME": "KHEIS",
+      "PROVINCE": "NORTHERN CAPE",
+      "MAJ_REGION": "HAY",
+      "PARCEL_NO": 291,
+      "PORTION": 5,
+      "TAG_X": 22.088219,
+      "TAG_Y": -28.849855,
+      "GEOM_AREA": 251007.27
+    }
+  ]
+}

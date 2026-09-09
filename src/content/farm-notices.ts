@@ -1,3 +1,4 @@
+import northernCapeNotices from "./northern-cape-notices.json";
 import type { ProvinceCode } from "@/lib/types";
 export const NOTICE_INDEX =
   "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79";
@@ -7,6 +8,7 @@ export interface FarmNotice {
   name: string;
   province: ProvinceCode;
   district: string;
+  districtIds?: string[];
   municipality: string;
   hectares: number;
   closes: string;
@@ -178,4 +180,5 @@ export const FARM_NOTICES: FarmNotice[] = [
     reference: "Hartebeestpoort E 215 JQ, portion 717 · LPID 388216",
     coordinates: null,
   },
+  ...(northernCapeNotices as FarmNotice[]),
 ];

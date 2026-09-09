@@ -13,6 +13,7 @@ import {
 import type { ProvinceCode } from "@/lib/types";
 import { parcelFor, CADASTRE_SOURCE } from "@/lib/cadastre";
 import FarmBudget from "./FarmBudget";
+import GovernmentNotices from "./GovernmentNotices";
 function ClimateProfile({ point }: { point: MapInspection }) {
   const [data, setData] = useState<Climate | null>(null),
     [error, setError] = useState(""),
@@ -140,48 +141,11 @@ export function NoticeBrowser({
           {all ? "Selected province" : "All provinces"}
         </button>
       </div>
-      <p className="dossier-note">
-        Checked {NOTICE_CHECKED}. Initial coverage: 7 notices in 3 provinces.
-        Deadline ahead does not guarantee the offer is still available.
-      </p>
-      {notices.length === 0 && (
-        <p>
-          No reviewed notices for this province yet. This does not mean no land
-          is available.
-        </p>
-      )}
-      {notices.map((n) => (
-        <button className="notice-card" key={n.id} onClick={() => onSelect(n)}>
-          <span className="notice-badge">{noticeStatus(n)}</span>
-          <strong>{n.name}</strong>
-          <span>
-            {n.district} ·{" "}
-            {n.hectares.toLocaleString("en-ZA", { maximumFractionDigits: 1 })}{" "}
-            ha
-          </span>
-          <small>
-            {n.use} · closes{" "}
-            {new Date(n.closes).toLocaleDateString("en-ZA", {
-              day: "numeric",
-              month: "short",
-              timeZone: "Africa/Johannesburg",
-            })}
-          </small>
-          <span className="notice-action">
-            {parcelFor(n.id)
-              ? "View mapped parcel ↗"
-              : "Explore district notice ↗"}
-          </span>
-        </button>
-      ))}
-      <a
-        className="dossier-source"
-        href={NOTICE_INDEX}
-        target="_blank"
-        rel="noreferrer"
-      >
-        All official DLRRD adverts ↗
-      </a>
+      <GovernmentNotices
+        key={`${province}-${all}`}
+        notices={notices}
+        onSelect={onSelect}
+      />
     </section>
   );
 }
@@ -209,7 +173,7 @@ export default function LandDossier({
           aria-label="Collapse land information"
           onClick={onClose}
         >
-          ⌄
+          Close ×
         </button>
       </div>
       <div className="dossier-tabs" role="group" aria-label="Land information">
@@ -227,7 +191,18 @@ export default function LandDossier({
         <>
           {notice ? (
             <>
-              <span className="notice-badge">{noticeStatus(notice)}</span>
+              <span className="notice-badge">
+                {noticeStatus(notice) === "Closed"
+                  ? "Past advert · deadline passed"
+                  : "Deadline ahead"}
+              </span>
+              {noticeStatus(notice) === "Closed" && (
+                <p className="dossier-callout">
+                  This application deadline has passed. Current allocation or
+                  re-advertising status is not confirmed. Contact the officer
+                  below before preparing an application.
+                </p>
+              )}
               <div className="dossier-stats">
                 <div>
                   <small>Advertised extent</small>

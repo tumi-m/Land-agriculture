@@ -1,0 +1,310 @@
+[
+  {
+    "id": "aasvogelpan-288",
+    "name": "Aasvogelpan 288",
+    "province": "NC",
+    "district": "District awaiting confirmation",
+    "municipality": "Not specified in notice",
+    "hectares": 2554.4577,
+    "closes": "2026-09-07T16:00:00+02:00",
+    "file": "advert-aasvogelpan.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "2,400 ha natural grazing; 150 ha prickly pear; 4.4577 ha wasteland.",
+      "Advertised capacity: 85 large-stock units or 510 small-stock units at 80% stocking.",
+      "A similarly named cadastral property has a substantially different area. Its location is not used for this advert until the match is confirmed."
+    ],
+    "contact": "L. Lekgatsane",
+    "phone": "0798949327",
+    "priority": "Youth; category 3",
+    "reference": "Aasvogelpan 288, portion 0 · LPID 462229",
+    "coordinates": null
+  },
+  {
+    "id": "kanonkrans-108",
+    "name": "Kanonkrans 108 · Rockdale",
+    "province": "NC",
+    "district": "Pixley ka Seme",
+    "municipality": "Not specified in notice",
+    "hectares": 1583.7376,
+    "closes": "2026-07-13T16:00:00+02:00",
+    "file": "kanonkrans-no-108-04-05.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "Advertised capacity: 49 large-stock units or 294 small-stock units at 80% stocking.",
+      "Source discrepancy: the grazing area is stated as 2,318.2681 ha, larger than the advertised total. Confirm the lease extent.",
+      "District linked using the matching Northern Cape cadastral farm and portion in Richmond registration division. The lease boundary is not yet verified."
+    ],
+    "contact": "M. Manyeneng",
+    "phone": "0713516214",
+    "priority": "Women; category 3",
+    "reference": "Kanonkrans 108 · Rockdale PLAS · LPID 460806",
+    "coordinates": null
+  },
+  {
+    "id": "schiet-kraal-3",
+    "name": "Schiet Kraal · Portion 3",
+    "province": "NC",
+    "district": "Pixley ka Seme",
+    "municipality": "Not specified in notice",
+    "hectares": 2318.2681,
+    "closes": "2026-07-13T16:00:00+02:00",
+    "file": "portion-3-schiet-kraal-no-107-04-05.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "2,318.2681 ha natural grazing; advertised grazing norm 26 ha per large-stock unit.",
+      "Advertised capacity: 71 large-stock units or 426 small-stock units at 80% stocking.",
+      "District linked using the matching Northern Cape cadastral farm and portion in Richmond registration division. The lease boundary is not yet verified."
+    ],
+    "contact": "M. Manyeneng",
+    "phone": "0713516214",
+    "priority": "Women; category 3",
+    "reference": "Schiet Kraal 107, portion 3 · Rockdale PLAS · LPID 460806",
+    "coordinates": null
+  },
+  {
+    "id": "schiet-kraal-liebecksfontein",
+    "name": "Schiet Kraal & Liebecksfontein",
+    "province": "NC",
+    "district": "Pixley ka Seme",
+    "municipality": "Ubuntu",
+    "hectares": 2482.7322,
+    "closes": "2026-07-13T16:00:00+02:00",
+    "file": "portion-9-schiet-kraal-107-04-05.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "Advertised capacity: 76 large-stock units or 456 small-stock units at 80% stocking.",
+      "Source discrepancy: grazing area of 2,513.8815 ha exceeds the advertised total. Confirm the lease extent."
+    ],
+    "contact": "M. Manyeneng",
+    "phone": "0713516214",
+    "priority": "Youth; category 3",
+    "reference": "Schiet Kraal 107 ptn 9; Liebecksfontein 81 ptn 1 · Richmond RD · LPIDs 460814; 460815",
+    "coordinates": null
+  },
+  {
+    "id": "toekoms-gamolilo",
+    "name": "Toekoms · Gamolilo 72",
+    "province": "NC",
+    "district": "John Taolo Gaetsewe",
+    "municipality": "Not specified in notice",
+    "hectares": 1841.0875,
+    "closes": "2026-07-06T16:00:00+02:00",
+    "file": "Toekoms-Vetted-Advert-04Jun2026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "1,841.0875 ha natural grazing; advertised grazing norm 11 ha per large-stock unit."
+    ],
+    "contact": "Moatlhodiemang Mainaakae",
+    "phone": "0609655902",
+    "priority": "Youth; category 3",
+    "reference": "Gamolilo 72, portion 2 · Kuruman RD · LPID 462230",
+    "coordinates": null
+  },
+  {
+    "id": "fairholt-383",
+    "name": "Fairholt · Portion 2",
+    "province": "NC",
+    "district": "John Taolo Gaetsewe",
+    "municipality": "Gamagara",
+    "hectares": 1284.7998,
+    "closes": "2026-06-08T16:00:00+02:00",
+    "file": "fairholt_farm_advert_vetted_may2026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "1,284.7998 ha natural grazing; advertised grazing norm 9 ha per large-stock unit.",
+      "20 km from Kuruman via the N14 towards Kathu."
+    ],
+    "contact": "Moatlhodiemang Mainaakae",
+    "phone": "0609655902",
+    "priority": "youth; category 3",
+    "reference": "Fairholt 383, portion 2 · Kuruman RD · LPID 462037",
+    "coordinates": null
+  },
+  {
+    "id": "kheis-rooisand",
+    "name": "Kheis & Rooisand",
+    "province": "NC",
+    "district": "Pixley ka Seme / ZF Mgcawu",
+    "municipality": "Hay / Gordonia registration divisions",
+    "hectares": 175.8754,
+    "closes": "2026-05-14T16:00:00+02:00",
+    "file": "Vetted_Kheis_Advert_14%20May%202026.pdf",
+    "use": "Pecan nuts, lucerne & crops",
+    "facts": [
+      "Notice states an 88 ha water-use entitlement; verify its present status and transfer conditions.",
+      "4 ha pecan nuts, 5 ha lucerne, 79 ha developed arable land, 1 ha homestead and 86 ha undeveloped land.",
+      "160 km from Upington. The notice covers portions in two registration divisions.",
+      "Cadastral reference points place the Kheis portions in Pixley ka Seme and the Rooisand portions in ZF Mgcawu. This multi-district advert is counted once at province level; lease boundaries remain unverified."
+    ],
+    "contact": "Lebogang Lekgatsane",
+    "phone": "0798949327",
+    "priority": "Women; category 3",
+    "reference": "Kheis 291 ptns 5 & 6; Rooisand 387 remainder ptn 1, ptns 5 & 7",
+    "coordinates": null,
+    "districtIds": [
+      "pixley-ka-seme-district",
+      "zf-mgcawu-district"
+    ]
+  },
+  {
+    "id": "boomrivier",
+    "name": "Boom Rivier",
+    "province": "NC",
+    "district": "ZF Mgcawu",
+    "municipality": "Kenhardt area",
+    "hectares": 6120.0603,
+    "closes": "2026-05-14T16:00:00+02:00",
+    "file": "Boomrivier_Advert_Vetted_14%20May%202026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "6,120.0603 ha natural grazing; advertised grazing norm 38 ha per large-stock unit.",
+      "70 km southwest of Kenhardt on the Pofadder road."
+    ],
+    "contact": "Lebogang Lekgatsane",
+    "phone": "0798949327",
+    "priority": "women; category 3",
+    "reference": "Farm 383 and De Paarden 283 ptn 4 · C03600000000038300000; C03600000000028300004",
+    "coordinates": null
+  },
+  {
+    "id": "poortjies-317",
+    "name": "Poortjies 317",
+    "province": "NC",
+    "district": "ZF Mgcawu",
+    "municipality": "Kenhardt registration division",
+    "hectares": 6259.4551,
+    "closes": "2026-05-07T16:00:00+02:00",
+    "file": "Vetted_Poortjies_Advert_07%20May%202026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "6,259.4551 ha natural grazing; advertised grazing norm 38 ha per large-stock unit.",
+      "190 km from Upington."
+    ],
+    "contact": "Lebogang Lekgatsane",
+    "phone": "0798949327",
+    "priority": "Youth; category 3",
+    "reference": "Poortjies 317, remaining extent · C03600000000031700000",
+    "coordinates": null
+  },
+  {
+    "id": "corgas-288",
+    "name": "Corgas 288",
+    "province": "NC",
+    "district": "ZF Mgcawu",
+    "municipality": "Kenhardt registration division",
+    "hectares": 5240.0588,
+    "closes": "2026-05-07T16:00:00+02:00",
+    "file": "Vetted_Corgas_Advert_07%20May%202026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "5,240.0588 ha natural grazing; advertised grazing norm 38 ha per large-stock unit.",
+      "195 km from Upington. The description lists portions 1–4 but the identifier list includes only portions 1–3; confirm the leased portions."
+    ],
+    "contact": "Lebogang Lekgatsane",
+    "phone": "0798949327",
+    "priority": "Youth; category 3",
+    "reference": "Corgas 288, ptns 1–4 · Kenhardt RD",
+    "coordinates": null
+  },
+  {
+    "id": "marinda-norokei",
+    "name": "Marinda · Norokei 317",
+    "province": "NC",
+    "district": "ZF Mgcawu",
+    "municipality": "Gordonia registration division",
+    "hectares": 4912.1122,
+    "closes": "2026-05-07T16:00:00+02:00",
+    "file": "Vetted_Marinda_Advert_07%20May%202026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "4,912.1122 ha natural grazing; advertised grazing norm 22 ha per large-stock unit.",
+      "70 km from Upington."
+    ],
+    "contact": "Lebogang Lekgatsane",
+    "phone": "0798949327",
+    "priority": "Women; category 3",
+    "reference": "Norokei 317, remainder of portion 3 · C02800000000031700003",
+    "coordinates": null
+  },
+  {
+    "id": "rietvlei-431-remainder",
+    "name": "Rietvlei 431 · Remainder",
+    "province": "NC",
+    "district": "Namakwa",
+    "municipality": "Hantam",
+    "hectares": 2350.9879,
+    "closes": "2026-05-04T16:00:00+02:00",
+    "file": "vetted-advert-remainder-of-rietvlei-nr-431_04-may-2026.pdf",
+    "use": "Livestock / red meat",
+    "facts": [
+      "2,350.9879 ha natural grazing; advertised grazing norm 32 ha per large-stock unit.",
+      "35 km from Calvinia on the R27 towards Loeriesfontein."
+    ],
+    "contact": "Margaret Cloete",
+    "phone": "0829476622",
+    "priority": "women; category 3",
+    "reference": "Rietvlei 431, remainder · LPID 460812",
+    "coordinates": null
+  },
+  {
+    "id": "childwall-toxteth",
+    "name": "Childwall & Toxteth",
+    "province": "NC",
+    "district": "John Taolo Gaetsewe",
+    "municipality": "Kuruman area",
+    "hectares": 2077.68991,
+    "closes": "2026-05-04T16:00:00+02:00",
+    "file": "vetted-advert_childwall_04-may-2026.pdf",
+    "use": "Livestock & irrigated crops",
+    "facts": [
+      "Notice lists 2,067.6899 ha grazing, 10 ha arable land and 10 ha centre-pivot irrigation; arable and irrigation areas may overlap.",
+      "Advertised grazing norm 9 ha per large-stock unit; 40 km from Kuruman via the R372."
+    ],
+    "contact": "Moatlhodiemang Mainaakae",
+    "phone": "0609655902",
+    "priority": "women; category 3",
+    "reference": "Toxteth 173 ptns 2 & 3; Childwall 177 remainder · Kuruman RD",
+    "coordinates": null
+  },
+  {
+    "id": "khaw-toxteth",
+    "name": "Khaw & Toxteth",
+    "province": "NC",
+    "district": "John Taolo Gaetsewe",
+    "municipality": "Kuruman area",
+    "hectares": 1777.0917,
+    "closes": "2026-05-04T16:00:00+02:00",
+    "file": "vetted-advert-_khaw-04-may-2026.pdf",
+    "use": "Livestock & irrigated crops",
+    "facts": [
+      "Notice lists 1,590.0917 ha grazing, 18 ha arable land and 18 ha centre-pivot irrigation. These figures do not reconcile to the total; confirm land-use extents.",
+      "Advertised grazing norm 9 ha per large-stock unit; 40 km from Kuruman via the R372."
+    ],
+    "contact": "Moatlhodiemang Mainaakae",
+    "phone": "0609655902",
+    "priority": "women; category 3",
+    "reference": "Toxteth 173 remainder; Khaw 129 ptn 2 · C04100000000017300000; C04100000000012900002",
+    "coordinates": null
+  },
+  {
+    "id": "rietvlei-431-2",
+    "name": "Rietvlei 431 · Portion 2",
+    "province": "NC",
+    "district": "Namakwa",
+    "municipality": "Hantam",
+    "hectares": 2272.814,
+    "closes": "2026-05-04T16:00:00+02:00",
+    "file": "vetted-advert-portion-2-rietvlei-nr-431_04-may-2026-2.pdf",
+    "use": "Livestock & irrigated crops",
+    "facts": [
+      "2,172.814 ha grazing, 75 ha arable land and 25 ha flood irrigation. Water-right status requires confirmation.",
+      "Advertised grazing norm 32 ha per large-stock unit; 35 km from Calvinia towards Loeriesfontein."
+    ],
+    "contact": "Margaret Cloete",
+    "phone": "0829476622",
+    "priority": "women; category 3",
+    "reference": "Rietvlei 431, portion 2 · LPID 860813 as printed",
+    "coordinates": null
+  }
+]

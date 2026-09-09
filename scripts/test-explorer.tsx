@@ -319,3 +319,44 @@ test("exploded view exposes keyboard selectors, layer controls and truthful data
   assert.match(html, /California/);
   assert.match(html, /not measured soil strata/);
 });
+
+import GovernmentNotices from "../src/components/GovernmentNotices";
+import { noticeCountLabel } from "../src/lib/exploded-map";
+import coverage from "../src/content/notice-coverage.json";
+test("Northern Cape review retains all fifteen source adverts as expired, with valid source fields", () => {
+  const records = FARM_NOTICES.filter((n) => n.province === "NC");
+  assert.equal(records.length, 15);
+  assert.deepEqual(
+    records.map((n) => n.id),
+    coverage.northernCapeNoticeIds,
+  );
+  for (const n of records) {
+    assert.equal(noticeStatus(n, new Date("2026-09-09T12:00:00Z")), "Closed");
+    assert.ok(coverage.reviewedFiles.includes(n.file));
+    assert.ok(n.hectares > 0 && n.contact && /^0\d{9}$/.test(n.phone));
+  }
+});
+test("multi-district advert is discoverable in both districts and remains one provincial record", () => {
+  for (const district of ["pixley-ka-seme-district", "zf-mgcawu-district"]) {
+    assert.ok(
+      noticesForDistrict("NC", district).some((n) => n.id === "kheis-rooisand"),
+    );
+  }
+  assert.equal(FARM_NOTICES.filter((n) => n.id === "kheis-rooisand").length, 1);
+  assert.ok(!noticesForDistrict("NC", "frances-baard-district").length);
+  assert.equal(noticeCountLabel([]), "Coverage incomplete");
+});
+test("government land browser exposes expired deadlines and official follow-up instead of claiming availability", () => {
+  const html = renderToStaticMarkup(
+    <GovernmentNotices
+      notices={FARM_NOTICES.filter((n) => n.province === "NC")}
+      onSelect={() => {}}
+    />,
+  );
+  assert.match(html, /15 reviewed adverts/);
+  assert.match(html, /Past advert · deadline passed/);
+  assert.match(html, /re-advertising or allocation status/);
+  assert.match(html, /Kheis &amp; Rooisand/);
+  assert.match(html, /Check official DLRRD adverts/);
+  assert.doesNotMatch(html, /15 available/);
+});

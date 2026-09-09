@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as LibreMap } from "maplibre-gl";
 import { NOTICE_PARCELS, parcelFor, parcelBounds } from "@/lib/cadastre";
+import { noticeInDistrict, noticeCountLabel } from "@/lib/exploded-map";
 import { geoCentroid } from "d3-geo";
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import type { MapInspection } from "@/lib/map-selection";
@@ -100,9 +101,7 @@ export default function AtlasMap({
       ? DISTRICTS.find(
           (d) =>
             d.province === latest.current.notice!.province &&
-            d.name
-              .toLowerCase()
-              .includes(latest.current.notice!.district.toLowerCase()),
+            noticeInDistrict(latest.current.notice!, d),
         )
       : null;
     const parcelExtent = latest.current.notice
@@ -438,16 +437,13 @@ export default function AtlasMap({
       }
       for (const shape of DISTRICTS) {
         const notices = FARM_NOTICES.filter(
-          (n) =>
-            !parcelFor(n.id) &&
-            n.province === shape.province &&
-            shape.name.toLowerCase().includes(n.district.toLowerCase()),
+          (n) => !parcelFor(n.id) && noticeInDistrict(n, shape),
         );
         if (!notices.length) continue;
         const button = document.createElement("button");
         button.type = "button";
         button.className = "farm-area-pin";
-        button.textContent = `${shape.name} · ${notices.length} notices`;
+        button.textContent = `${shape.name} · ${noticeCountLabel(notices)}`;
         button.title =
           "District notice group — farm positions not yet verified";
         button.addEventListener("click", (event) => {

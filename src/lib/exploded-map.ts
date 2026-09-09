@@ -1,5 +1,9 @@
 import { DISTRICTS_BY_PROVINCE } from "./geo";
-import { FARM_NOTICES } from "@/content/farm-notices";
+import {
+  FARM_NOTICES,
+  noticeStatus,
+  type FarmNotice,
+} from "@/content/farm-notices";
 import type { ProvinceCode } from "./types";
 export const LAND_LAYERS = [
   {
@@ -32,14 +36,21 @@ export const LAND_LAYERS = [
   },
 ] as const;
 export type LandLayer = (typeof LAND_LAYERS)[number]["id"];
+export function noticeInDistrict(
+  notice: FarmNotice,
+  district: { id: string; name: string; province: ProvinceCode },
+) {
+  return (
+    notice.province === district.province &&
+    (notice.districtIds
+      ? notice.districtIds.includes(district.id)
+      : district.name.toLowerCase().includes(notice.district.toLowerCase()))
+  );
+}
 export function noticesForDistrict(province: ProvinceCode, id: string) {
   const district = DISTRICTS_BY_PROVINCE[province].find((d) => d.id === id);
   return district
-    ? FARM_NOTICES.filter(
-        (n) =>
-          n.province === province &&
-          district.name.toLowerCase().includes(n.district.toLowerCase()),
-      )
+    ? FARM_NOTICES.filter((n) => noticeInDistrict(n, district))
     : [];
 }
 export function explosionOffset(
@@ -82,4 +93,14 @@ export function spacedLabels(
     Math.min(Math.min(...desired), max - effective * (desired.length - 1)),
   );
   return desired.map((_, i) => start + i * effective);
+}
+
+export function noticeCountLabel(notices: FarmNotice[], now = new Date()) {
+  if (!notices.length) return "Coverage incomplete";
+  const open = notices.filter(
+    (n) => noticeStatus(n, now) === "Deadline ahead",
+  ).length;
+  return open
+    ? `${open} deadline ahead · ${notices.length} advert${notices.length === 1 ? "" : "s"}`
+    : `${notices.length} past advert${notices.length === 1 ? "" : "s"}`;
 }

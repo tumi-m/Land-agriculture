@@ -11,13 +11,15 @@ import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import {
   LAND_LAYERS,
   noticesForDistrict,
+  noticeCountLabel,
   explosionOffset,
   sliceHeight,
   modelDistance,
   spacedLabels,
   type LandLayer,
 } from "@/lib/exploded-map";
-import { noticeStatus, type FarmNotice } from "@/content/farm-notices";
+import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
+import GovernmentNotices from "./GovernmentNotices";
 import type { ProvinceCode } from "@/lib/types";
 
 type Piece = {
@@ -106,7 +108,8 @@ export default function ExplodedMap({
     labels = useRef(new Map<string, HTMLButtonElement>()),
     sliceLabels = useRef(new Map<string, HTMLButtonElement>());
   const leaders = useRef(new Map<string, SVGLineElement>());
-  const [infoOpen, setInfoOpen] = useState(true);
+  const [infoOpen, setInfoOpen] = useState(!!district);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [explode, setExplode] = useState(0.72),
     [peel, setPeel] = useState(0.82),
     [layer, setLayer] = useState<LandLayer>("opportunity"),
@@ -148,7 +151,24 @@ export default function ExplodedMap({
     ? DISTRICTS_BY_PROVINCE[selected].find((d) => d.id === district)
     : null;
   const notices =
-    selected && district ? noticesForDistrict(selected, district) : [];
+    selected && district
+      ? noticesForDistrict(selected, district)
+      : FARM_NOTICES.filter((n) => !selected || n.province === selected);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || (!infoOpen && !controlsOpen)) return;
+      event.stopImmediatePropagation();
+      setInfoOpen(false);
+      setControlsOpen(false);
+      host.current?.parentElement
+        ?.querySelector<HTMLButtonElement>(
+          '.anatomy-mobile-dock button[aria-controls="anatomy-layer-details"]',
+        )
+        ?.focus();
+    };
+    window.addEventListener("keydown", close, true);
+    return () => window.removeEventListener("keydown", close, true);
+  }, [infoOpen, controlsOpen]);
   useEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -170,7 +190,7 @@ export default function ExplodedMap({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog("#0b2027", 400, 850);
+    // Keep all geographic context crisp at every zoom level.
     const camera = new THREE.PerspectiveCamera(
       38,
       el.clientWidth / el.clientHeight,
@@ -366,6 +386,7 @@ export default function ExplodedMap({
         latest.current.onSelectDistrict(d.id);
         setLayer(d.layer);
         setInfoOpen(true);
+        setControlsOpen(false);
       } else latest.current.onSelect(d.province);
     };
     const cancel = () => {
@@ -413,10 +434,10 @@ export default function ExplodedMap({
         p.group.visible = p.id !== state.selected;
         p.group.position.y = 0;
         const material = p.meshes[0].material as THREE.MeshStandardMaterial;
-        material.opacity += ((muted ? 0.12 : 1) - material.opacity) * speed;
+        material.opacity = 1;
         material.color.set(
           muted
-            ? "#38565d"
+            ? "#729f92"
             : p.id === hovering?.userData.id
               ? "#d5eea2"
               : "#729f92",
@@ -450,8 +471,7 @@ export default function ExplodedMap({
           m.position.y +=
             (sliceHeight(i, chosen ? state.peel : 0) - m.position.y) * speed;
           const mat = m.material as THREE.MeshStandardMaterial;
-          mat.opacity +=
-            ((state.district && !chosen ? 0.2 : 1) - mat.opacity) * speed;
+          mat.opacity = 1;
           mat.emissive.set(LAND_LAYERS[i].colour);
           mat.emissiveIntensity =
             chosen && state.layer === LAND_LAYERS[i].id
@@ -488,8 +508,8 @@ export default function ExplodedMap({
           const ys = spacedLabels(
             anchors.map((a) => ((1 - a.position.y) / 2) * el.clientHeight),
             150,
-            el.clientHeight - 300,
-            36,
+            el.clientHeight - 100,
+            48,
           );
           anchors.forEach((a, i) => {
             const node = sliceLabels.current.get(a.id),
@@ -497,7 +517,7 @@ export default function ExplodedMap({
             const visible = a.mesh.visible && a.position.z < 1;
             const x = ((a.position.x + 1) / 2) * el.clientWidth,
               y = ((1 - a.position.y) / 2) * el.clientHeight;
-            const labelX = Math.max(8, Math.min(x - 175, el.clientWidth - 185));
+            const labelX = Math.max(8, Math.min(x - 210, el.clientWidth - 220));
             if (node) {
               node.style.transform = `translate(${labelX}px,${ys[i]}px)`;
               node.style.opacity = visible ? "1" : "0";
@@ -591,6 +611,7 @@ export default function ExplodedMap({
   const chooseDistrict = (id: string) => {
     setHidden([]);
     setInfoOpen(true);
+    setControlsOpen(false);
     onSelectDistrict(id);
     setPeel(0.82);
   };
@@ -692,8 +713,10 @@ export default function ExplodedMap({
           {p.name.replace(/ District$/, "")}
           <small>
             {selected
-              ? `${noticesForDistrict(selected, p.id).length} reviewed notices`
-              : "Open province ↗"}
+              ? noticeCountLabel(noticesForDistrict(selected, p.id))
+              : noticeCountLabel(
+                  FARM_NOTICES.filter((n) => n.province === p.id),
+                )}
           </small>
         </button>
       ))}
@@ -725,65 +748,85 @@ export default function ExplodedMap({
           onClick={() => {
             setLayer(l.id);
             setInfoOpen(true);
+            setControlsOpen(false);
           }}
         >
           <i style={{ background: l.colour }} />
           {String(i + 1).padStart(2, "0")} {l.name}
         </button>
       ))}
-      {districtShape && infoOpen && (
+      {infoOpen && (
         <div className="anatomy-dossier" id="anatomy-layer-details">
           <div className="anatomy-dossier-head">
-            <span style={{ color: layerMeta.colour }}>● {layerMeta.name}</span>
+            <span style={{ color: layerMeta.colour }}>
+              ● {districtShape ? layerMeta.name : "Government land"}
+            </span>
             <button
               onClick={() => setInfoOpen(false)}
               aria-label="Collapse layer information"
             >
-              ×
+              Close ×
             </button>
           </div>
-          <p>{layerMeta.description}</p>
-          {layer === "opportunity" && (
-            <div className="anatomy-notices">
-              {notices.length ? (
-                notices.map((n) => (
-                  <button key={n.id} onClick={() => onNotice(n)}>
-                    <strong>{n.name}</strong>
-                    <span>
-                      {n.hectares.toLocaleString("en-ZA", {
-                        maximumFractionDigits: 1,
-                      })}{" "}
-                      ha · {n.use}
-                    </span>
-                    <small>{noticeStatus(n)} · inspect parcel ↗</small>
-                  </button>
-                ))
-              ) : (
-                <p>
-                  No reviewed notice in this district yet. Coverage is
-                  incomplete.
-                </p>
-              )}
-            </div>
+          <p>
+            {districtShape?.name ??
+              (selected ? PROVINCES[selected].name : "South Africa")}
+          </p>
+          {districtShape && <p>{layerMeta.description}</p>}
+          {(!districtShape || layer === "opportunity") && (
+            <GovernmentNotices
+              key={`${selected}-${district}`}
+              notices={notices}
+              onSelect={onNotice}
+            />
           )}
-          {layer !== "opportunity" && (
+          {districtShape && layer !== "opportunity" && (
             <button className="anatomy-terrain-link" onClick={onTerrain}>
               Inspect real terrain & data ↗
             </button>
           )}
         </div>
       )}
-      {districtShape && !infoOpen && (
+      <div className="anatomy-mobile-dock">
         <button
-          className="anatomy-open-info"
-          aria-expanded={false}
-          aria-controls="anatomy-layer-details"
-          onClick={() => setInfoOpen(true)}
+          className="anatomy-controls-toggle"
+          aria-expanded={controlsOpen}
+          aria-controls="anatomy-region-controls"
+          onClick={() => {
+            setControlsOpen(!controlsOpen);
+            setInfoOpen(false);
+          }}
         >
-          Layer details ↗
+          Regions & layers
         </button>
-      )}
-      <div className="anatomy-console">
+        <button
+          aria-expanded={infoOpen}
+          aria-controls="anatomy-layer-details"
+          onClick={() => {
+            setInfoOpen(!infoOpen);
+            setControlsOpen(false);
+          }}
+        >
+          {infoOpen
+            ? "Close information ×"
+            : districtShape
+              ? "Region information"
+              : `Government land · ${notices.length}`}
+        </button>
+      </div>
+      <div
+        className={`anatomy-console ${controlsOpen ? "is-open" : ""}`}
+        id="anatomy-region-controls"
+      >
+        <div className="anatomy-controls-heading">
+          <strong>Regions & layers</strong>
+          <button
+            onClick={() => setControlsOpen(false)}
+            aria-label="Close region controls"
+          >
+            Close ×
+          </button>
+        </div>
         <div className="anatomy-select">
           <label>
             REGION
