@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { Map as LibreMap } from "maplibre-gl";
-import { PROVINCE_SHAPES, DISTRICTS_BY_PROVINCE } from "@/lib/geo";
+import { NOTICE_PARCELS, parcelFor, parcelBounds } from "@/lib/cadastre";
+import { geoCentroid } from "d3-geo";
+import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
+import type { MapInspection } from "@/lib/map-selection";
+import { PROVINCE_SHAPES, DISTRICTS_BY_PROVINCE, DISTRICTS } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
 import rivers from "@/data/sa-rivers.json";
 import { provinceBounds, ATLAS_ATTRIBUTION, TILE_BASE } from "@/lib/atlas";
@@ -20,6 +24,10 @@ import { group } from "@/lib/format";
 import type { ProvinceCode } from "@/lib/types";
 
 export default function AtlasMap({
+  notice,
+  inspection,
+  onInspect,
+  onSelectNotice,
   metric,
   selected,
   district,
@@ -27,6 +35,10 @@ export default function AtlasMap({
   onSelect,
   onFallback,
 }: {
+  notice: FarmNotice | null;
+  inspection: MapInspection | null;
+  onInspect: (point: MapInspection) => void;
+  onSelectNotice: (notice: FarmNotice) => void;
   metric: Metric;
   selected: ProvinceCode | null;
   district: string | null;
@@ -37,6 +49,9 @@ export default function AtlasMap({
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
   const latest = useRef({
+    notice,
+    onInspect,
+    onSelectNotice,
     selected,
     district,
     onSelectDistrict,
@@ -50,6 +65,10 @@ export default function AtlasMap({
       button: HTMLButtonElement;
     }[]
   >([]);
+  const farmMarkers = useRef<maplibregl.Marker[]>([]);
+  const pointMarker = useRef<maplibregl.Marker | null>(null);
+  const [inspectMode, setInspectMode] = useState(true);
+  const inspectModeRef = useRef(true);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [tileError, setTileError] = useState(false);
@@ -59,7 +78,16 @@ export default function AtlasMap({
   const [dataOverlay, setDataOverlay] = useState(false);
   const [water, setWater] = useState(true);
   const [elevation, setElevation] = useState<number | null>(null);
-  latest.current = { selected, district, onSelectDistrict, onSelect, flat };
+  latest.current = {
+    notice,
+    onInspect,
+    onSelectNotice,
+    selected,
+    district,
+    onSelectDistrict,
+    onSelect,
+    flat,
+  };
 
   const frame = (duration = 1400) => {
     const instance = map.current;
@@ -68,16 +96,31 @@ export default function AtlasMap({
     const time = matchMedia("(prefers-reduced-motion: reduce)").matches
       ? 0
       : duration;
+    const noticeDistrict = latest.current.notice
+      ? DISTRICTS.find(
+          (d) =>
+            d.province === latest.current.notice!.province &&
+            d.name
+              .toLowerCase()
+              .includes(latest.current.notice!.district.toLowerCase()),
+        )
+      : null;
+    const parcelExtent = latest.current.notice
+      ? parcelBounds(latest.current.notice.id)
+      : null;
     const extent =
-      code && latest.current.district
-        ? districtBounds(code, latest.current.district)
-        : null;
+      parcelExtent ??
+      (noticeDistrict
+        ? districtBounds(noticeDistrict.province, noticeDistrict.id)
+        : code && latest.current.district
+          ? districtBounds(code, latest.current.district)
+          : null);
     if (extent) {
       instance.fitBounds(extent, {
         padding: { top: 90, bottom: 110, left: 30, right: 65 },
         pitch: latest.current.flat ? 0 : 55,
         bearing: -24,
-        maxZoom: 11,
+        maxZoom: parcelExtent ? 14.5 : 11,
         duration: time,
       });
     } else if (code) {
@@ -288,6 +331,13 @@ export default function AtlasMap({
         paint: { "line-color": "#f9ec9f", "line-width": 3 },
       });
       instance.on("click", "district-fill", (event) => {
+        if (
+          inspectModeRef.current ||
+          instance.queryRenderedFeatures(event.point, {
+            layers: ["notice-parcel-fill"],
+          }).length
+        )
+          return;
         const id = event.features?.[0]?.properties?.id as string | undefined;
         if (id) latest.current.onSelectDistrict(id);
       });
@@ -316,6 +366,13 @@ export default function AtlasMap({
         },
       });
       instance.on("click", "province-fill", (event) => {
+        if (
+          inspectModeRef.current ||
+          instance.queryRenderedFeatures(event.point, {
+            layers: ["notice-parcel-fill"],
+          }).length
+        )
+          return;
         const code = event.features?.[0]?.properties?.code as
           ProvinceCode | undefined;
         if (code && code !== latest.current.selected)
@@ -339,6 +396,102 @@ export default function AtlasMap({
           .addTo(instance);
         return { code: shape.code, marker, button };
       });
+      instance.addSource("notice-parcels", {
+        type: "geojson",
+        data: NOTICE_PARCELS,
+      });
+      instance.addLayer({
+        id: "notice-parcel-fill",
+        type: "fill",
+        source: "notice-parcels",
+        paint: { "fill-color": "#d5ef86", "fill-opacity": 0.28 },
+      });
+      instance.addLayer({
+        id: "notice-parcel-line",
+        type: "line",
+        source: "notice-parcels",
+        paint: { "line-color": "#e9ff8c", "line-width": 3 },
+      });
+      instance.on("click", "notice-parcel-fill", (event) => {
+        const item = FARM_NOTICES.find(
+          (n) => n.id === event.features?.[0]?.properties?.noticeId,
+        );
+        if (item) latest.current.onSelectNotice(item);
+      });
+      for (const parcel of NOTICE_PARCELS.features) {
+        const item = FARM_NOTICES.find(
+          (n) => n.id === parcel.properties.noticeId,
+        )!;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "farm-parcel-pin";
+        button.textContent = `${item.name} · ${item.hectares.toFixed(1)} ha`;
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          latest.current.onSelectNotice(item);
+        });
+        farmMarkers.current.push(
+          new maplibregl.Marker({ element: button })
+            .setLngLat(parcel.properties.coordinates)
+            .addTo(instance),
+        );
+      }
+      for (const shape of DISTRICTS) {
+        const notices = FARM_NOTICES.filter(
+          (n) =>
+            !parcelFor(n.id) &&
+            n.province === shape.province &&
+            shape.name.toLowerCase().includes(n.district.toLowerCase()),
+        );
+        if (!notices.length) continue;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "farm-area-pin";
+        button.textContent = `${shape.name} · ${notices.length} notices`;
+        button.title =
+          "District notice group — farm positions not yet verified";
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          latest.current.onSelectNotice(notices[0]);
+        });
+        farmMarkers.current.push(
+          new maplibregl.Marker({ element: button })
+            .setLngLat(geoCentroid(shape.geometry))
+            .addTo(instance),
+        );
+      }
+      instance.on("click", (event) => {
+        if (
+          instance.queryRenderedFeatures(event.point, {
+            layers: ["notice-parcel-fill"],
+          }).length
+        )
+          return;
+        if (
+          !inspectModeRef.current ||
+          !instance.queryRenderedFeatures(event.point, {
+            layers: ["province-fill"],
+          }).length
+        )
+          return;
+        const coordinates: [number, number] = [
+          event.lngLat.lng,
+          event.lngLat.lat,
+        ];
+        if (
+          coordinates[0] < 16 ||
+          coordinates[0] > 33 ||
+          coordinates[1] < -35 ||
+          coordinates[1] > -22
+        )
+          return;
+        latest.current.onInspect({
+          coordinates,
+          elevation: groundElevation(
+            instance.queryTerrainElevation(event.lngLat),
+          ),
+        });
+      });
       setLoaded(true);
       frame(0);
     });
@@ -348,6 +501,10 @@ export default function AtlasMap({
       observer.disconnect();
       markers.current.forEach((item) => item.marker.remove());
       markers.current = [];
+      farmMarkers.current.forEach((m) => m.remove());
+      farmMarkers.current = [];
+      pointMarker.current?.remove();
+      pointMarker.current = null;
       instance.remove();
       map.current = null;
     };
@@ -402,7 +559,18 @@ export default function AtlasMap({
   }, [loaded, selected, district, metric, dataOverlay]);
   useEffect(() => {
     if (loaded) frame();
-  }, [loaded, selected, district]);
+  }, [loaded, selected, district, notice]);
+  useEffect(() => {
+    pointMarker.current?.remove();
+    pointMarker.current = null;
+    if (!loaded || !map.current || !inspection) return;
+    const element = document.createElement("div");
+    element.className = "inspection-pin";
+    element.setAttribute("aria-label", "Selected analysis point");
+    pointMarker.current = new maplibregl.Marker({ element })
+      .setLngLat(inspection.coordinates)
+      .addTo(map.current);
+  }, [loaded, inspection]);
 
   return (
     <div className="terrain-map">
@@ -506,6 +674,22 @@ export default function AtlasMap({
         >
           ⌖
         </button>
+      </div>
+      <div className="map-inspection-toggle">
+        <button
+          aria-pressed={inspectMode}
+          onClick={() => {
+            inspectModeRef.current = !inspectMode;
+            setInspectMode(!inspectMode);
+          }}
+        >
+          {inspectMode ? "⌖ Click to inspect" : "↗ Click districts"}
+        </button>
+        <span>
+          {inspectMode
+            ? "Climate · elevation · farming scenarios"
+            : "Select a region to explore"}
+        </span>
       </div>
       <div className="terrain-layers" role="group" aria-label="Map layers">
         <button

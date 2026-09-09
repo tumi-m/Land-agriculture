@@ -2,6 +2,14 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parcelFor } from "@/lib/cadastre";
+import LandDossier, { NoticeBrowser } from "./LandDossier";
+import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
+import {
+  toggleDetailState,
+  type DetailState,
+  type MapInspection,
+} from "@/lib/map-selection";
 import LiveStatus from "./LiveStatus";
 import Pathfinder from "./Pathfinder";
 import ProvincePanel from "./ProvincePanel";
@@ -55,6 +63,42 @@ const TABS: { id: TabId; n: string; label: string }[] = [
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
+  const [notice, setNotice] = useState<FarmNotice | null>(FARM_NOTICES[0]);
+  const [inspection, setInspection] = useState<MapInspection | null>({
+    coordinates: parcelFor("california-27")!.properties.coordinates,
+    elevation: null,
+  });
+  const [detailState, setDetailState] = useState<DetailState>("expanded");
+  const [focusMap, setFocusMap] = useState(false);
+  const [compactMap, setCompactMap] = useState(false);
+  const chooseNotice = useCallback((item: FarmNotice) => {
+    setNotice(item);
+    const parcel = parcelFor(item.id);
+    setInspection(
+      parcel
+        ? { coordinates: parcel.properties.coordinates, elevation: null }
+        : null,
+    );
+    setProvince(item.province);
+    setDistrict(null);
+    setFocusMap(false);
+    setMapView("atlas");
+    setDetailState("expanded");
+    setCompactMap(false);
+  }, []);
+  const inspectPoint = useCallback((point: MapInspection) => {
+    setInspection(point);
+    setNotice(null);
+    setFocusMap(false);
+    setCompactMap(false);
+    setDetailState("expanded");
+  }, []);
+  const chooseProvince = (code: ProvinceCode | null) => {
+    setProvince(code);
+    setNotice(null);
+    setInspection(null);
+    setDetailState("expanded");
+  };
   const [mapView, setMapView] = useState<"atlas" | "data">("atlas");
   const [province, setProvince] = useState<ProvinceCode | null>("LP");
   const [district, setDistrict] = useState<string | null>(null);
@@ -77,6 +121,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     const code = params.get("province")?.toUpperCase();
     if (code && (PROVINCE_ORDER as string[]).includes(code)) {
       setProvince(code as ProvinceCode);
+      if (code !== "LP") {
+        setNotice(null);
+        setInspection(null);
+      }
     }
     setDark(document.documentElement.classList.contains("dark"));
     setUrlReady(true);
@@ -92,16 +140,29 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {
-    if (!province) return;
+    if (!province && !inspection && !notice) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      if (
+        e.target instanceof HTMLElement &&
+        e.target.closest("input,select,textarea")
+      )
+        return;
+      if (focusMap) {
+        setFocusMap(false);
+        return;
+      }
+      if (notice || inspection) {
+        setDetailState("collapsed");
+        return;
+      }
       // Step back out one level at a time.
       if (district) setDistrict(null);
       else setProvince(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [province, district]);
+  }, [province, district, notice, inspection, focusMap]);
 
   // A district only means something inside its province.
   useEffect(() => {
@@ -186,7 +247,12 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           className={cx(
             "explorer-shell",
             mapView === "atlas" && "atlas-shell",
-            province && "has-province-detail",
+            (province || notice || inspection) &&
+              detailState === "expanded" &&
+              !focusMap &&
+              "has-province-detail",
+            focusMap && "map-focus-mode",
+            compactMap && "map-compact-mode",
           )}
           aria-label="Explore South African provinces"
         >
@@ -194,7 +260,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <div>
               <p className="eyebrow">SOUTH AFRICA / LAND EXPLORER</p>
               <h1>
-                Explore the land in 3D<span>.</span>
+                Explore land. Understand its potential<span>.</span>
               </h1>
             </div>
             <div
@@ -237,91 +303,141 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               Compare area
             </button>
           </div>
+          <div className="map-workspace-actions">
+            <button
+              aria-pressed={focusMap}
+              onClick={() => setFocusMap((v) => !v)}
+            >
+              {focusMap ? "Show land browser" : "Focus map ⛶"}
+            </button>
+            <button
+              aria-expanded={!compactMap}
+              aria-controls="land-map-stage"
+              onClick={() => setCompactMap((v) => !v)}
+            >
+              {compactMap ? "Expand map" : "Collapse map"}
+            </button>
+            <button
+              disabled={!province && !notice && !inspection}
+              aria-expanded={detailState === "expanded" && !focusMap}
+              aria-controls="land-information-panel"
+              onClick={() => {
+                setFocusMap(false);
+                setDetailState(
+                  focusMap ? "expanded" : toggleDetailState(detailState),
+                );
+              }}
+            >
+              {detailState === "expanded" && !focusMap
+                ? "Collapse details"
+                : "Show details"}
+            </button>
+          </div>
           <div className="explorer-body">
             {
               <aside
                 className="province-browser"
                 aria-label="Province selector"
               >
-                <label className="province-search">
-                  <span aria-hidden="true">⌕</span>
-                  <input
-                    type="search"
-                    aria-label="Search provinces or farming commodities"
-                    placeholder="Province or crop…"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                </label>
-                <div className="ranking-label">
-                  <span>PROVINCE</span>
-                  <span>{metric === "share" ? "STATE SHARE" : "HECTARES"}</span>
-                </div>
-                <div className="province-list">
-                  {rankProvinces(metric, query).map((code) => {
-                    const value = valueOf(code, metric);
-                    const max = Math.max(
-                      ...PROVINCE_ORDER.map((c) => valueOf(c, metric) ?? 0),
-                      1,
-                    );
-                    return (
-                      <button
-                        key={code}
-                        className={cx(
-                          "province-row",
-                          province === code && "is-selected",
-                        )}
-                        aria-pressed={province === code}
-                        onClick={() =>
-                          setProvince(province === code ? null : code)
-                        }
-                      >
-                        <span className="province-row-title">
-                          <span>{PROVINCES[code].name}</span>
-                          <strong>
-                            {value === null
-                              ? "—"
-                              : metric === "share"
-                                ? `${value}%`
-                                : group(value)}
-                          </strong>
-                        </span>
-                        <span className="province-bar">
-                          <span
-                            style={{ width: `${((value ?? 0) / max) * 100}%` }}
-                          />
-                        </span>
-                      </button>
-                    );
-                  })}
-                  {rankProvinces(metric, query).length === 0 && (
-                    <div className="search-empty">
-                      <p>No matching province or crop.</p>
-                      <button className="btn mt-3" onClick={() => setQuery("")}>
-                        Clear search
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="province-browser-note">
-                  <span className="status-dot" />
-                  <p>
-                    Regional views show the landscape. These are provincial
-                    figures, not farm listings.
-                  </p>
-                </div>
+                <NoticeBrowser province={province} onSelect={chooseNotice} />
+                <details className="historical-browser">
+                  <summary>Browse provinces & historical figures</summary>
+                  <label className="province-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      aria-label="Search provinces or farming commodities"
+                      placeholder="Province or crop…"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                    />
+                  </label>
+                  <div className="ranking-label">
+                    <span>PROVINCE</span>
+                    <span>
+                      {metric === "share" ? "STATE SHARE" : "HECTARES"}
+                    </span>
+                  </div>
+                  <div className="province-list">
+                    {rankProvinces(metric, query).map((code) => {
+                      const value = valueOf(code, metric);
+                      const max = Math.max(
+                        ...PROVINCE_ORDER.map((c) => valueOf(c, metric) ?? 0),
+                        1,
+                      );
+                      return (
+                        <button
+                          key={code}
+                          className={cx(
+                            "province-row",
+                            province === code && "is-selected",
+                          )}
+                          aria-pressed={province === code}
+                          onClick={() =>
+                            chooseProvince(province === code ? null : code)
+                          }
+                        >
+                          <span className="province-row-title">
+                            <span>{PROVINCES[code].name}</span>
+                            <strong>
+                              {value === null
+                                ? "—"
+                                : metric === "share"
+                                  ? `${value}%`
+                                  : group(value)}
+                            </strong>
+                          </span>
+                          <span className="province-bar">
+                            <span
+                              style={{
+                                width: `${((value ?? 0) / max) * 100}%`,
+                              }}
+                            />
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {rankProvinces(metric, query).length === 0 && (
+                      <div className="search-empty">
+                        <p>No matching province or crop.</p>
+                        <button
+                          className="btn mt-3"
+                          onClick={() => setQuery("")}
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="province-browser-note">
+                    <span className="status-dot" />
+                    <p>
+                      Regional views show the landscape. These are provincial
+                      figures, not farm listings.
+                    </p>
+                  </div>
+                </details>
               </aside>
             }
-            <div className="map-stage">
+            <div className="map-stage" id="land-map-stage">
               {mapView === "atlas" ? (
                 <AtlasMap
+                  notice={notice}
+                  inspection={inspection}
+                  onInspect={inspectPoint}
+                  onSelectNotice={chooseNotice}
                   district={district}
-                  onSelectDistrict={setDistrict}
+                  onSelectDistrict={(id) => {
+                    setDistrict(id);
+                    setNotice(null);
+                    setInspection(null);
+                    setDetailState("expanded");
+                  }}
                   metric={displayMetric}
                   selected={province}
                   onSelect={(code) => {
                     setMetric(displayMetric);
-                    setProvince(code);
+                    chooseProvince(code);
                   }}
                   onFallback={() => {
                     setMapView("data");
@@ -333,12 +449,49 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   selected={province}
                   onSelect={(code) => {
                     setMetric(displayMetric);
-                    setProvince(code);
+                    chooseProvince(code);
                   }}
                   district={district}
-                  onSelectDistrict={setDistrict}
+                  onSelectDistrict={(id) => {
+                    setDistrict(id);
+                    setNotice(null);
+                    setInspection(null);
+                    setDetailState("expanded");
+                  }}
                   dark={dark}
                 />
+              )}
+              {(notice || inspection || province) && (
+                <button
+                  className="map-selection-chip"
+                  onClick={() => {
+                    setFocusMap(false);
+                    setDetailState(
+                      focusMap ? "expanded" : toggleDetailState(detailState),
+                    );
+                  }}
+                  aria-expanded={detailState === "expanded" && !focusMap}
+                >
+                  <span className="status-dot" />
+                  <span>
+                    {notice?.name ??
+                      (inspection
+                        ? `${inspection.coordinates[1].toFixed(3)}°, ${inspection.coordinates[0].toFixed(3)}°`
+                        : province
+                          ? PROVINCES[province].name
+                          : "Selected land")}
+                    <small>
+                      {notice
+                        ? parcelFor(notice.id)
+                          ? `${notice.hectares.toFixed(1)} ha · ${notice.use} · cadastral parcel`
+                          : `${notice.hectares.toFixed(1)} ha · district location only`
+                        : inspection
+                          ? "Selected point · inspect climate & capital"
+                          : "Region selected · view information"}
+                    </small>
+                  </span>
+                  <b>{detailState === "expanded" && !focusMap ? "⌄" : "↗"}</b>
+                </button>
               )}
               <div className="map-legend" hidden={mapView === "atlas"}>
                 <div>
@@ -357,19 +510,46 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </p>
               </div>
             </div>
-            {province && (
-              <div className="province-detail">
-                <ProvincePanel
-                  code={province}
-                  district={district}
-                  onSelectDistrict={setDistrict}
-                  adverts={provinceAdverts}
-                  openIds={openIds}
-                  onToggle={toggleOpen}
-                  onClose={() => setProvince(null)}
-                  onOpenOffices={() => openTab("offices")}
-                  hasFeed={hasFeed}
-                />
+            {(province || notice || inspection) && (
+              <div
+                className="province-detail"
+                id="land-information-panel"
+                hidden={detailState !== "expanded" || focusMap}
+              >
+                {notice || inspection ? (
+                  <LandDossier
+                    key={notice?.id ?? "point"}
+                    notice={notice}
+                    point={inspection}
+                    onClose={() => setDetailState("collapsed")}
+                  />
+                ) : province ? (
+                  <>
+                    {" "}
+                    <button
+                      className="collapse-region"
+                      onClick={() => setDetailState("collapsed")}
+                    >
+                      Collapse region details ⌄
+                    </button>
+                    <ProvincePanel
+                      code={province}
+                      district={district}
+                      onSelectDistrict={(id) => {
+                        setDistrict(id);
+                        setNotice(null);
+                        setInspection(null);
+                        setDetailState("expanded");
+                      }}
+                      adverts={provinceAdverts}
+                      openIds={openIds}
+                      onToggle={toggleOpen}
+                      onClose={() => setDetailState("collapsed")}
+                      onOpenOffices={() => openTab("offices")}
+                      hasFeed={hasFeed}
+                    />
+                  </>
+                ) : null}
               </div>
             )}
           </div>
@@ -531,7 +711,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 <ProvinceRanking
                   selected={province}
                   onSelect={(code) => {
-                    setProvince(code);
+                    chooseProvince(code);
                     document
                       .getElementById("map")
                       ?.scrollIntoView({ behavior: "smooth" });

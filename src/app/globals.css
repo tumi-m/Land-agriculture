@@ -1738,3 +1738,492 @@ body:has(.terrain-experience)::before {
     min-height: 44px;
   }
 }
+
+/* Land intelligence: the terrain stays visible while the dossier folds away. */
+.map-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.55rem 1.4rem;
+  border-bottom: 1px solid rgb(var(--rule));
+  background: rgb(var(--surface));
+}
+.map-workspace-actions button,
+.notice-filter button,
+.collapse-region {
+  min-height: 38px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 8px;
+  font-size: 0.75rem;
+  background: rgb(var(--surface));
+}
+.map-workspace-actions button[aria-pressed="true"] {
+  background: rgb(var(--clay-soft));
+  color: rgb(var(--clay));
+}
+.terrain-experience .explorer-toolbar h1 {
+  font-size: clamp(1.2rem, 2.1vw, 2rem);
+}
+.notice-browser {
+  display: grid;
+  gap: 0.7rem;
+}
+.notice-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+.notice-card {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.9rem;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 12px;
+  background: rgb(var(--surface));
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.notice-card:hover {
+  border-color: rgb(var(--clay));
+  transform: translateY(-2px);
+}
+.notice-card strong {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.notice-card span,
+.notice-card small {
+  font-size: 0.73rem;
+}
+.notice-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.25rem 0.45rem;
+  border-radius: 5px;
+  background: rgb(var(--clay-soft));
+  color: rgb(var(--clay));
+  font-size: 0.65rem !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.notice-action {
+  color: rgb(var(--clay));
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+.historical-browser {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgb(var(--rule));
+  padding-top: 0.8rem;
+}
+.historical-browser summary {
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-bottom: 0.8rem;
+}
+.map-selection-chip {
+  position: absolute;
+  z-index: 5;
+  left: 1rem;
+  bottom: 8.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: calc(100% - 5rem);
+  padding: 0.8rem 1rem;
+  background: rgba(15, 42, 40, 0.94);
+  color: #f4fbed;
+  border: 1px solid #8cc8a877;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px #061e2844;
+  text-align: left;
+}
+.map-selection-chip > span:nth-child(2) {
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+.map-selection-chip small {
+  display: block;
+  color: #c3ddcf;
+  font-size: 0.65rem;
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+.map-selection-chip b {
+  margin-left: auto;
+}
+.farm-area-pin {
+  color: #0c382d;
+  background: #d5f1b9;
+  border: 2px solid #fff;
+  border-radius: 20px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 3px 12px #0006;
+  min-height: 38px;
+  white-space: nowrap;
+}
+.farm-area-pin:hover {
+  background: #fff3b2;
+}
+.inspection-pin {
+  width: 20px;
+  height: 20px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #f5c85b;
+  box-shadow:
+    0 0 0 8px #f5c85b55,
+    0 3px 12px #0008;
+  pointer-events: none;
+}
+.map-inspection-toggle {
+  position: absolute;
+  z-index: 4;
+  left: 1rem;
+  top: 5rem;
+  display: grid;
+  gap: 0.3rem;
+  color: white;
+  max-width: calc(100% - 6rem);
+}
+.map-inspection-toggle button {
+  padding: 0.5rem 0.7rem;
+  min-height: 38px;
+  text-align: left;
+  background: #123d38e8;
+  border: 1px solid #c2e8d977;
+  border-radius: 7px;
+  font-size: 0.75rem;
+}
+.map-inspection-toggle span {
+  font-size: 0.63rem;
+  text-shadow: 0 1px 4px #000;
+  background: #123d3877;
+  border-radius: 3px;
+  padding: 0.2rem 0.4rem;
+}
+.terrain-experience .map-focus-mode .explorer-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.terrain-experience .map-focus-mode .province-browser {
+  display: none;
+}
+.terrain-experience .map-compact-mode .map-stage {
+  height: 18rem !important;
+  min-height: 18rem !important;
+}
+.terrain-experience .map-compact-mode .explorer-body {
+  height: auto;
+  min-height: 18rem;
+  align-items: start;
+}
+.terrain-experience .map-compact-mode .province-browser,
+.terrain-experience .map-compact-mode .province-detail {
+  max-height: 34rem;
+}
+.terrain-experience .map-compact-mode .map-selection-chip {
+  bottom: 7.2rem;
+}
+.land-dossier {
+  padding: 1.1rem;
+  overflow: auto;
+  height: 100%;
+  background: rgb(var(--surface));
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+.dossier-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  justify-content: space-between;
+}
+.dossier-heading h2 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  margin: 0.3rem 0 1rem;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.dossier-heading .btn {
+  min-width: 38px;
+  min-height: 38px;
+}
+.dossier-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  background: rgb(var(--clay-soft));
+  padding: 0.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+}
+.dossier-tabs button {
+  padding: 0.55rem 0.3rem;
+  min-height: 42px;
+  font-size: 0.68rem;
+  border-radius: 5px;
+  line-height: 1.3;
+}
+.dossier-tabs button[aria-pressed="true"] {
+  background: rgb(var(--surface));
+  box-shadow: 0 2px 6px #0001;
+  color: rgb(var(--clay));
+  font-weight: 700;
+}
+.land-dossier h3 {
+  font-size: 1rem;
+  font-weight: 650;
+  margin: 0.4rem 0 0.6rem;
+}
+.land-dossier h4 {
+  margin: 1rem 0 0.5rem;
+  font-weight: 650;
+}
+.land-dossier section + section {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgb(var(--rule));
+}
+.land-dossier p {
+  margin: 0.6rem 0;
+}
+.land-dossier ul {
+  padding-left: 1.15rem;
+  list-style: disc;
+}
+.land-dossier li {
+  margin: 0.45rem 0;
+}
+.dossier-note {
+  font-size: 0.72rem;
+  line-height: 1.65;
+  opacity: 0.75;
+}
+.dossier-callout {
+  background: rgb(var(--clay-soft));
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+.dossier-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.dossier-stats > div {
+  padding: 0.75rem;
+  background: rgb(var(--clay-soft));
+  border-radius: 8px;
+  min-width: 0;
+}
+.dossier-stats small {
+  display: block;
+  font-size: 0.65rem;
+  opacity: 0.75;
+}
+.dossier-stats strong {
+  display: block;
+  font-size: 1.05rem;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.dossier-source {
+  display: block;
+  font-size: 0.73rem;
+  color: rgb(var(--clay));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin: 0.75rem 0;
+  overflow-wrap: anywhere;
+}
+.land-dossier details {
+  border-top: 1px solid rgb(var(--rule));
+  padding: 0.8rem 0;
+}
+.land-dossier summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.dossier-field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  margin: 0.65rem 0;
+}
+.dossier-field input,
+.dossier-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 6px;
+  background: rgb(var(--surface));
+  font-size: 0.85rem;
+}
+.budget-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.6rem;
+}
+.scenario-cards {
+  display: grid;
+  gap: 0.4rem;
+}
+.scenario-cards > div {
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid rgb(var(--clay));
+  background: rgb(var(--clay-soft));
+}
+.scenario-cards strong {
+  display: block;
+  font-size: 1.1rem;
+}
+.scenario-cards small,
+.scenario-cards span {
+  font-size: 0.65rem;
+}
+.cash-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgb(var(--rule));
+  font-size: 0.75rem;
+}
+.rain-chart {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 115px;
+  margin: 1rem 0;
+}
+.rain-chart > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  min-width: 0;
+}
+.rain-chart i {
+  display: block;
+  width: 100%;
+  max-width: 20px;
+  background: linear-gradient(#b9dd75, #328976);
+  border-radius: 3px 3px 0 0;
+}
+.rain-chart small,
+.rain-chart span {
+  font-size: 0.57rem;
+}
+.collapse-region {
+  display: block;
+  margin: 0.5rem 0.8rem 0;
+}
+@media (min-width: 1101px) {
+  .terrain-experience .has-province-detail .explorer-body {
+    grid-template-columns: 17rem minmax(0, 1fr) 25rem;
+  }
+  .terrain-experience .explorer-body {
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+}
+@media (max-width: 1100px) {
+  .terrain-experience .province-detail:has(.land-dossier) {
+    max-height: 65svh;
+  }
+  .terrain-experience .province-detail .land-dossier {
+    max-height: 65svh;
+  }
+  .terrain-experience .map-focus-mode .map-stage {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 640px) {
+  .map-workspace-actions {
+    padding: 0.5rem 0.8rem;
+    gap: 0.35rem;
+  }
+  .map-workspace-actions button {
+    font-size: 0.68rem;
+    min-height: 42px;
+    padding-inline: 0.5rem;
+  }
+  .map-selection-chip {
+    left: 0.7rem;
+    bottom: 8.3rem;
+    max-width: calc(100% - 1.4rem);
+    padding: 0.65rem 0.75rem;
+  }
+  .map-inspection-toggle {
+    left: 0.8rem;
+    top: 4.6rem;
+  }
+  .terrain-experience .province-detail:has(.land-dossier) {
+    order: 1;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -6px 22px #0c322d18;
+    max-height: 70svh;
+  }
+  .terrain-experience .province-detail .land-dossier {
+    max-height: 70svh;
+  }
+  .terrain-experience .province-browser {
+    order: 2;
+  }
+  .dossier-field input,
+  .dossier-field select {
+    font-size: 16px;
+  }
+  .notice-browser {
+    grid-template-columns: 1fr;
+  }
+  .farm-area-pin {
+    font-size: 0.65rem;
+  }
+  .land-dossier {
+    padding: 1rem;
+  }
+  .map-compact-mode .terrain-readout {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-card {
+    transition: none;
+  }
+  .notice-card:hover {
+    transform: none;
+  }
+}
+.terrain-experience [hidden] {
+  display: none !important;
+}
+.map-workspace-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.farm-parcel-pin {
+  background: #133e2f;
+  color: #efffd0;
+  border: 2px solid #e9ff8c;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 4px 18px #0006;
+  min-height: 40px;
+}

@@ -123,3 +123,120 @@ test("district details identify the displayed totals as province-wide", () => {
   assert.match(html, /Province-wide figures/);
   assert.match(html, /District-level figures are not available/);
 });
+
+import { calculateBudget } from "../src/lib/farm-budget";
+import { parseClimate } from "../src/lib/climate";
+import { FARM_NOTICES, noticeStatus } from "../src/content/farm-notices";
+import { toggleDetailState } from "../src/lib/map-selection";
+test("financial scenarios account for marketing, setup once and a non-expense reserve", () => {
+  const b = {
+    units: 10,
+    output: 4,
+    price: 4000,
+    cycles: 1,
+    variable: 8000,
+    fixed: 20000,
+    capital: 100000,
+    reserve: 30000,
+    marketing: 10,
+  };
+  const r = calculateBudget(b)!;
+  assert.equal(r.revenue, 160000);
+  assert.equal(r.surplus, 44000);
+  assert.equal(r.initialCapital, 130000);
+  assert.equal(r.yearOneCash, -56000);
+  assert.equal(r.fiveYears[4].cumulative, 120000);
+  assert.ok(Math.abs(r.breakEvenPrice - 2777.7777778) < 0.01);
+  assert.ok(calculateBudget(b, 0.8)!.surplus < r.surplus);
+  assert.equal(calculateBudget({ ...b, units: 0 }), null);
+  assert.equal(calculateBudget({ ...b, marketing: 100 }), null);
+  assert.equal(calculateBudget({ ...b, capital: NaN }), null);
+});
+test("climate handles missing values, valid zero rainfall and mm/day conversion", () => {
+  const p = {
+    header: { range: "2001–2020", fill_value: -999 },
+    parameters: { T2M: { units: "C" }, PRECTOTCORR: { units: "mm/day" } },
+    properties: {
+      parameter: {
+        T2M: { JAN: 20, ANN: 18 },
+        PRECTOTCORR: { JAN: 2, FEB: 0, MAR: -999 },
+      },
+    },
+  };
+  const r = parseClimate(p, "https://power.larc.nasa.gov");
+  assert.equal(r.months[0].rain, 62);
+  assert.equal(r.months[1].rain, 0);
+  assert.equal(r.months[2].rain, null);
+  assert.equal(r.annualRain, null);
+  assert.throws(() => parseClimate({}, ""));
+});
+test("notice deadlines expire at South African local time and missing boundaries remain unknown", () => {
+  const n = FARM_NOTICES[0];
+  assert.equal(
+    noticeStatus(n, new Date("2026-09-21T13:59:59Z")),
+    "Deadline ahead",
+  );
+  assert.equal(noticeStatus(n, new Date("2026-09-21T14:00:00Z")), "Closed");
+  assert.equal(
+    new Set(FARM_NOTICES.map((n) => n.id)).size,
+    FARM_NOTICES.length,
+  );
+  assert.ok(FARM_NOTICES.every((n) => n.coordinates === null));
+});
+test("collapse and reopen retain a reversible detail state", () => {
+  assert.equal(toggleDetailState("expanded"), "collapsed");
+  assert.equal(toggleDetailState(toggleDetailState("expanded")), "expanded");
+});
+import { NOTICE_PARCELS, parcelBounds } from "../src/lib/cadastre";
+import LandDossier from "../src/components/LandDossier";
+test("matched cadastral parcels fit the correct provincial bounds and retain identifiers", () => {
+  assert.equal(NOTICE_PARCELS.features.length, 2);
+  for (const parcel of NOTICE_PARCELS.features) {
+    const notice = FARM_NOTICES.find(
+      (n) => n.id === parcel.properties.noticeId,
+    )!;
+    const bounds = provinceBounds(notice.province);
+    const point = parcel.properties.coordinates;
+    assert.ok(
+      point[0] >= bounds[0][0] &&
+        point[0] <= bounds[1][0] &&
+        point[1] >= bounds[0][1] &&
+        point[1] <= bounds[1][1],
+    );
+    assert.ok(parcel.properties.cadastralId);
+    assert.ok(
+      Math.abs(parcel.properties.gisHectares - notice.hectares) /
+        notice.hectares <
+        0.01,
+    );
+    assert.ok(parcelBounds(notice.id));
+  }
+  assert.equal(parcelBounds("unknown"), null);
+});
+test("farm dossier distinguishes mapped parcels from district-only records", () => {
+  const render = (index: number) =>
+    renderToStaticMarkup(
+      <LandDossier
+        notice={FARM_NOTICES[index]}
+        point={null}
+        onClose={() => {}}
+      />,
+    );
+  assert.match(render(0), /Cadastral parcel matched/);
+  assert.match(render(0), /CSG cadastral data/);
+  assert.match(render(1), /District location only/);
+});
+test("poultry upside cannot sell more birds than placed", () => {
+  const b = {
+    units: 100,
+    output: 0.95,
+    price: 50,
+    cycles: 6,
+    variable: 20,
+    fixed: 1000,
+    capital: 0,
+    reserve: 0,
+    marketing: 0,
+  };
+  assert.equal(calculateBudget(b, 1.2, "poultry")!.quantity, 600);
+});
