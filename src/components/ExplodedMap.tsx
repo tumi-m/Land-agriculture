@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import {
+  applyRelief,
+  DEM_ATTRIBUTION,
+  loadDem,
+  RELIEF_EXAGGERATION,
+  surfacePoint,
+} from "@/lib/dem";
+import RIVERS from "@/data/sa-rivers.json";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
   PROVINCE_SHAPES,
@@ -30,7 +38,12 @@ type Piece = {
   centre: THREE.Vector3;
   size: THREE.Vector3;
   anchor: THREE.Vector3;
+  /** World centre before re-centring — needed to map vertices back to lon/lat. */
+  origin: THREE.Vector3;
 };
+/** Slab thickness in world units; relief is measured against it. */
+export const EXTRUDE_DEPTH = 0.6;
+
 export function makePiece(
   id: string,
   province: ProvinceCode,
@@ -48,7 +61,7 @@ export function makePiece(
     return shape;
   });
   const geometry3d = new THREE.ExtrudeGeometry(shapes, {
-    depth: 0.6,
+    depth: EXTRUDE_DEPTH,
     bevelEnabled: true,
     bevelSize: 0.07,
     bevelThickness: 0.06,
@@ -87,7 +100,16 @@ export function makePiece(
     mesh.add(line);
     return mesh;
   });
-  return { id, province, group, meshes, centre, size, anchor: centre.clone() };
+  return {
+    id,
+    province,
+    group,
+    meshes,
+    centre,
+    size,
+    anchor: centre.clone(),
+    origin: centre.clone(),
+  };
 }
 export default function ExplodedMap({
   selected,
@@ -115,6 +137,8 @@ export default function ExplodedMap({
     [layer, setLayer] = useState<LandLayer>("opportunity"),
     [hidden, setHidden] = useState<string[]>([]),
     [ready, setReady] = useState(false),
+    [relief, setRelief] = useState(false),
+    [water, setWater] = useState(false),
     [failed, setFailed] = useState(false),
     [auto, setAuto] = useState(false),
     [hover, setHover] = useState("");
@@ -249,6 +273,65 @@ export default function ExplodedMap({
       piece.anchor.copy(piece.centre);
       scene.add(piece.group);
     }
+
+    // Relief arrives after the map does. The slabs draw flat straight away and
+    // lift onto the real land surface once the elevation grid resolves, so a
+    // slow connection costs detail rather than a wait — and a failed fetch just
+    // leaves the map as it was.
+    let reliefCancelled = false;
+    const waterGroup = new THREE.Group();
+    scene.add(waterGroup);
+
+    void loadDem().then((dem) => {
+      if (!dem || reliefCancelled) return;
+
+      // The major rivers, draped on the land surface. Six lines from Natural
+      // Earth — the Orange, Vaal, Limpopo and Okavango — which is what the
+      // irrigation schemes in the dossiers actually draw from.
+      for (const feature of RIVERS.features) {
+        const coordinates = feature.geometry.coordinates as unknown;
+        const parts: [number, number][][] =
+          feature.geometry.type === "MultiLineString"
+            ? (coordinates as [number, number][][])
+            : [coordinates as [number, number][]];
+        for (const line of parts) {
+          const points = line.map(([lon, lat]) =>
+            surfacePoint(dem, lon, lat, EXTRUDE_DEPTH + 0.06).sub(centre),
+          );
+          if (points.length < 2) continue;
+          waterGroup.add(
+            new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints(points),
+              new THREE.LineBasicMaterial({
+                color: "#5fb8d6",
+                transparent: true,
+                opacity: 0.85,
+              }),
+            ),
+          );
+        }
+      }
+      setWater(true);
+      for (const piece of [...provinces, ...districts]) {
+        const geometry = piece.meshes[0].geometry;
+        applyRelief(geometry, dem, EXTRUDE_DEPTH, piece.origin);
+        for (const mesh of piece.meshes) {
+          const material = mesh.material as THREE.MeshStandardMaterial;
+          material.vertexColors = true;
+          material.needsUpdate = true;
+        }
+        // The outlines snapshot the geometry, so they have to be rebuilt.
+        for (const mesh of piece.meshes) {
+          for (const child of mesh.children) {
+            if (child instanceof THREE.LineSegments) {
+              child.geometry.dispose();
+              child.geometry = new THREE.EdgesGeometry(geometry, 25);
+            }
+          }
+        }
+      }
+      setRelief(true);
+    });
     const footprints = provinces.map((p) => {
       const outline = new THREE.LineSegments(
         new THREE.EdgesGeometry(p.meshes[0].geometry, 25),
@@ -568,6 +651,7 @@ export default function ExplodedMap({
     setReady(true);
     animate();
     return () => {
+      reliefCancelled = true;
       cancelAnimationFrame(raf);
       resize.disconnect();
       controls.dispose();
@@ -617,6 +701,13 @@ export default function ExplodedMap({
   };
   return (
     <div className="anatomy-stage">
+      <p className="anatomy-source" role="status">
+        {relief
+          ? `Land surface from real elevation, vertical scale ×${RELIEF_EXAGGERATION}${
+              water ? " · major rivers shown" : ""
+            } · ${DEM_ATTRIBUTION}`
+          : "Loading the land surface…"}
+      </p>
       <div
         ref={host}
         className="anatomy-canvas"
