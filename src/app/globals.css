@@ -2227,3 +2227,487 @@ body:has(.terrain-experience)::before {
   box-shadow: 0 4px 18px #0006;
   min-height: 40px;
 }
+
+/* Exploded geographic model: the pieces are the primary interface. */
+.terrain-experience .anatomy-shell .explorer-body {
+  display: block;
+  height: calc(100svh - 12rem);
+  min-height: 48rem;
+}
+.terrain-experience .anatomy-shell .province-browser,
+.terrain-experience .anatomy-shell .province-detail {
+  display: none !important;
+}
+.terrain-experience .anatomy-shell .map-stage {
+  height: 100%;
+  min-height: 48rem !important;
+}
+.anatomy-stage {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse at 48% 35%,
+    #25434a 0%,
+    #102a32 43%,
+    #091c24 100%
+  );
+  color: #e5f4ed;
+  isolation: isolate;
+}
+.anatomy-canvas {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.anatomy-canvas canvas {
+  display: block;
+}
+.anatomy-breadcrumb {
+  position: absolute;
+  z-index: 3;
+  left: 1.6rem;
+  top: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.73rem;
+  color: #bdd7cf;
+  max-width: calc(100% - 8rem);
+  flex-wrap: wrap;
+}
+.anatomy-breadcrumb button {
+  min-height: 32px;
+}
+.anatomy-breadcrumb button:hover {
+  color: #e4f8b0;
+}
+.anatomy-breadcrumb strong {
+  color: #e4f8b0;
+  font-weight: 500;
+}
+.anatomy-title {
+  position: absolute;
+  z-index: 2;
+  left: 1.7rem;
+  top: 4.3rem;
+  pointer-events: none;
+}
+.anatomy-title p {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: #98baaf;
+  margin-bottom: 0.55rem;
+}
+.anatomy-title h2 {
+  font-size: clamp(1.6rem, 3.2vw, 3rem);
+  font-weight: 450;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+  margin: 0 0 0.65rem;
+}
+.anatomy-title > span {
+  font-size: 0.77rem;
+  color: #b5cbc4;
+  display: block;
+  max-width: 25rem;
+}
+.anatomy-tools {
+  position: absolute;
+  right: 1.3rem;
+  top: 1.3rem;
+  z-index: 5;
+  display: grid;
+  gap: 0.35rem;
+}
+.anatomy-tools button {
+  height: 39px;
+  min-width: 42px;
+  padding: 0 0.55rem;
+  border: 1px solid #53777388;
+  background: #102a31d9;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+.anatomy-tools button:hover {
+  background: #2d504a;
+}
+.anatomy-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  text-align: left;
+  border: 1px solid #bcdcd666;
+  background: #112e32d9;
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  color: #e0f5e8;
+  font-size: 0.74rem;
+  box-shadow: 0 6px 15px #05131744;
+  white-space: nowrap;
+}
+.anatomy-label small {
+  display: block;
+  font-size: 0.59rem;
+  color: #b8d6ae;
+  margin-top: 0.18rem;
+}
+.anatomy-label:hover,
+.anatomy-label.is-hovered {
+  border-color: #d8efa2;
+  color: #ecffc0;
+  background: #23463de6;
+}
+.anatomy-slice-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  border-left: 2px solid;
+  border-radius: 0 6px 6px 0;
+  padding: 0.4rem 0.6rem;
+  background: #0b2027ed;
+  color: #edf9ef;
+  font-size: 0.66rem;
+  box-shadow: 0 4px 12px #0003;
+  white-space: nowrap;
+  min-height: 32px;
+}
+.anatomy-slice-label i,
+.anatomy-layer-switches i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+}
+.anatomy-console {
+  position: absolute;
+  bottom: 2.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.85rem 1.3rem;
+  width: max-content;
+  max-width: calc(100% - 3rem);
+  padding: 1rem 1.2rem;
+  background: #102a30ec;
+  border: 1px solid #6a918266;
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 40px #0004;
+}
+.anatomy-select {
+  display: flex;
+  gap: 0.6rem;
+}
+.anatomy-select label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  color: #94b4a7;
+}
+.anatomy-select select {
+  background: #18383b;
+  color: #e2f0e5;
+  border: 1px solid #4c6a61;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  min-height: 36px;
+  max-width: 12rem;
+  padding: 0.3rem;
+}
+.anatomy-slider {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 9rem;
+  font-size: 0.69rem;
+  color: #cce0d3;
+}
+.anatomy-slider span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.anatomy-slider b {
+  font-weight: 500;
+  color: #d9ee98;
+}
+.anatomy-slider input {
+  accent-color: #d2e58e;
+  width: 100%;
+  cursor: pointer;
+  min-height: 18px;
+}
+.anatomy-layer-switches {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.anatomy-layer-switches button {
+  font-size: 0.65rem;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid #5c7971;
+  border-radius: 5px;
+  min-height: 34px;
+}
+.anatomy-layer-switches button[aria-pressed="false"] {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.anatomy-reassemble {
+  border: 1px solid #bbd099;
+  background: #d5e69e;
+  color: #1c392b;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  min-height: 36px;
+}
+.anatomy-dossier {
+  position: absolute;
+  z-index: 4;
+  right: 1.3rem;
+  top: 13rem;
+  width: 18rem;
+  max-height: calc(100% - 28rem);
+  overflow: auto;
+  background: #0c232ce8;
+  border: 1px solid #6b8e7b66;
+  backdrop-filter: blur(16px);
+  border-radius: 12px;
+  padding: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+.anatomy-dossier-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.anatomy-dossier-head button {
+  min-height: 32px;
+  min-width: 32px;
+  font-size: 1.15rem;
+}
+.anatomy-dossier > p {
+  color: #bad0c6;
+}
+.anatomy-notices {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.anatomy-notices > button {
+  display: grid;
+  text-align: left;
+  gap: 0.2rem;
+  padding: 0.65rem;
+  background: #284237;
+  border: 1px solid #6d8965;
+  border-radius: 7px;
+}
+.anatomy-notices strong {
+  color: #e5f5ba;
+}
+.anatomy-notices span,
+.anatomy-notices small {
+  font-size: 0.67rem;
+}
+.anatomy-terrain-link {
+  display: block;
+  margin-top: 0.8rem;
+  color: #e5f5ad;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.anatomy-footnote {
+  position: absolute;
+  bottom: 0.7rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  text-align: center;
+  color: #829f96;
+  font-size: 0.61rem;
+  z-index: 2;
+  pointer-events: none;
+}
+.anatomy-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  background: #102a32;
+  color: #cfeaa9;
+}
+@media (max-width: 1100px) {
+  .terrain-experience .anatomy-shell .map-stage {
+    height: 100%;
+  }
+  .anatomy-dossier {
+    width: 15rem;
+    top: 12.5rem;
+    max-height: 18rem;
+  }
+  .anatomy-console {
+    gap: 0.7rem;
+  }
+  .anatomy-select select {
+    max-width: 10rem;
+  }
+  .anatomy-layer-switches {
+    width: 100%;
+    justify-content: center;
+  }
+}
+@media (max-width: 640px) {
+  .terrain-experience .anatomy-shell .explorer-body {
+    height: calc(100svh - 11rem);
+    min-height: 55rem;
+  }
+  .terrain-experience .anatomy-shell .map-stage {
+    min-height: 55rem !important;
+  }
+  .anatomy-title {
+    left: 1rem;
+    top: 4rem;
+  }
+  .anatomy-title h2 {
+    font-size: 1.7rem;
+  }
+  .anatomy-title > span {
+    font-size: 0.7rem;
+    max-width: 17rem;
+  }
+  .anatomy-breadcrumb {
+    left: 1rem;
+    top: 0.8rem;
+    font-size: 0.63rem;
+    gap: 0.35rem;
+  }
+  .anatomy-tools {
+    right: 0.7rem;
+    top: 0.8rem;
+  }
+  .anatomy-label {
+    font-size: 0.61rem;
+    padding: 0.3rem 0.4rem;
+  }
+  .anatomy-label small {
+    font-size: 0.52rem;
+  }
+  .anatomy-slice-label {
+    font-size: 0.56rem;
+    padding: 0.3rem 0.4rem;
+  }
+  .anatomy-console {
+    width: calc(100% - 1.4rem);
+    max-width: none;
+    padding: 0.8rem;
+    gap: 0.7rem;
+    bottom: 2.8rem;
+    justify-content: space-between;
+  }
+  .anatomy-select {
+    width: 100%;
+  }
+  .anatomy-select label {
+    flex: 1;
+    min-width: 0;
+  }
+  .anatomy-select select {
+    width: 100%;
+    max-width: none;
+    font-size: 16px;
+  }
+  .anatomy-slider {
+    flex: 1;
+    min-width: 7rem;
+  }
+  .anatomy-dossier {
+    top: auto;
+    bottom: 17.5rem;
+    right: 0.7rem;
+    left: 0.7rem;
+    width: auto;
+    max-height: 9rem;
+    padding: 0.65rem 0.8rem;
+    background: #0c232cf5;
+  }
+  .anatomy-dossier-head {
+    margin-bottom: 0.25rem;
+  }
+  .anatomy-dossier p {
+    font-size: 0.68rem;
+  }
+  .anatomy-footnote {
+    font-size: 0.53rem;
+    bottom: 0.7rem;
+  }
+  .anatomy-layer-switches button {
+    font-size: 0.6rem;
+  }
+  .anatomy-reassemble {
+    margin-left: auto;
+  }
+}
+.anatomy-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+.anatomy-slice-label[aria-pressed="true"] {
+  background: #29483f;
+  color: #efffcb;
+  box-shadow: 0 0 0 1px #dff4ae77;
+}
+.anatomy-stage button:focus-visible,
+.anatomy-stage select:focus-visible,
+.anatomy-stage input:focus-visible {
+  outline: 2px solid #ecf5b0;
+  outline-offset: 4px;
+}
+.anatomy-open-info {
+  position: absolute;
+  right: 1.3rem;
+  top: 13rem;
+  z-index: 5;
+  background: #d6eaa5;
+  color: #183b2f;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.75rem;
+  box-shadow: 0 6px 18px #0004;
+}
+@media (max-width: 640px) {
+  .anatomy-open-info {
+    top: auto;
+    bottom: 17.5rem;
+    right: 0.8rem;
+  }
+  .anatomy-stage .anatomy-label {
+    min-height: 38px;
+  }
+  .anatomy-stage .anatomy-slice-label {
+    min-height: 34px;
+  }
+}

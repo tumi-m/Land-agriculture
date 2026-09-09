@@ -240,3 +240,82 @@ test("poultry upside cannot sell more birds than placed", () => {
   };
   assert.equal(calculateBudget(b, 1.2, "poultry")!.quantity, 600);
 });
+
+import {
+  explosionOffset,
+  sliceHeight,
+  modelDistance,
+  spacedLabels,
+  noticesForDistrict,
+  LAND_LAYERS,
+} from "../src/lib/exploded-map";
+import ExplodedMap, { makePiece } from "../src/components/ExplodedMap";
+import { DISTRICTS_BY_PROVINCE } from "../src/lib/geo";
+test("exploded pieces return to their geographic positions and separation stays bounded", () => {
+  assert.deepEqual(explosionOffset([20, 10], [0, 0], 0), [0, 0]);
+  const [x, z] = explosionOffset([20, 10], [0, 0], 1);
+  assert.ok(Math.abs(Math.hypot(x, z) - 14) < 1e-8);
+  assert.deepEqual(explosionOffset([0, 0], [0, 0], 1), [0, 0]);
+  assert.ok(sliceHeight(3, 1) > sliceHeight(2, 1));
+  assert.equal(sliceHeight(0, 1), 0);
+});
+test("portrait framing gives the country enough horizontal space", () => {
+  for (const aspect of [0.36, 0.5, 0.75, 1, 1.6]) {
+    const distance = modelDistance(125, aspect);
+    const visibleWidth = 2 * distance * Math.tan((38 * Math.PI) / 360) * aspect;
+    assert.ok(visibleWidth >= 125, `model cropped at aspect ${aspect}`);
+  }
+  assert.deepEqual(
+    spacedLabels([180, 190, 195, 200], 150, 500),
+    [180, 214, 248, 282],
+  );
+});
+test("layer notices match the selected district and never leak to another province", () => {
+  const mopani = DISTRICTS_BY_PROVINCE.LP.find((d) =>
+    d.name.includes("Mopani"),
+  )!;
+  assert.equal(noticesForDistrict("LP", mopani.id)[0].id, "california-27");
+  assert.equal(noticesForDistrict("EC", mopani.id).length, 0);
+});
+test("district slice geometry preserves finite positions and a shared geographic frame", () => {
+  for (const district of DISTRICTS_BY_PROVINCE.LP) {
+    const piece = makePiece(district.id, "LP", district.geometry, true);
+    assert.equal(piece.meshes.length, 4);
+    assert.ok(piece.size.x > 0 && piece.size.z > 0);
+    const positions = piece.meshes[0].geometry.getAttribute("position");
+    assert.ok(Array.from(positions.array).every(Number.isFinite));
+    assert.deepEqual(
+      piece.meshes.map((m) => m.userData.layer),
+      LAND_LAYERS.map((l) => l.id),
+    );
+    const geometries = new Set<any>(),
+      materials = new Set<any>();
+    piece.group.traverse((o: any) => {
+      if (o.geometry) geometries.add(o.geometry);
+      if (o.material) materials.add(o.material);
+    });
+    geometries.forEach((g) => g.dispose());
+    materials.forEach((m) => m.dispose());
+  }
+});
+test("exploded view exposes keyboard selectors, layer controls and truthful data scope", () => {
+  const district = DISTRICTS_BY_PROVINCE.LP.find((d) =>
+    d.name.includes("Mopani"),
+  )!;
+  const html = renderToStaticMarkup(
+    <ExplodedMap
+      selected="LP"
+      district={district.id}
+      onSelect={() => {}}
+      onSelectDistrict={() => {}}
+      onNotice={() => {}}
+      onTerrain={() => {}}
+    />,
+  );
+  assert.match(html, /Select province to explode/);
+  assert.match(html, /Select district to peel/);
+  assert.match(html, /Peel layers/);
+  assert.match(html, /Reassemble/);
+  assert.match(html, /California/);
+  assert.match(html, /not measured soil strata/);
+});

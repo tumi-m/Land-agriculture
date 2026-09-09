@@ -45,6 +45,8 @@ const LandScene = dynamic(() => import("./LandScene"), {
   ),
 });
 
+const ExplodedMap = dynamic(() => import("./ExplodedMap"), { ssr: false });
+
 const AtlasMap = dynamic(() => import("./AtlasMap"), { ssr: false });
 
 const THEME_KEY = "all-theme";
@@ -63,11 +65,8 @@ const TABS: { id: TabId; n: string; label: string }[] = [
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
-  const [notice, setNotice] = useState<FarmNotice | null>(FARM_NOTICES[0]);
-  const [inspection, setInspection] = useState<MapInspection | null>({
-    coordinates: parcelFor("california-27")!.properties.coordinates,
-    elevation: null,
-  });
+  const [notice, setNotice] = useState<FarmNotice | null>(null);
+  const [inspection, setInspection] = useState<MapInspection | null>(null);
   const [detailState, setDetailState] = useState<DetailState>("expanded");
   const [focusMap, setFocusMap] = useState(false);
   const [compactMap, setCompactMap] = useState(false);
@@ -99,7 +98,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     setInspection(null);
     setDetailState("expanded");
   };
-  const [mapView, setMapView] = useState<"atlas" | "data">("atlas");
+  const [mapView, setMapView] = useState<"anatomy" | "atlas" | "data">(
+    "anatomy",
+  );
   const [province, setProvince] = useState<ProvinceCode | null>("LP");
   const [district, setDistrict] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>("advertised");
@@ -247,6 +248,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           className={cx(
             "explorer-shell",
             mapView === "atlas" && "atlas-shell",
+            mapView === "anatomy" && "anatomy-shell",
             (province || notice || inspection) &&
               detailState === "expanded" &&
               !focusMap &&
@@ -260,13 +262,14 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             <div>
               <p className="eyebrow">SOUTH AFRICA / LAND EXPLORER</p>
               <h1>
-                Explore land. Understand its potential<span>.</span>
+                Open the land. Explore its layers<span>.</span>
               </h1>
             </div>
             <div
               role="group"
               aria-label="Historical province measure"
               className="metric-switch"
+              hidden={mapView === "anatomy"}
             >
               {METRICS.map((m) => (
                 <button
@@ -289,6 +292,18 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             aria-label="Map presentation"
           >
             <button
+              aria-pressed={mapView === "anatomy"}
+              onClick={() => {
+                setMapView("anatomy");
+                setNotice(null);
+                setInspection(null);
+                setCompactMap(false);
+                setFocusMap(false);
+              }}
+            >
+              Exploded map
+            </button>
+            <button
               aria-pressed={mapView === "atlas"}
               onClick={() => setMapView("atlas")}
               aria-label="3D terrain"
@@ -303,7 +318,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               Compare area
             </button>
           </div>
-          <div className="map-workspace-actions">
+          <div className="map-workspace-actions" hidden={mapView === "anatomy"}>
             <button
               aria-pressed={focusMap}
               onClick={() => setFocusMap((v) => !v)}
@@ -420,7 +435,21 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </aside>
             }
             <div className="map-stage" id="land-map-stage">
-              {mapView === "atlas" ? (
+              {mapView === "anatomy" ? (
+                <ExplodedMap
+                  selected={province}
+                  district={district}
+                  onSelect={chooseProvince}
+                  onSelectDistrict={setDistrict}
+                  onNotice={chooseNotice}
+                  onTerrain={() => {
+                    setMapView("atlas");
+                    setNotice(null);
+                    setInspection(null);
+                    setFocusMap(false);
+                  }}
+                />
+              ) : mapView === "atlas" ? (
                 <AtlasMap
                   notice={notice}
                   inspection={inspection}
@@ -461,7 +490,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   dark={dark}
                 />
               )}
-              {(notice || inspection || province) && (
+              {mapView !== "anatomy" && (notice || inspection || province) && (
                 <button
                   className="map-selection-chip"
                   onClick={() => {
@@ -493,7 +522,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   <b>{detailState === "expanded" && !focusMap ? "⌄" : "↗"}</b>
                 </button>
               )}
-              <div className="map-legend" hidden={mapView === "atlas"}>
+              <div className="map-legend" hidden={mapView !== "data"}>
                 <div>
                   <span className="legend-ramp" />
                   <span>Lower</span>
@@ -514,7 +543,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <div
                 className="province-detail"
                 id="land-information-panel"
-                hidden={detailState !== "expanded" || focusMap}
+                hidden={
+                  detailState !== "expanded" ||
+                  focusMap ||
+                  mapView === "anatomy"
+                }
               >
                 {notice || inspection ? (
                   <LandDossier
@@ -553,7 +586,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </div>
             )}
           </div>
-          <div className="explorer-footnote">
+          <div className="explorer-footnote" hidden={mapView === "anatomy"}>
             <p>
               <strong>
                 {displayMetric === "advertised"
