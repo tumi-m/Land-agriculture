@@ -3266,3 +3266,43 @@ body:has(.terrain-experience)::before {
     right: 0.6rem;
   }
 }
+
+/* Provenance for the exploded map's land surface: the relief is real elevation
+   but vertically exaggerated, and the source requires attribution. */
+.anatomy-source {
+  position: absolute;
+  left: 1.4rem;
+  bottom: 0.9rem;
+  z-index: 6;
+  max-width: 34rem;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: #a9c9bb;
+  opacity: 0.85;
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .anatomy-source {
+    left: 0.9rem;
+    right: 0.9rem;
+    bottom: 0.5rem;
+    font-size: 0.6rem;
+  }
+}
+
+.anatomy-source {
+  bottom: auto;
+  top: 10.5rem;
+  font-size: 0.75rem;
+  max-width: 28rem;
+}
+@media (max-width: 1100px) {
+  .anatomy-source {
+    top: 8.3rem;
+    bottom: auto;
+    left: 1rem;
+    right: 4rem;
+    font-size: 0.75rem;
+  }
+}
