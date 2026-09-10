@@ -145,6 +145,7 @@ export default function ExplodedMap({
     provinces: Piece[];
     districts: Piece[];
     frame: () => void;
+    wake: () => void;
   } | null>(null);
   const layerMeta = LAND_LAYERS.find((l) => l.id === layer)!;
   const districtShape = selected
@@ -291,6 +292,19 @@ export default function ExplodedMap({
     let hovering: THREE.Mesh | null = null;
     let raf = 0;
     let previous = performance.now();
+    let activeUntil = previous + 1800;
+    const wake = () => {
+      activeUntil = performance.now() + 1800;
+      if (!raf && !document.hidden) raf = requestAnimationFrame(animate);
+    };
+    const visibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else wake();
+    };
+    controls.addEventListener("change", wake);
+    document.addEventListener("visibilitychange", visibility);
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let flight: {
       from: THREE.Vector3;
@@ -300,6 +314,7 @@ export default function ExplodedMap({
       time: number;
     } | null = null;
     const frame = () => {
+      wake();
       const { selected, district } = latest.current;
       const parent = provinces.find((p) => p.id === selected);
       const child = districts.find(
@@ -330,7 +345,15 @@ export default function ExplodedMap({
         time: performance.now(),
       };
     };
-    world.current = { renderer, camera, controls, provinces, districts, frame };
+    world.current = {
+      renderer,
+      camera,
+      controls,
+      provinces,
+      districts,
+      frame,
+      wake,
+    };
     const getHit = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.set(
@@ -355,6 +378,7 @@ export default function ExplodedMap({
       setAuto(false);
     };
     const move = (e: PointerEvent) => {
+      wake();
       if (
         pointerStart &&
         Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 6
@@ -390,6 +414,7 @@ export default function ExplodedMap({
       } else latest.current.onSelect(d.province);
     };
     const cancel = () => {
+      wake();
       pointerStart = null;
       hovering = null;
       setHover("");
@@ -423,9 +448,14 @@ export default function ExplodedMap({
       node.tabIndex = visible ? 0 : -1;
     };
     const animate = () => {
-      raf = requestAnimationFrame(animate);
-      const now = performance.now(),
-        dt = Math.min((now - previous) / 1000, 0.08);
+      raf = 0;
+      const now = performance.now();
+      if (
+        document.hidden ||
+        (now > activeUntil && !flight && !controls.autoRotate)
+      )
+        return;
+      const dt = Math.min((now - previous) / 1000, 0.08);
       previous = now;
       const speed = reduced ? 1 : Math.min(1, dt * 7);
       const state = latest.current;
@@ -563,13 +593,15 @@ export default function ExplodedMap({
       }
       controls.update();
       renderer.render(scene, camera);
+      if (!raf) raf = requestAnimationFrame(animate);
     };
     frame();
     setReady(true);
-    animate();
     return () => {
       cancelAnimationFrame(raf);
       resize.disconnect();
+      controls.removeEventListener("change", wake);
+      document.removeEventListener("visibilitychange", visibility);
       controls.dispose();
       renderer.domElement.removeEventListener("pointerdown", down);
       renderer.domElement.removeEventListener("pointermove", move);
@@ -598,6 +630,9 @@ export default function ExplodedMap({
   useEffect(() => {
     world.current?.frame();
   }, [selected, district]);
+  useEffect(() => {
+    world.current?.wake();
+  }, [explode, peel, hidden, layer]);
   const zoom = (factor: number) => {
     const w = world.current;
     if (!w) return;
@@ -607,6 +642,7 @@ export default function ExplodedMap({
       .multiplyScalar(factor);
     offset.setLength(THREE.MathUtils.clamp(offset.length(), 20, 700));
     w.camera.position.copy(w.controls.target).add(offset);
+    w.wake();
   };
   const chooseDistrict = (id: string) => {
     setHidden([]);
@@ -687,6 +723,7 @@ export default function ExplodedMap({
               w.controls.autoRotate = !auto;
               w.controls.autoRotateSpeed = 0.65;
               setAuto(!auto);
+              w.wake();
             }
           }}
         >
@@ -788,6 +825,9 @@ export default function ExplodedMap({
         </div>
       )}
       <div className="anatomy-mobile-dock">
+        <button className="anatomy-real-terrain" onClick={onTerrain}>
+          View real terrain ↗
+        </button>
         <button
           className="anatomy-controls-toggle"
           aria-expanded={controlsOpen}

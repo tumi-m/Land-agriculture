@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
+import InfrastructureOverlay, {
+  infrastructureHit,
+} from "./InfrastructureOverlay";
+import {
+  AERIAL_TILES,
+  AERIAL_ATTRIBUTION,
+  AERIAL_CATALOGUE,
+} from "@/lib/aerial";
+import { terrainBudget, type TerrainQuality } from "@/lib/terrain-quality";
 import type { Map as LibreMap } from "maplibre-gl";
 import { NOTICE_PARCELS, parcelFor, parcelBounds } from "@/lib/cadastre";
 import { noticeInDistrict, noticeCountLabel } from "@/lib/exploded-map";
@@ -35,6 +44,7 @@ export default function AtlasMap({
   onSelectDistrict,
   onSelect,
   onFallback,
+  onInspectInfrastructure,
 }: {
   notice: FarmNotice | null;
   inspection: MapInspection | null;
@@ -46,6 +56,7 @@ export default function AtlasMap({
   onSelectDistrict: (id: string | null) => void;
   onSelect: (code: ProvinceCode | null) => void;
   onFallback: () => void;
+  onInspectInfrastructure: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
@@ -76,8 +87,23 @@ export default function AtlasMap({
   const [demError, setDemError] = useState(false);
   const [flat, setFlat] = useState(false);
   const [satellite, setSatellite] = useState(true);
+  const [aerial, setAerial] = useState(false);
+  const [aerialState, setAerialState] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [dataOverlay, setDataOverlay] = useState(false);
   const [water, setWater] = useState(true);
+  const [power, setPower] = useState(true);
+  const [quality, setQuality] = useState<TerrainQuality>("balanced");
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [infraStatus, setInfraStatus] = useState(
+    "Zoom closer for rivers, dams & power lines",
+  );
+  const [infraRetry, setInfraRetry] = useState(0);
+  const selectInfrastructure = useCallback(() => {
+    setLayersOpen(false);
+    onInspectInfrastructure();
+  }, [onInspectInfrastructure]);
   const [elevation, setElevation] = useState<number | null>(null);
   latest.current = {
     notice,
@@ -87,7 +113,7 @@ export default function AtlasMap({
     district,
     onSelectDistrict,
     onSelect,
-    flat,
+    flat: flat || quality === "economy",
   };
 
   const frame = (duration = 1400) => {
@@ -117,7 +143,7 @@ export default function AtlasMap({
     if (extent) {
       instance.fitBounds(extent, {
         padding: { top: 90, bottom: 110, left: 30, right: 65 },
-        pitch: latest.current.flat ? 0 : 55,
+        pitch: latest.current.flat ? 0 : 50,
         bearing: -24,
         maxZoom: parcelExtent ? 14.5 : 11,
         duration: time,
@@ -129,7 +155,7 @@ export default function AtlasMap({
           PROVINCE_VIEWS[code].zoom -
           (host.current.clientWidth < 500 ? 0.5 : 0),
         bearing: -24,
-        pitch: latest.current.flat ? 0 : 62,
+        pitch: latest.current.flat ? 0 : 50,
         duration: time,
       });
     } else {
@@ -145,23 +171,38 @@ export default function AtlasMap({
   useEffect(() => {
     if (!host.current) return;
     let instance: LibreMap;
+    const saver = (
+      navigator as Navigator & {
+        connection?: { saveData?: boolean; effectiveType?: string };
+      }
+    ).connection;
+    const initialQuality: TerrainQuality =
+      saver?.saveData || saver?.effectiveType === "2g" ? "economy" : "balanced";
+    setQuality(initialQuality);
+    const budget = terrainBudget(
+      initialQuality,
+      host.current.clientWidth,
+      devicePixelRatio,
+    );
     try {
       instance = new maplibregl.Map({
         container: host.current,
         center: [30.05, -23.82],
         zoom: 8.5,
-        pitch: 62,
+        pitch: budget.terrain ? 50 : 0,
         bearing: -24,
-        maxPitch: 75,
+        maxPitch: budget.maxPitch,
+        pixelRatio: budget.pixelRatio,
+        maxTileCacheSize: budget.tileCache,
         minZoom: 3,
-        maxZoom: 15,
+        maxZoom: 19,
         maxBounds: [
           [10, -40],
           [42, -16],
         ],
         renderWorldCopies: false,
         attributionControl: false,
-        canvasContextAttributes: { antialias: true },
+        canvasContextAttributes: { antialias: false },
         style: {
           version: 8,
           sources: {
@@ -170,7 +211,7 @@ export default function AtlasMap({
               encoding: "terrarium",
               tiles: [ELEVATION_TILES],
               tileSize: 256,
-              maxzoom: 15,
+              maxzoom: 13,
               attribution: ELEVATION_ATTRIBUTION,
             },
             satellite: {
@@ -197,7 +238,8 @@ export default function AtlasMap({
               id: "relief",
               type: "raster",
               source: "relief",
-              paint: { "raster-opacity": 0 },
+              layout: { visibility: "none" },
+              paint: { "raster-opacity": 1 },
             },
             {
               id: "satellite",
@@ -227,6 +269,7 @@ export default function AtlasMap({
     );
     instance.on("error", (event) => {
       if ("sourceId" in event) {
+        if (event.sourceId === "aerial") setAerialState("error");
         if (event.sourceId === "elevation") setDemError(true);
         if (event.sourceId === "satellite" || event.sourceId === "relief")
           setTileError(true);
@@ -244,10 +287,12 @@ export default function AtlasMap({
     instance.on("moveend", syncLabels);
     instance.on("idle", syncLabels);
     instance.on("load", () => {
-      instance.setTerrain({
-        source: "elevation",
-        exaggeration: TERRAIN_EXAGGERATION,
-      });
+      instance.setSourceTileLodParams(4, 2);
+      if (budget.terrain)
+        instance.setTerrain({
+          source: "elevation",
+          exaggeration: TERRAIN_EXAGGERATION,
+        });
       instance.setSky({
         "sky-color": "#b4d8ed",
         "horizon-color": "#e7ede2",
@@ -331,6 +376,7 @@ export default function AtlasMap({
       });
       instance.on("click", "district-fill", (event) => {
         if (
+          infrastructureHit(instance, event.point) ||
           inspectModeRef.current ||
           instance.queryRenderedFeatures(event.point, {
             layers: ["notice-parcel-fill"],
@@ -366,6 +412,7 @@ export default function AtlasMap({
       });
       instance.on("click", "province-fill", (event) => {
         if (
+          infrastructureHit(instance, event.point) ||
           inspectModeRef.current ||
           instance.queryRenderedFeatures(event.point, {
             layers: ["notice-parcel-fill"],
@@ -412,6 +459,7 @@ export default function AtlasMap({
         paint: { "line-color": "#e9ff8c", "line-width": 3 },
       });
       instance.on("click", "notice-parcel-fill", (event) => {
+        if (infrastructureHit(instance, event.point)) return;
         const item = FARM_NOTICES.find(
           (n) => n.id === event.features?.[0]?.properties?.noticeId,
         );
@@ -457,6 +505,7 @@ export default function AtlasMap({
         );
       }
       instance.on("click", (event) => {
+        if (infrastructureHit(instance, event.point)) return;
         if (
           instance.queryRenderedFeatures(event.point, {
             layers: ["notice-parcel-fill"],
@@ -506,6 +555,97 @@ export default function AtlasMap({
     };
   }, []);
 
+  useEffect(() => {
+    const instance = map.current;
+    if (!loaded || !instance || !host.current) return;
+    const budget = terrainBudget(
+      quality,
+      host.current.clientWidth,
+      devicePixelRatio,
+    );
+    instance.setPixelRatio(budget.pixelRatio);
+    instance.setMaxPitch(budget.maxPitch);
+    instance.setTerrain(
+      quality === "economy" || flat
+        ? null
+        : { source: "elevation", exaggeration: TERRAIN_EXAGGERATION },
+    );
+    if (quality === "economy" || flat) {
+      instance.easeTo({ pitch: 0, duration: 0 });
+      setElevation(null);
+    }
+  }, [quality, flat, loaded]);
+  useEffect(() => {
+    const instance = map.current;
+    if (!loaded || !instance) return;
+    const visible = aerial && satellite && quality !== "economy";
+    if (visible && !instance.getSource("aerial")) {
+      instance.addSource("aerial", {
+        type: "raster",
+        tiles: [AERIAL_TILES],
+        tileSize: 256,
+        minzoom: 14,
+        maxzoom: 19,
+        bounds: [16, -35.5, 33, -22],
+        attribution: AERIAL_ATTRIBUTION,
+      });
+      instance.addLayer(
+        {
+          id: "aerial",
+          type: "raster",
+          source: "aerial",
+          minzoom: 14,
+          paint: { "raster-opacity": 1, "raster-fade-duration": 350 },
+        },
+        "province-fill",
+      );
+      instance.setSourceTileLodParams(4, 1.5, "aerial");
+    }
+    if (instance.getLayer("aerial"))
+      instance.setLayoutProperty(
+        "aerial",
+        "visibility",
+        visible ? "visible" : "none",
+      );
+    if (!visible) return;
+    setAerialState("loading");
+    const sourceLoaded = (event: maplibregl.MapSourceDataEvent) => {
+      if (event.sourceId === "aerial" && instance.isSourceLoaded("aerial"))
+        setAerialState("ready");
+    };
+    instance.on("sourcedata", sourceLoaded);
+    if (instance.isSourceLoaded("aerial")) setAerialState("ready");
+    return () => {
+      instance.off("sourcedata", sourceLoaded);
+    };
+  }, [aerial, satellite, quality, loaded]);
+  const openAerial = () => {
+    if (!loaded) return;
+    setAerial(true);
+    setSatellite(true);
+    setQuality("balanced");
+    setFlat(false);
+    setLayersOpen(false);
+    map.current?.setLayoutProperty("satellite", "visibility", "visible");
+    map.current?.setLayoutProperty("relief", "visibility", "none");
+    map.current?.easeTo({
+      zoom: Math.max(16, map.current.getZoom()),
+      pitch: 45,
+      duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 0
+        : 900,
+    });
+  };
+  useEffect(() => {
+    const close = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && layersOpen) {
+        e.stopImmediatePropagation();
+        setLayersOpen(false);
+      }
+    };
+    window.addEventListener("keydown", close, true);
+    return () => window.removeEventListener("keydown", close, true);
+  }, [layersOpen]);
   useEffect(() => {
     const instance = map.current;
     if (!loaded || !instance) return;
@@ -649,19 +789,21 @@ export default function AtlasMap({
         </button>
         <button
           disabled={!loaded}
-          aria-pressed={!flat}
+          aria-pressed={!flat && quality !== "economy"}
           onClick={() => {
+            const enable3D = flat || quality === "economy";
             map.current?.easeTo({
-              pitch: flat ? 62 : 0,
-              bearing: flat ? -24 : 0,
+              pitch: enable3D ? 50 : 0,
+              bearing: enable3D ? -24 : 0,
               duration: matchMedia("(prefers-reduced-motion: reduce)").matches
                 ? 0
                 : 700,
             });
-            setFlat(!flat);
+            if (enable3D && quality === "economy") setQuality("balanced");
+            setFlat(!enable3D);
           }}
         >
-          {flat ? "3D" : "2D"}
+          {flat || quality === "economy" ? "3D" : "2D"}
         </button>
         <button
           disabled={!loaded}
@@ -687,65 +829,176 @@ export default function AtlasMap({
             : "Select a region to explore"}
         </span>
       </div>
-      <div className="terrain-layers" role="group" aria-label="Map layers">
-        <button
-          disabled={!loaded}
-          aria-pressed={satellite}
-          onClick={() => {
-            setSatellite(!satellite);
-            setTileError(false);
-            map.current?.setPaintProperty(
-              "satellite",
-              "raster-opacity",
-              satellite ? 0 : 1,
-            );
-            map.current?.setPaintProperty(
-              "relief",
-              "raster-opacity",
-              satellite ? 1 : 0,
-            );
-          }}
-        >
-          {satellite ? "◉ Satellite" : "◉ Relief"}
-        </button>
-        <button
-          disabled={!loaded}
-          aria-pressed={dataOverlay}
-          onClick={() => setDataOverlay(!dataOverlay)}
-        >
-          Land data
-        </button>
-        <button
-          disabled={!loaded}
-          aria-pressed={water}
-          onClick={() => {
-            setWater(!water);
-            map.current?.setLayoutProperty(
-              "rivers",
-              "visibility",
-              water ? "none" : "visible",
-            );
-          }}
-        >
-          Rivers
-        </button>
-        <button
-          disabled={!loaded}
-          onClick={() => {
-            if (selected) onSelect(null);
-            else frame();
-          }}
-        >
-          All South Africa ↗
-        </button>
+      <div className="terrain-detail-status" role="status">
+        {aerial && satellite && quality !== "economy" && (
+          <span className="aerial-status">
+            {aerialState === "error"
+              ? "Some aerial tiles unavailable · overview remains underneath"
+              : aerialState === "loading"
+                ? "Loading aerial detail over the overview…"
+                : "NGI aerial imagery · historical, dates vary"}
+          </span>
+        )}
+        {infraStatus}
       </div>
+      <button
+        className="terrain-layers-toggle"
+        aria-expanded={layersOpen}
+        aria-controls="terrain-layer-sheet"
+        onClick={() => setLayersOpen(!layersOpen)}
+      >
+        {layersOpen ? "Close map layers ×" : "Map layers & detail"}
+      </button>
+      <button
+        className="terrain-aerial-toggle"
+        disabled={!loaded}
+        aria-pressed={aerial && satellite && quality !== "economy"}
+        onClick={() =>
+          aerial && satellite && quality !== "economy"
+            ? setAerial(false)
+            : openAerial()
+        }
+      >
+        {aerial && satellite && quality !== "economy"
+          ? "Aerial on · turn off"
+          : "Aerial close-up ↗"}
+      </button>
+      {layersOpen && (
+        <section
+          className="terrain-layer-sheet"
+          id="terrain-layer-sheet"
+          aria-label="Map layers and performance"
+        >
+          <div className="infrastructure-card-head">
+            <strong>Map layers & detail</strong>
+            <button onClick={() => setLayersOpen(false)}>Close ×</button>
+          </div>
+          <label>
+            Rendering quality
+            <select
+              value={quality}
+              onChange={(e) => setQuality(e.target.value as TerrainQuality)}
+            >
+              <option value="balanced">Balanced · recommended</option>
+              <option value="detail">Sharper display</option>
+              <option value="economy">Save data · 2D</option>
+            </select>
+          </label>
+          <p>
+            Start with ≈10 m satellite imagery. Aerial close-up loads much finer
+            NGI photography only near your selected location. Terrain relief
+            remains typically ≈30 m.
+          </p>
+          <a href={AERIAL_CATALOGUE} target="_blank" rel="noreferrer">
+            Aerial source & dates ↗
+          </a>
+          <small>
+            The catalogue describes 2014–2016 imagery; the local capture date is
+            unverified. Coverage and sharpness vary. This is photography draped
+            over terrain, not a 3D building survey.
+          </small>
+          <div className="terrain-layer-options">
+            <button
+              disabled={!loaded}
+              aria-pressed={satellite}
+              onClick={() => {
+                setSatellite(!satellite);
+                setTileError(false);
+                map.current?.setLayoutProperty(
+                  "satellite",
+                  "visibility",
+                  satellite ? "none" : "visible",
+                );
+                map.current?.setLayoutProperty(
+                  "relief",
+                  "visibility",
+                  satellite ? "visible" : "none",
+                );
+              }}
+            >
+              {satellite ? "Satellite imagery" : "Relief basemap"}
+            </button>
+            <button
+              disabled={!loaded}
+              aria-pressed={water}
+              onClick={() => {
+                setWater(!water);
+                map.current?.setLayoutProperty(
+                  "rivers",
+                  "visibility",
+                  water ? "none" : "visible",
+                );
+              }}
+            >
+              Rivers & dams
+            </button>
+            <button
+              disabled={!loaded}
+              aria-pressed={power}
+              onClick={() => setPower(!power)}
+            >
+              Transmission lines
+            </button>
+            <button
+              disabled={!loaded}
+              aria-pressed={dataOverlay}
+              onClick={() => setDataOverlay(!dataOverlay)}
+            >
+              Historical land totals
+            </button>
+          </div>
+          <p>
+            Local water and electricity features load as you zoom closer. Gold
+            dashes show transmission; blue shows mapped water.
+          </p>
+          <button
+            className="terrain-local-zoom"
+            onClick={() => {
+              if (quality === "economy") setQuality("balanced");
+              setFlat(false);
+              map.current?.easeTo({
+                zoom: Math.max(12, map.current?.getZoom() ?? 12),
+                pitch: 50,
+                duration: 700,
+              });
+              setLayersOpen(false);
+            }}
+          >
+            Explore nearby detail ↗
+          </button>
+          <button onClick={() => setInfraRetry((n) => n + 1)}>
+            Retry local features
+          </button>
+          <small>
+            Mapped lines do not establish a farm connection. Water features do
+            not establish water rights or current supply.
+          </small>
+        </section>
+      )}
+      {loaded && map.current && (
+        <InfrastructureOverlay
+          map={map.current}
+          water={water}
+          power={power}
+          paused={quality === "economy"}
+          retry={infraRetry}
+          onSelect={selectInfrastructure}
+          onStatus={setInfraStatus}
+        />
+      )}
       <div className="terrain-readout">
         <span>
-          {elevation === null
-            ? "Elevation loading"
-            : `Centre ≈ ${group(elevation)} m`}
+          {quality === "economy" || flat
+            ? "Elevation off in 2D"
+            : elevation === null
+              ? "Elevation loading"
+              : `Centre ≈ ${group(elevation)} m`}
         </span>
-        <span>Relief ×{TERRAIN_EXAGGERATION}</span>
+        <span>
+          {quality === "economy" || flat
+            ? "2D · terrain off"
+            : `Relief ×${TERRAIN_EXAGGERATION}`}
+        </span>
         <span className="terrain-gesture">
           Drag to explore · right-drag to orbit
         </span>

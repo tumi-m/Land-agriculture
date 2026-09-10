@@ -3070,3 +3070,199 @@ body:has(.terrain-experience)::before {
     grid-template-columns: 1fr;
   }
 }
+
+.anatomy-real-terrain {
+  background: #d5e69e !important;
+  color: #173e2d !important;
+}
+.terrain-detail-status {
+  position: absolute;
+  left: 1rem;
+  right: 5rem;
+  bottom: 7.4rem;
+  z-index: 3;
+  color: #f2fff6;
+  background: #102e30e8;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+.terrain-layers-toggle {
+  position: absolute;
+  bottom: 4rem;
+  left: 1rem;
+  z-index: 6;
+  background: #e5f5d0;
+  color: #193e2c;
+  padding: 0.65rem 1rem;
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  box-shadow: 0 3px 18px #0003;
+}
+.terrain-layer-sheet,
+.infrastructure-card {
+  position: absolute;
+  z-index: 8;
+  right: 1rem;
+  bottom: 4rem;
+  width: 23rem;
+  max-width: calc(100% - 2rem);
+  max-height: calc(100% - 7rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  color: #dbeee4;
+  background: #102e30;
+  border: 1px solid #7a9e8c;
+  border-radius: 14px;
+  padding: 0 1rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  box-shadow: 0 8px 30px #0005;
+}
+.infrastructure-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 58px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #102e30;
+  border-bottom: 1px solid #466b5d;
+  margin-bottom: 0.7rem;
+}
+.infrastructure-card-head button {
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0.5rem;
+  border: 1px solid #7a9e8c;
+  border-radius: 8px;
+}
+.terrain-layer-sheet label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+.terrain-layer-sheet select {
+  background: #1a413b;
+  color: #efffea;
+  padding: 0.7rem;
+  border: 1px solid #7a9e8c;
+  border-radius: 7px;
+  font-size: 1rem;
+}
+.terrain-layer-sheet p,
+.infrastructure-card p {
+  margin: 0.7rem 0;
+}
+.terrain-layer-sheet small,
+.infrastructure-card small {
+  display: block;
+  font-size: 0.8rem;
+  color: #c0d7ce;
+  margin-top: 0.7rem;
+}
+.terrain-layer-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.terrain-layer-options button,
+.terrain-layer-sheet > button {
+  min-height: 44px;
+  padding: 0.6rem;
+  border: 1px solid #6c9580;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+.terrain-layer-options button[aria-pressed="true"],
+.terrain-local-zoom {
+  background: #d3eaa1;
+  color: #153d2d;
+}
+.terrain-layer-sheet > button {
+  margin: 0.3rem 0.35rem 0.3rem 0;
+}
+.infrastructure-card a {
+  color: #d6f498;
+  text-decoration: underline;
+}
+.terrain-navigation button {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 1100px) {
+  .anatomy-mobile-dock .anatomy-real-terrain {
+    grid-column: 1/-1;
+    min-height: 44px;
+  }
+  .anatomy-stage .anatomy-console,
+  .anatomy-stage .anatomy-dossier {
+    bottom: calc(8rem + env(safe-area-inset-bottom));
+    max-height: min(50svh, calc(100% - 9rem));
+  }
+  .terrain-layer-sheet,
+  .infrastructure-card {
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 4rem;
+    width: auto;
+    max-width: none;
+    max-height: min(58svh, calc(100% - 5rem));
+  }
+  .terrain-detail-status {
+    left: 0.6rem;
+    right: 0.6rem;
+    font-size: 0.8rem;
+    bottom: 7.3rem;
+  }
+  .terrain-layers-toggle {
+    left: 0.6rem;
+    bottom: 4rem;
+  }
+  .terrain-readout {
+    font-size: 0.75rem;
+    gap: 0.5rem;
+  }
+  .terrain-gesture {
+    display: none;
+  }
+}
+.terrain-aerial-toggle {
+  position: absolute;
+  right: 1rem;
+  bottom: 4rem;
+  z-index: 6;
+  background: #173f37;
+  color: #e9ffd0;
+  padding: 0.65rem 1rem;
+  min-height: 44px;
+  border: 1px solid #b5d796;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  box-shadow: 0 3px 18px #0003;
+}
+.aerial-status {
+  display: block;
+  color: #d7eea9;
+  margin-bottom: 0.25rem;
+}
+.terrain-layer-sheet > a {
+  color: #d7eea9;
+  text-decoration: underline;
+}
+@media (max-width: 640px) {
+  .terrain-layers-toggle,
+  .terrain-aerial-toggle {
+    padding-inline: 0.55rem;
+    font-size: 0.8125rem;
+    max-width: calc(50% - 0.9rem);
+  }
+  .terrain-aerial-toggle {
+    right: 0.6rem;
+  }
+}

@@ -360,3 +360,75 @@ test("government land browser exposes expired deadlines and official follow-up i
   assert.match(html, /Check official DLRRD adverts/);
   assert.doesNotMatch(html, /15 available/);
 });
+
+import {
+  parseInfrastructureBounds,
+  parseInfrastructure,
+  infrastructureQuery,
+} from "../src/lib/infrastructure";
+import { terrainBudget } from "../src/lib/terrain-quality";
+test("infrastructure requests are restricted to finite, bounded South African viewports", () => {
+  const bounds = parseInfrastructureBounds("30.25,-23.95,30.45,-23.75");
+  assert.deepEqual(bounds, [30.25, -23.95, 30.45, -23.75]);
+  for (const invalid of [
+    null,
+    "",
+    "30,,-23,4",
+    "NaN,-24,31,-23",
+    "16,-35,33,-22",
+    "31,-24,30,-23",
+    "0,0,0.1,0.1",
+  ])
+    assert.throws(() => parseInfrastructureBounds(invalid));
+  const url = new URL(infrastructureQuery("power", bounds));
+  assert.equal(url.searchParams.get("resultRecordCount"), "300");
+  assert.equal(url.searchParams.get("outSR"), "4326");
+  assert.ok(url.hostname.endsWith("arcgis.com"));
+});
+test("local infrastructure preserves facts, rejects malformed geometry, deduplicates and reports limits", () => {
+  const feature = {
+    type: "Feature",
+    id: 42,
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [30, -24],
+        [30.1, -24.1],
+      ],
+    },
+    properties: {
+      OGR_FID: 42,
+      OHL_DESCRIPTION: "Test transmission",
+      VOLTAGE: 400,
+    },
+  };
+  const r = parseInfrastructure(
+    {
+      type: "FeatureCollection",
+      features: [
+        feature,
+        feature,
+        { ...feature, geometry: { type: "Point", coordinates: [30, -24] } },
+      ],
+      exceededTransferLimit: true,
+    },
+    "power",
+  );
+  assert.equal(r.data.features.length, 1);
+  assert.equal(r.data.features[0].properties?.voltage, 400);
+  assert.equal(r.data.features[0].properties?.kind, "power");
+  assert.equal(r.limited, true);
+  assert.throws(() => parseInfrastructure({ error: { code: 500 } }, "rivers"));
+  assert.equal(
+    parseInfrastructure({ type: "FeatureCollection", features: [] }, "dams")
+      .data.features.length,
+    0,
+  );
+});
+test("render budgets cap retina cost and data saver disables 3D terrain", () => {
+  assert.equal(terrainBudget("balanced", 390, 3).pixelRatio, 1.5);
+  assert.equal(terrainBudget("detail", 390, 3).pixelRatio, 2);
+  assert.equal(terrainBudget("economy", 390, 3).pixelRatio, 1);
+  assert.equal(terrainBudget("economy", 390, 3).terrain, false);
+  assert.equal(terrainBudget("balanced", 1400, 3).tileCache, 128);
+});

@@ -92,6 +92,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     setCompactMap(false);
     setDetailState("expanded");
   }, []);
+  const inspectInfrastructure = useCallback(
+    () => setDetailState("collapsed"),
+    [],
+  );
   const chooseProvince = (code: ProvinceCode | null) => {
     setProvince(code);
     setNotice(null);
@@ -301,7 +305,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 setFocusMap(false);
               }}
             >
-              Exploded map
+              {mapView === "atlas" ? "← Exploded overview" : "Exploded map"}
             </button>
             <button
               aria-pressed={mapView === "atlas"}
@@ -451,6 +455,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 />
               ) : mapView === "atlas" ? (
                 <AtlasMap
+                  onInspectInfrastructure={inspectInfrastructure}
                   notice={notice}
                   inspection={inspection}
                   onInspect={inspectPoint}
