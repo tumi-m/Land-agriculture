@@ -6,11 +6,10 @@ import InfrastructureOverlay, {
   infrastructureHit,
 } from "./InfrastructureOverlay";
 import {
-  AERIAL_TILES,
-  AERIAL_ATTRIBUTION,
   AERIAL_CATALOGUE,
 } from "@/lib/aerial";
 import { terrainBudget, type TerrainQuality } from "@/lib/terrain-quality";
+import { addMapLayers, setLayerVisibility } from "@/map/layers";
 import type { Map as LibreMap } from "maplibre-gl";
 import { NOTICE_PARCELS, parcelFor, parcelBounds } from "@/lib/cadastre";
 import { noticeInDistrict, noticeCountLabel } from "@/lib/exploded-map";
@@ -18,9 +17,8 @@ import { geoCentroid } from "d3-geo";
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import type { MapInspection } from "@/lib/map-selection";
 import { ATLAS } from "@/design/ramps";
-import { PROVINCE_SHAPES, DISTRICTS_BY_PROVINCE, DISTRICTS } from "@/lib/geo";
+import { PROVINCE_SHAPES, DISTRICTS } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
-import rivers from "@/data/sa-rivers.json";
 import { provinceBounds, ATLAS_ATTRIBUTION, TILE_BASE } from "@/lib/atlas";
 import {
   PROVINCE_VIEWS,
@@ -302,79 +300,9 @@ export default function AtlasMap({
         "horizon-fog-blend": 0.7,
         "sky-horizon-blend": 0.65,
       });
-      instance.addSource("provinces", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: PROVINCE_SHAPES.map((shape) => ({
-            type: "Feature",
-            properties: { code: shape.code },
-            geometry: shape.geometry,
-          })),
-        },
-      });
-      instance.addLayer({
-        id: "province-fill",
-        type: "fill",
-        source: "provinces",
-        paint: { "fill-color": ATLAS.provinceFill, "fill-opacity": 0 },
-      });
-      instance.addLayer({
-        id: "province-borders",
-        type: "line",
-        source: "provinces",
-        paint: {
-          "line-color": ATLAS.provinceBorders,
-          "line-width": 1.2,
-          "line-opacity": 0.5,
-          "line-dasharray": [3, 3],
-        },
-      });
-      instance.addLayer({
-        id: "province-focus",
-        type: "line",
-        source: "provinces",
-        filter: ["==", ["get", "code"], ""],
-        paint: { "line-color": ATLAS.provinceFocus, "line-width": 2.5 },
-      });
-      instance.addSource("districts", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: PROVINCE_SHAPES.flatMap((province) =>
-            DISTRICTS_BY_PROVINCE[province.code].map((shape) => ({
-              type: "Feature",
-              properties: { id: shape.id, province: province.code },
-              geometry: shape.geometry,
-            })),
-          ),
-        },
-      });
-      instance.addLayer({
-        id: "district-fill",
-        type: "fill",
-        source: "districts",
-        filter: ["==", ["get", "province"], ""],
-        paint: { "fill-color": ATLAS.districtFill, "fill-opacity": 0 },
-      });
-      instance.addLayer({
-        id: "district-borders",
-        type: "line",
-        source: "districts",
-        filter: ["==", ["get", "province"], ""],
-        paint: {
-          "line-color": ATLAS.districtBorders,
-          "line-width": 1,
-          "line-opacity": 0.45,
-        },
-      });
-      instance.addLayer({
-        id: "district-focus",
-        type: "line",
-        source: "districts",
-        filter: ["==", ["get", "id"], ""],
-        paint: { "line-color": ATLAS.districtFocus, "line-width": 3 },
-      });
+      // Everything visible comes from the registry (P1.5): no inline
+      // addSource or addLayer in components.
+      addMapLayers(instance);
       instance.on("click", "district-fill", (event) => {
         if (
           infrastructureHit(instance, event.point) ||
@@ -386,30 +314,6 @@ export default function AtlasMap({
           return;
         const id = event.features?.[0]?.properties?.id as string | undefined;
         if (id) latest.current.onSelectDistrict(id);
-      });
-      instance.addSource("rivers", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: rivers.features.map((feature) => ({
-            type: "Feature",
-            properties: feature.properties,
-            geometry: {
-              type: "MultiLineString",
-              coordinates: feature.geometry.coordinates,
-            },
-          })),
-        },
-      });
-      instance.addLayer({
-        id: "rivers",
-        type: "line",
-        source: "rivers",
-        paint: {
-          "line-color": ATLAS.rivers,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1, 10, 2.5],
-          "line-opacity": 0.8,
-        },
       });
       instance.on("click", "province-fill", (event) => {
         if (
@@ -442,22 +346,6 @@ export default function AtlasMap({
           ])
           .addTo(instance);
         return { code: shape.code, marker, button };
-      });
-      instance.addSource("notice-parcels", {
-        type: "geojson",
-        data: NOTICE_PARCELS,
-      });
-      instance.addLayer({
-        id: "notice-parcel-fill",
-        type: "fill",
-        source: "notice-parcels",
-        paint: { "fill-color": ATLAS.noticeParcelFill, "fill-opacity": 0.28 },
-      });
-      instance.addLayer({
-        id: "notice-parcel-line",
-        type: "line",
-        source: "notice-parcels",
-        paint: { "line-color": ATLAS.noticeParcelLine, "line-width": 3 },
       });
       instance.on("click", "notice-parcel-fill", (event) => {
         if (infrastructureHit(instance, event.point)) return;
@@ -581,25 +469,7 @@ export default function AtlasMap({
     if (!loaded || !instance) return;
     const visible = aerial && satellite && quality !== "economy";
     if (visible && !instance.getSource("aerial")) {
-      instance.addSource("aerial", {
-        type: "raster",
-        tiles: [AERIAL_TILES],
-        tileSize: 256,
-        minzoom: 14,
-        maxzoom: 19,
-        bounds: [16, -35.5, 33, -22],
-        attribution: AERIAL_ATTRIBUTION,
-      });
-      instance.addLayer(
-        {
-          id: "aerial",
-          type: "raster",
-          source: "aerial",
-          minzoom: 14,
-          paint: { "raster-opacity": 1, "raster-fade-duration": 350 },
-        },
-        "province-fill",
-      );
+      addMapLayers(instance);
       instance.setSourceTileLodParams(4, 1.5, "aerial");
     }
     if (instance.getLayer("aerial"))
@@ -924,11 +794,8 @@ export default function AtlasMap({
               aria-pressed={water}
               onClick={() => {
                 setWater(!water);
-                map.current?.setLayoutProperty(
-                  "rivers",
-                  "visibility",
-                  water ? "none" : "visible",
-                );
+                if (map.current)
+                  setLayerVisibility(map.current, "rivers", !water);
               }}
             >
               Rivers & dams
