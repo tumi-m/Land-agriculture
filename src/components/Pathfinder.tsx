@@ -67,11 +67,17 @@ const ENTERPRISES = [
 export default function Pathfinder({
   onProvinceChange,
   selectedProvince,
+  initialAnswers,
 }: {
   selectedProvince?: ProvinceCode | null;
   onProvinceChange?: (code: ProvinceCode) => void;
+  /** Preselects answers, for example from the guide page's URL. */
+  initialAnswers?: Partial<Answers>;
 }) {
-  const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS);
+  const [answers, setAnswers] = useState<Answers>({
+    ...EMPTY_ANSWERS,
+    ...initialAnswers,
+  });
   useEffect(() => {
     if (selectedProvince)
       setAnswers((previous) => ({ ...previous, province: selectedProvince }));

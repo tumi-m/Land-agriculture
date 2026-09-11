@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { parcelFor } from "@/lib/cadastre";
+import { onThemeChange } from "@/lib/tokens";
 import LandDossier, { NoticeBrowser } from "./LandDossier";
 import { type FarmNotice } from "@/content/farm-notices";
 import {
@@ -11,19 +12,7 @@ import {
   type MapInspection,
 } from "@/lib/map-selection";
 import LiveStatus from "./LiveStatus";
-import Pathfinder from "./Pathfinder";
 import ProvincePanel from "./ProvincePanel";
-import ProvinceRanking from "./ProvinceRanking";
-import {
-  CaseStudies,
-  CategoryTable,
-  Directory,
-  FinanceSection,
-  PolicySection,
-  ProcessSection,
-  RiskSection,
-  WhoHandlesWhat,
-} from "./Sections";
 import {
   METRICS,
   type Metric,
@@ -50,17 +39,6 @@ const ExplodedMap = dynamic(() => import("./ExplodedMap"), { ssr: false });
 const AtlasMap = dynamic(() => import("./AtlasMap"), { ssr: false });
 
 const THEME_KEY = "all-theme";
-
-type TabId = "route" | "process" | "money" | "history" | "reality" | "offices";
-
-const TABS: { id: TabId; n: string; label: string }[] = [
-  { id: "route", n: "01", label: "Your route" },
-  { id: "process", n: "02", label: "Applying" },
-  { id: "money", n: "03", label: "Money" },
-  { id: "history", n: "04", label: "History" },
-  { id: "reality", n: "05", label: "Reality" },
-  { id: "offices", n: "06", label: "Offices" },
-];
 
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
@@ -108,12 +86,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const [province, setProvince] = useState<ProvinceCode | null>("LP");
   const [district, setDistrict] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>("advertised");
-  const [tab, setTab] = useState<TabId>("route");
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [dark, setDark] = useState(false);
   const [query, setQuery] = useState("");
   const [urlReady, setUrlReady] = useState(false);
-  const referenceRef = useRef<HTMLDivElement | null>(null);
 
   const hasFeed = dataset.source === "remote";
   const adverts = useMemo(
@@ -131,8 +107,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         setInspection(null);
       }
     }
-    setDark(document.documentElement.classList.contains("dark"));
+    // Follows the `dark` class live, so WebGL readers of the tokens stay
+    // in step when the theme flips without a remount.
+    const stopTheme = onThemeChange(() => {
+      setDark(document.documentElement.classList.contains("dark"));
+    });
     setUrlReady(true);
+    return stopTheme;
   }, []);
 
   useEffect(() => {
@@ -194,14 +175,6 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     }
   };
 
-  const openTab = useCallback((id: TabId) => {
-    setTab(id);
-    referenceRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, []);
-
   const provinceAdverts = useMemo(
     () => (province ? adverts.filter((l) => l.province === province) : []),
     [adverts, province],
@@ -225,8 +198,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           <a href="#map" className="nav-current">
             Explore land
           </a>
-          <button onClick={() => openTab("process")}>How to apply</button>
-          <button onClick={() => openTab("money")}>Funding & support</button>
+          <a href="/guide#applying">How to apply</a>
+          <a href="/guide#money">Funding & support</a>
+          <a href="/guide">Guide</a>
         </nav>
         <div className="header-actions">
           <button
@@ -237,16 +211,16 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           >
             {dark ? "☀" : "☾"}
           </button>
-          <button
+          <a
             className="btn-solid route-cta"
-            onClick={() => openTab("route")}
+            href={`/guide${province ? `?province=${province}` : ""}#route`}
           >
             Find my route <span aria-hidden="true">↗</span>
-          </button>
+          </a>
         </div>
       </header>
 
-      <div className="workspace">
+      <main className="workspace">
         <section
           id="map"
           className={cx(
@@ -583,7 +557,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                       openIds={openIds}
                       onToggle={toggleOpen}
                       onClose={() => setDetailState("collapsed")}
-                      onOpenOffices={() => openTab("offices")}
+                      onOpenOffices={() => {
+                        window.location.assign("/guide#offices");
+                      }}
                       hasFeed={hasFeed}
                     />
                   </>
@@ -616,150 +592,34 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </section>
 
         <section className="next-steps" aria-label="Plan your next step">
-          <button onClick={() => openTab("route")}>
+          <a
+            href={`/guide${province ? `?province=${province}` : ""}#route`}
+          >
             <span className="step-number">01</span>
             <div>
               <h3>Find your fit</h3>
               <p>Your farming plans, category and lease options.</p>
             </div>
             <span aria-hidden="true">↗</span>
-          </button>
-          <button onClick={() => openTab("process")}>
+          </a>
+          <a href="/guide#applying">
             <span className="step-number">02</span>
             <div>
               <h3>Build your application</h3>
               <p>The process, Form ALA and a document checklist.</p>
             </div>
             <span aria-hidden="true">↗</span>
-          </button>
-          <button onClick={() => openTab("money")}>
+          </a>
+          <a href="/guide#money">
             <span className="step-number">03</span>
             <div>
               <h3>Plan the funding</h3>
               <p>Understand grants, loans and farmer support.</p>
             </div>
             <span aria-hidden="true">↗</span>
-          </button>
+          </a>
         </section>
-      </div>
-
-      {/* Everything else, one panel at a time. */}
-      <div ref={referenceRef} className="reference-area scroll-mt-24">
-        <div className="sticky top-[4.5rem] z-30 border-b border-rule bg-paper/90 backdrop-blur">
-          <div className="mx-auto max-w-[96rem] overflow-x-auto px-4 lg:px-6">
-            <div
-              role="tablist"
-              aria-label="Reference"
-              className="flex gap-1 whitespace-nowrap py-1"
-            >
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  role="tab"
-                  id={`tab-${t.id}`}
-                  aria-selected={tab === t.id}
-                  aria-controls={`panel-${t.id}`}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  tabIndex={tab === t.id ? 0 : -1}
-                  onKeyDown={(event) => {
-                    const current = TABS.findIndex((item) => item.id === t.id);
-                    const next =
-                      event.key === "ArrowRight"
-                        ? (current + 1) % TABS.length
-                        : event.key === "ArrowLeft"
-                          ? (current - 1 + TABS.length) % TABS.length
-                          : event.key === "Home"
-                            ? 0
-                            : event.key === "End"
-                              ? TABS.length - 1
-                              : -1;
-                    if (next < 0) return;
-                    event.preventDefault();
-                    setTab(TABS[next].id);
-                    document.getElementById(`tab-${TABS[next].id}`)?.focus();
-                  }}
-                  className={cx(
-                    "flex items-baseline gap-2 border-b-2 px-3 py-2 text-sm transition-colors",
-                    tab === t.id
-                      ? "border-clay text-ink"
-                      : "border-transparent text-muted hover:text-ink",
-                  )}
-                >
-                  <span className="num text-2xs text-faint">{t.n}</span>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <main className="mx-auto max-w-[96rem] px-4 pb-20 pt-10 lg:px-6">
-          <Panel id="route" tab={tab} title="Which category are you?">
-            <Pathfinder
-              onProvinceChange={(code) => {
-                setProvince(code);
-              }}
-              selectedProvince={province}
-            />
-          </Panel>
-
-          <Panel id="process" tab={tab} title="Applying">
-            <WhoHandlesWhat />
-            <div className="mt-10">
-              <ProcessSection />
-            </div>
-            <div className="mt-12">
-              <h3 className="font-display text-opener leading-tight text-ink">
-                The four categories
-              </h3>
-              <div className="mt-4">
-                <CategoryTable />
-              </div>
-            </div>
-          </Panel>
-
-          <Panel id="money" tab={tab} title="Money">
-            <FinanceSection />
-          </Panel>
-
-          <Panel id="history" tab={tab} title="History">
-            <PolicySection />
-            <div className="mt-12">
-              <h3 className="font-display text-opener leading-tight text-ink">
-                What has worked
-              </h3>
-              <div className="mt-5">
-                <CaseStudies />
-              </div>
-            </div>
-          </Panel>
-
-          <Panel id="reality" tab={tab} title="What goes wrong">
-            <RiskSection />
-          </Panel>
-
-          <Panel id="offices" tab={tab} title="Offices">
-            <Directory />
-            <div className="mt-12">
-              <h3 className="font-display text-opener leading-tight text-ink">
-                Hectares by province
-              </h3>
-              <div className="mt-4">
-                <ProvinceRanking
-                  selected={province}
-                  onSelect={(code) => {
-                    chooseProvince(code);
-                    document
-                      .getElementById("map")
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                />
-              </div>
-            </div>
-          </Panel>
-        </main>
-      </div>
+      </main>
 
       <footer className="border-t border-ink">
         <div className="mx-auto max-w-[96rem] px-4 py-7 lg:px-6">
@@ -773,35 +633,5 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
       </footer>
     </div>
-  );
-}
-
-function Panel({
-  id,
-  tab,
-  title,
-  children,
-}: {
-  id: TabId;
-  tab: TabId;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      hidden={tab !== id}
-      role="tabpanel"
-      id={`panel-${id}`}
-      aria-labelledby={`tab-${id}`}
-      tabIndex={-1}
-      className="animate-rise"
-    >
-      <div className="opener">
-        <h2 className="font-display text-opener leading-none text-ink">
-          {title}
-        </h2>
-      </div>
-      <div className="mt-7">{children}</div>
-    </section>
   );
 }
