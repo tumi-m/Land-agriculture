@@ -1,0 +1,17 @@
+{
+  "nodes": {
+    "build-topo": {
+      "description": "District boundaries to src/data/sa-districts.topo.json",
+      "command": ["node", "scripts/build-topo.mjs", "0.05"],
+      "inputs": ["scripts/build-topo.mjs"],
+      "outputs": ["src/data/sa-districts.topo.json"]
+    },
+    "build-dem": {
+      "description": "Terrain tiles to public/data/sa-dem.png + .json",
+      "command": ["node", "scripts/build-dem.mjs", "720"],
+      "inputs": ["scripts/build-dem.mjs"],
+      "outputs": ["public/data/sa-dem.png", "public/data/sa-dem.json"]
+    }
+  },
+  "edges": []
+}

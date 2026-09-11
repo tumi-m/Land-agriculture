@@ -1,14 +1,15 @@
-# Baseline (commit 9db1d95, 11 Sep 2026)
+# Baseline (measured 2026-09-11)
 
 Measured on a Codespace (4-core, 16 GB, Node 24.20.0). Later tasks compare
 bundle size against this table.
 
 | Check | Result |
 |---|---|
-| `npm ci` | Pass |
-| `npm run typecheck` | Pass |
-| `npm test` | Pass (28 tests) |
-| `npm run build` | Pass, 62 s wall |
+| `npm run typecheck` | Pass, 9.2 s |
+| `npm run lint` | Pass, 7.8 s, zero warnings |
+| `npm run graph` | Pass, 2.4 s, no violations |
+| `npm test` | Pass (33 tests) |
+| `npm run budget` | Pass, / first-load 197.1 kB of 230 kB |
 
 ## Routes
 

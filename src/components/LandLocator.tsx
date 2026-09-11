@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parcelFor } from "@/lib/cadastre";
 import LandDossier, { NoticeBrowser } from "./LandDossier";
-import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
+import { type FarmNotice } from "@/content/farm-notices";
 import {
   toggleDetailState,
   type DetailState,

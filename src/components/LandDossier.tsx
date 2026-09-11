@@ -4,8 +4,6 @@ import type { MapInspection } from "@/lib/map-selection";
 import type { Climate } from "@/lib/climate";
 import {
   FARM_NOTICES,
-  NOTICE_CHECKED,
-  NOTICE_INDEX,
   noticeUrl,
   noticeStatus,
   type FarmNotice,
@@ -18,14 +16,12 @@ function ClimateProfile({ point }: { point: MapInspection }) {
   const [data, setData] = useState<Climate | null>(null),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
+  const [lon, lat] = point.coordinates;
   useEffect(() => {
     const controller = new AbortController();
     setData(null);
     setError("");
-    fetch(
-      `/api/climate?lon=${point.coordinates[0]}&lat=${point.coordinates[1]}`,
-      { signal: controller.signal },
-    )
+    fetch(`/api/climate?lon=${lon}&lat=${lat}`, { signal: controller.signal })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
@@ -35,7 +31,7 @@ function ClimateProfile({ point }: { point: MapInspection }) {
         if (e.name !== "AbortError") setError(e.message);
       });
     return () => controller.abort();
-  }, [point.coordinates[0], point.coordinates[1], attempt]);
+  }, [lon, lat, attempt]);
   return (
     <section>
       <p className="eyebrow">CLIMATE AT SELECTED POINT</p>

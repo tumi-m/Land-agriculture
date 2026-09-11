@@ -1,7 +1,9 @@
 {
   "name": "Asbonge Land Locator",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y gdal-bin poppler-utils && npm ci && npx playwright install --with-deps chromium",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "postCreateCommand": "npm ci && npx playwright install --with-deps chromium && npm run hooks",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {

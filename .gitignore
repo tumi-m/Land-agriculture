@@ -21,3 +21,4 @@ scripts/.cache-dem/
 
 test-results/
 playwright-report/
+.pipeline-cache/

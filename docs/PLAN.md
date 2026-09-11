@@ -214,6 +214,93 @@ Exit demo: open a new Codespace, run `npm run dev`, then `/ship` goes green.
 
 ---
 
+### Phase 0.5: Loop and graph engineering
+
+Goal: the guardrails themselves are enforced — the loop catches breakage before a commit, and the dependency graph carries the architecture rules the later phases depend on. No product behaviour changes.
+
+Exit demo: a commit with a type error is refused by the hook; a component overlap, a changed screenshot, an oversized bundle or an architecture violation each fail the check they belong to.
+
+#### P0.5a · Pre-commit hook · S
+- **Files:** new `.githooks/pre-commit` (executable), new `.githooks/README.md`; `package.json` script `hooks`; `.opencode/commands/verify.md` gains `npm run graph`.
+- **Do:** the hook runs the fast checks (`npm run typecheck && npm run lint && npm test`) and nothing else; build and e2e stay in `/ship`. `npm run hooks` runs `git config core.hooksPath .githooks` (Git has no native install step). The README says to run it once after cloning, and that `--no-verify` skips it when intentional.
+- **Check:** `npm run hooks` prints the active path; a staged change with a type error is refused by the hook.
+- **Done when:** a fresh clone that runs `npm run hooks` gets the same fast gate CI has.
+
+#### P0.5b · Overlap check wired · S
+- **Files:** `e2e/chrome.spec.ts` (new).
+- **Do:** use the existing `e2e/helpers/overlap.ts` (currently an orphan). Scope it to what passes today: the visible chrome selectors the phone and desktop layouts already keep apart at 390×844 and 1440×900. The full `[data-overlay], [data-chrome]` scope stays out until P3.1 builds the shell.
+- **Check:** `npm run e2e` passes with the new spec; breaking the layout fails it.
+
+#### P0.5c · Screenshot regression · M
+- **Files:** `e2e/shots.spec.ts`, `playwright.config.ts`, `package.json` script `shots:update`.
+- **Do:** move the four states onto Playwright's `toHaveScreenshot` with a small `maxDiffPixelRatio` tolerance, `animations: "disabled"`, and baselines committed under `e2e/shots.spec.ts-snapshots/`. Canvas regions (WebGL under swiftshader) are masked if they prove nondeterministic between runs. `npm run shots` keeps writing the human-review PNGs to `test-results/shots/`; the assertion spec runs in `npm run e2e`. `shots:update` refreshes baselines.
+- **Check:** `npm run e2e` passes twice in a row unchanged; an intentional visual change fails until `npm run shots:update` accepts it.
+
+#### P0.5d · Bundle budget gate · S
+- **Files:** new `scripts/budget.mjs`; `package.json` script `budget`; `.github/workflows/ci.yml` runs `npm run budget` after `npm run build`.
+- **Do:** parse the build output's first-load JS for `/` and fail above the baseline in `docs/baseline.md` plus 15% (230 kB). The limit lives at the top of the script with a comment pointing at the baseline.
+- **Check:** `npm run budget` passes on the current build; lowering the limit makes it exit 1 with the offending route and size.
+
+#### P0.5e · CI hygiene · S
+- **Files:** `.github/workflows/ci.yml`.
+- **Do:** add a `concurrency` group that cancels superseded runs on the same ref. Pin the CI Node version explicitly (22.x, matching the devcontainer).
+- **Check:** the workflow YAML parses; a push to an already-running branch cancels the older run.
+
+#### P0.5f · Graph rules for what comes next · M
+- **Files:** `.dependency-cruiser.cjs`.
+- **Do:** add rules the later phases rely on, at `warn` until their phase lands and then promoted to `error`: browser code never imports Node builtins (`fs`, `path`, `os`, `child_process`); `src/app/api` may not be imported from outside `src/app` (callers go through `fetch`); `scripts` reach only `src/lib`, `src/content` and `src/data` (with a carve-out for `scripts/test-explorer.tsx`); one state library (`zustand` only inside `src/state`, future-proofing P1.3).
+- **Check:** `npm run graph` passes with the new rules; a deliberate violation names the right rule, then is removed.
+
+#### P0.5g · Graph reporter · S
+- **Files:** `package.json` script `graph:svg`.
+- **Do:** run dependency-cruiser with the `archi`/`dot` reporter into gitignored `test-results/graph/` for on-demand architecture review. No output committed.
+- **Check:** `npm run graph:svg` produces the graph file; nothing new in `git status`.
+
+---
+
+### Phase 0.6: Cloud Builder alignment
+
+Goal: the repo meets the Cloud Builder operating standard in full. Phases 0 and 0.5 already covered the non-negotiables, the module graph and most of the loop. This phase closes the seven gaps the audit found, with measured numbers before and after: check 13.4 s (typecheck 5.4, lint 4.8, graph 1.6, test 1.5), full e2e 3.9 min, bundle 197.1 kB of 230 kB, 6 pre-existing lint warnings.
+
+Exit demo: a rebuilt container is ready without apt on postCreate; `npm run lint` prints nothing; `npm run e2e:fast` passes in under half the full-suite time; `npm test -- format` runs one file; `npm run measure` rewrites the baseline table in place; `npm run data:all` runs each data pipeline exactly when its inputs change; and a block kind the registry forgot fails `tests/block-parity.test.ts`.
+
+#### P0.6a · Devcontainer cold start · S — CB1
+- **Files:** new `.devcontainer/Dockerfile`; `.devcontainer/devcontainer.json`; `docs/baseline.md` (rebuild notes).
+- **Do:** install gdal-bin and poppler-utils in a Dockerfile `RUN` so the layer survives npm-lock changes; reference `build.dockerfile` in the config; postCreateCommand becomes `npm ci && npx playwright install --with-deps chromium && npm run hooks` so the commit gate survives rebuilds. No registry publication.
+- **Check:** postCreate contains no apt call; on a rebuilt container `gdalinfo --version` and `npm test` work with no manual steps.
+
+#### P0.6b · Zero-warning lint · S — CB2
+- **Files:** `src/components/LandDossier.tsx`, `src/components/LandLocator.tsx`; `package.json` lint script.
+- **Do:** remove the unused imports (`NOTICE_CHECKED`, `NOTICE_INDEX`, `FARM_NOTICES`); extract the `point.coordinates` expression in the LandDossier effect into a variable per the lint's own suggestion; lint becomes `eslint src --max-warnings 0`.
+- **Check:** `npm run lint` prints nothing and exits 0; `npm run check` still passes.
+
+#### P0.6c · Two-speed e2e · S — CB3
+- **Files:** `package.json` scripts (`e2e:fast`).
+- **Do:** `e2e:fast` runs smoke + chrome specs only — the fast half of the loop. The full 9-test suite stays behind `npm run e2e` for ship and CI.
+- **Check:** `npm run e2e:fast` passes in well under half the current 3.9 min.
+
+#### P0.6d · Single-test runs · S — CB4
+- **Files:** `scripts/test.mjs`.
+- **Do:** accept an argv substring filter; when given, only test files whose path matches are bundled and run. No filter keeps today's behaviour.
+- **Check:** `npm test -- format` runs exactly one file in under 2 s; bare `npm test` still runs 31 tests.
+
+#### P0.6e · Measure command · S — CB5
+- **Files:** new `scripts/measure.mjs`; `package.json` script `measure`.
+- **Do:** time the four fast checks, read the bundle size from the last build's manifest, and rewrite the check table in `docs/baseline.md` with a date stamp — update in place, never append.
+- **Check:** two consecutive runs produce one table with a fresh date.
+
+#### P0.6f · Explicit data DAG · M — CB6
+- **Files:** new `scripts/pipelines.json`, new `scripts/run-pipeline.mjs`; `package.json` script `data:all`.
+- **Do:** declare the build-time pipelines as a DAG: nodes `build-topo` (outputs `src/data/sa-districts.topo.json`) and `build-dem` (outputs `public/data/sa-dem.png` + `.json`); no edges today (they run in parallel), and the structure accepts the P2 raster → stats → district-stats chain. The runner executes in topological order, hashing each declared input and output set and skipping a node whose inputs are unchanged (hash manifest in gitignored `.pipeline-cache/`). Each node's command comes from the JSON, not the runner.
+- **Check:** `npm run data:all` runs both pipelines; an immediate second run reports both skipped; touching a declared input forces a re-run.
+
+#### P0.6g · Engine↔registry parity test · S — CB7
+- **Files:** new `tests/block-parity.test.ts`.
+- **Do:** enumerate every block `kind` the pathfinder engine can emit and assert `BlockView` renders each sample block with meaningful output and no "undefined", "NaN" or empty string in the markup.
+- **Check:** the test passes; a probe that deletes one BlockView case fails it; the probe is removed.
+
+---
+
 ### Phase 1: Foundations
 
 Goal: make the code safe for a fast model to change, and put the pieces of the new experience in place without changing what users see (except the fixes above).
