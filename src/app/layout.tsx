@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Manrope, Inter } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "../styles/tokens.css";
+import "../styles/ui.css";
 import "./globals.css";
 import "../styles/explorer.css";
 import "../styles/terrain.css";
