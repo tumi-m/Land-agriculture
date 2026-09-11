@@ -44,7 +44,7 @@ export default function InfrastructureOverlay({
   onSelect: () => void;
   onStatus: (status: string) => void;
 }) {
-  const [selected, setSelected] = useState<Record<string, any> | null>(null);
+  const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   useEffect(() => {
     let stopped = false,
       timer: ReturnType<typeof setTimeout>,
@@ -219,7 +219,7 @@ export default function InfrastructureOverlay({
           aria-label="Selected infrastructure"
         >
           <div className="infrastructure-card-head">
-            <strong>{selected.name}</strong>
+            <strong>{String(selected.name ?? "")}</strong>
             <button
               onClick={() => setSelected(null)}
               aria-label="Close infrastructure information"
@@ -229,11 +229,14 @@ export default function InfrastructureOverlay({
           </div>
           <p>
             {source.name}
-            {selected.classification ? ` · ${selected.classification}` : ""}
+            {selected.classification
+              ? ` · ${String(selected.classification)}`
+              : ""}
           </p>
           {selected.voltage !== null && selected.voltage !== undefined && (
             <p>
-              Recorded voltage: {selected.voltage} (source units unspecified)
+              Recorded voltage: {String(selected.voltage)} (source units
+              unspecified)
             </p>
           )}
           {selected.hectares !== null && selected.hectares !== undefined && (
@@ -245,7 +248,9 @@ export default function InfrastructureOverlay({
               ha
             </p>
           )}
-          {selected.status && <p>Recorded status: {selected.status}</p>}
+          {typeof selected.status === "string" && selected.status !== "" && (
+            <p>Recorded status: {selected.status}</p>
+          )}
           <p>{source.note}</p>
           <a href={source.url} target="_blank" rel="noreferrer">
             {source.credit} ↗
@@ -253,7 +258,7 @@ export default function InfrastructureOverlay({
           <small>
             Dataset updated {source.updated}.{" "}
             {selected.sourceYear
-              ? `Source map year ${selected.sourceYear}.`
+              ? `Source map year ${String(selected.sourceYear)}.`
               : ""}{" "}
             Not live conditions.
           </small>

@@ -79,7 +79,15 @@ const clean = (value: unknown) =>
   typeof value === "string" && value.trim() && !value.startsWith("#")
     ? value.trim().slice(0, 250)
     : "";
-export function parseInfrastructure(raw: any, kind: InfrastructureKind) {
+export function parseInfrastructure(
+  raw: {
+    error?: unknown;
+    type?: string;
+    features?: unknown[];
+    exceededTransferLimit?: boolean;
+  },
+  kind: InfrastructureKind,
+) {
   if (
     raw?.error ||
     raw?.type !== "FeatureCollection" ||
@@ -93,18 +101,23 @@ export function parseInfrastructure(raw: any, kind: InfrastructureKind) {
   let vertices = 0,
     limited = !!raw.exceededTransferLimit || raw.features.length >= 300;
   const seen = new Set<string>();
-  for (const f of raw.features.slice(0, 300)) {
+  for (const feature of raw.features.slice(0, 300)) {
+    const f = feature as {
+      geometry?: { type?: string; coordinates?: unknown };
+      properties?: Record<string, unknown>;
+      id?: unknown;
+    };
     if (
       !f?.geometry ||
       !(
         kind === "dams"
           ? ["Polygon", "MultiPolygon"]
           : ["LineString", "MultiLineString"]
-      ).includes(f.geometry.type)
+      ).includes(f.geometry.type ?? "")
     )
       continue;
     let count = 0;
-    const valid = (coords: any): boolean =>
+    const valid = (coords: unknown): boolean =>
       Array.isArray(coords) &&
       coords.length > 0 &&
       (typeof coords[0] === "number"
@@ -132,7 +145,7 @@ export function parseInfrastructure(raw: any, kind: InfrastructureKind) {
     result.features.push({
       type: "Feature",
       id,
-      geometry: f.geometry,
+      geometry: f.geometry as GeoJSON.Geometry,
       properties: {
         kind,
         name,
