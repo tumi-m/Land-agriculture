@@ -15,9 +15,15 @@ Next.js 15 (App Router), React 19, TypeScript strict, Tailwind 3. three.js for t
 7. One task, one small diff. Don't start the next task.
 
 ## The loop
-- Fast, after every change: `npm run typecheck && npm run lint && npm test`
+- Fast, after every change: `npm run check` (typecheck, lint, dependency graph, unit tests)
 - Before a commit: `npm run build && npm run e2e && npm run shots`, then look at the new PNGs in `test-results/shots/`
 - The same check failing three times means stop editing: add a test or logging that isolates it, or split the task.
+- CI runs `npm run check` and `npm run build` on every push and PR, then e2e with screenshots as an artifact.
+
+## Dependency graph
+- `npm run graph` cruises `src` and `scripts` against `.dependency-cruiser.cjs`. It is part of `npm run check`.
+- No circular dependencies. MapLibre stays inside `AtlasMap.tsx`/`InfrastructureOverlay.tsx` and three.js inside `ExplodedMap.tsx`/`LandScene.tsx` until their refactor tasks move them; `src/state`, `src/content` and `src/data` never import components, scene or map code.
+- Orphans and unreachable modules are warnings: delete dead code or wire it up rather than let the warning sit.
 
 ## Where things live
 - `src/state/` explorer store and URL grammar. Add a selection kind there first.

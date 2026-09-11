@@ -13,7 +13,9 @@
     "build:sites": "opennextjs-cloudflare build && node scripts/stage-sites.mjs",
     "data:dem": "node scripts/build-dem.mjs",
     "e2e": "playwright test",
-    "shots": "playwright test e2e/shots.spec.ts"
+    "shots": "playwright test e2e/shots.spec.ts",
+    "graph": "depcruise src scripts --config .dependency-cruiser.cjs",
+    "check": "npm run typecheck && npm run lint && npm run graph && npm test"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -35,6 +37,7 @@
     "@types/three": "^0.171.0",
     "@types/topojson-client": "^3.1.5",
     "autoprefixer": "^10.4.20",
+    "dependency-cruiser": "^18.2.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.25",
