@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "ollama-cloud": {
+      "models": {
+        "deepseek-v4.1-flash:cloud": {
+          "modelID": "deepseek-v4.1-flash:cloud",
+          "name": "DeepSeek V4.1 Flash (Ollama Cloud)"
+        }
+      }
+    },
+    "clinepass": {
+      "models": {
+        "deepseek-v4.1-flash": {
+          "modelID": "deepseek-v4.1-flash",
+          "name": "DeepSeek V4.1 Flash (ClinePass)"
+        }
+      }
+    }
+  }
+}
