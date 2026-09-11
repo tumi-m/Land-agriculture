@@ -47,11 +47,13 @@ const config: Config = {
       transitionTimingFunction: { out: 'cubic-bezier(0.16, 1, 0.3, 1)' },
       keyframes: {
         rise: { from: { opacity: '0', transform: 'translateY(10px)' }, to: { opacity: '1', transform: 'none' } },
+        'fade-up': { from: { opacity: '0', transform: 'translateY(14px)' }, to: { opacity: '1', transform: 'none' } },
         halo: { '0%': { transform: 'scale(0.7)', opacity: '0.75' }, '100%': { transform: 'scale(2.6)', opacity: '0' } },
         draw: { from: { transform: 'scaleX(0)' }, to: { transform: 'scaleX(1)' } },
       },
       animation: {
         rise: 'rise 380ms cubic-bezier(0.16, 1, 0.3, 1) both',
+        'fade-up': 'fade-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both',
         halo: 'halo 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite',
         draw: 'draw 640ms cubic-bezier(0.16, 1, 0.3, 1) both',
       },

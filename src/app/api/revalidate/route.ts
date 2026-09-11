@@ -19,10 +19,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const provided =
-    request.headers.get('x-webhook-secret') ??
-    new URL(request.url).searchParams.get('secret') ??
-    '';
+  const provided = request.headers.get('x-webhook-secret') ?? '';
 
   // Constant-time-ish comparison: same length check first, then full scan.
   const ok =

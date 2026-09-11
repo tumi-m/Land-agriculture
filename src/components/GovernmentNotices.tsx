@@ -7,6 +7,7 @@ import {
   type FarmNotice,
 } from "@/content/farm-notices";
 import { parcelFor } from "@/lib/cadastre";
+import { plural } from "@/lib/format";
 export default function GovernmentNotices({
   notices,
   onSelect,
@@ -31,7 +32,7 @@ export default function GovernmentNotices({
     <div className="government-notices">
       <p className="notice-coverage">
         {notices.length
-          ? `${notices.length} reviewed adverts · ${open} with a deadline ahead`
+          ? `${notices.length} reviewed ${plural(notices.length, "advert", "adverts")} · ${open} with a deadline ahead`
           : "Coverage incomplete for this area"}
       </p>
       <p className="dossier-note">

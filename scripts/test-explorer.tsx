@@ -361,6 +361,15 @@ test("government land browser exposes expired deadlines and official follow-up i
   assert.doesNotMatch(html, /15 available/);
 });
 
+test("a single notice reads '1 reviewed advert', not 'adverts'", () => {
+  const sole = FARM_NOTICES.find((n) => n.id === "cornucopia") ?? FARM_NOTICES[0];
+  const html = renderToStaticMarkup(
+    <GovernmentNotices notices={[sole]} onSelect={() => {}} />,
+  );
+  assert.match(html, /1 reviewed advert /);
+  assert.doesNotMatch(html, /1 reviewed adverts/);
+});
+
 import {
   parseInfrastructureBounds,
   parseInfrastructure,
