@@ -1,4 +1,5 @@
 import { DISTRICTS_BY_PROVINCE } from "./geo";
+import { LAYERS } from "@/design/ramps";
 import {
   FARM_NOTICES,
   noticeStatus,
@@ -9,28 +10,28 @@ export const LAND_LAYERS = [
   {
     id: "land",
     name: "Land & boundaries",
-    colour: "#80bfa3",
+    colour: LAYERS.land,
     description:
       "District boundaries provide the geographic frame. Open a verified parcel in the terrain view for its cadastral outline.",
   },
   {
     id: "soil",
     name: "Soil & suitability",
-    colour: "#cfaa7c",
+    colour: LAYERS.soil,
     description:
       "Soil samples and field assessments are still required. This slice organises soil information; its thickness and colour do not represent measured geology.",
   },
   {
     id: "climate",
     name: "Water & climate",
-    colour: "#66c6dc",
+    colour: LAYERS.climate,
     description:
       "Inspect a point in the terrain view for NASA rainfall and temperature estimates. River proximity does not establish irrigation rights.",
   },
   {
     id: "opportunity",
     name: "Government land",
-    colour: "#cfe78b",
+    colour: LAYERS.opportunity,
     description:
       "Reviewed government lease notices linked to this district. Confirm the deadline and offer status in the source notice.",
   },

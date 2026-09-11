@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Manrope, Inter } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
+import "../styles/tokens.css";
 import "./globals.css";
+import "../styles/explorer.css";
+import "../styles/terrain.css";
+import "../styles/terrain-phone.css";
+import "../styles/dossier.css";
+import "../styles/anatomy.css";
+import "../styles/panels.css";
+import "../styles/provenance.css";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -46,8 +54,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f8f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c1b17" },
+    // Literal colours: meta theme-color takes no CSS variables.
+    // They mirror --paper in src/styles/tokens.css.
+    { media: "(prefers-color-scheme: light)", color: "#F4F3EE" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E1513" },
   ],
 };
 

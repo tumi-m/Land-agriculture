@@ -20,6 +20,7 @@ const config: Config = {
         'clay-soft': rgb('--clay-soft'),
         good: rgb('--good'),
         critical: rgb('--critical'),
+        warn: rgb('--warn'),
         // Sequential ramp. Magnitude only — never used for identity.
         land: {
           50: rgb('--land-50'),

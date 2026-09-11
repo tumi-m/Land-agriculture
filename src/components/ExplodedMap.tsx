@@ -29,6 +29,8 @@ import {
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import GovernmentNotices from "./GovernmentNotices";
 import type { ProvinceCode } from "@/lib/types";
+import { SCENE } from "@/design/ramps";
+import { onThemeChange, readToken } from "@/lib/tokens";
 
 type Piece = {
   id: string;
@@ -232,8 +234,8 @@ export default function ExplodedMap({
     controls.maxPolarAngle = 1.35;
     controls.minPolarAngle = 0.15;
     controls.enablePan = true;
-    scene.add(new THREE.HemisphereLight("#d8fff1", "#35424d", 2.2));
-    const sun = new THREE.DirectionalLight("#fff4db", 3);
+    scene.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 2.2));
+    const sun = new THREE.DirectionalLight(SCENE.sun, 3);
     sun.position.set(-60, 120, 60);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -246,7 +248,7 @@ export default function ExplodedMap({
     });
     sun.shadow.bias = -0.001;
     scene.add(sun);
-    const rim = new THREE.DirectionalLight("#73dbe0", 2);
+    const rim = new THREE.DirectionalLight(SCENE.rim, 2);
     rim.position.set(80, 45, -100);
     scene.add(rim);
     const floor = new THREE.Mesh(
@@ -311,7 +313,7 @@ export default function ExplodedMap({
             new THREE.Line(
               new THREE.BufferGeometry().setFromPoints(points),
               new THREE.LineBasicMaterial({
-                color: "#5fb8d6",
+                color: SCENE.water,
                 transparent: true,
                 opacity: 0.85,
               }),
@@ -345,7 +347,7 @@ export default function ExplodedMap({
       const outline = new THREE.LineSegments(
         new THREE.EdgesGeometry(p.meshes[0].geometry, 25),
         new THREE.LineBasicMaterial({
-          color: "#a1cdb9",
+          color: SCENE.footprint,
           transparent: true,
           opacity: 0.4,
         }),
@@ -363,7 +365,7 @@ export default function ExplodedMap({
       const line = new THREE.Line(
         geometry,
         new THREE.LineDashedMaterial({
-          color: "#96b9a7",
+          color: SCENE.tether,
           transparent: true,
           opacity: 0.32,
           dashSize: 0.5,
@@ -373,7 +375,12 @@ export default function ExplodedMap({
       scene.add(line);
       return { piece: p, line };
     });
-    const grid = new THREE.GridHelper(220, 22, "#24404a", "#182f37");
+    const grid = new THREE.GridHelper(
+      220,
+      22,
+      SCENE.gridPrimary,
+      SCENE.gridSecondary,
+    );
     grid.position.y = -1.2;
     scene.add(grid);
     const ray = new THREE.Raycaster(),
@@ -381,6 +388,12 @@ export default function ExplodedMap({
     let pointerStart: { x: number; y: number } | null = null;
     let moving = false;
     let hovering: THREE.Mesh | null = null;
+    // Hover is the one interactive state in this scene, so it follows the
+    // accent token and refreshes when the theme flips.
+    let accent = readToken("--clay");
+    const stopTheme = onThemeChange(() => {
+      accent = readToken("--clay");
+    });
     let raf = 0;
     let previous = performance.now();
     let activeUntil = previous + 1800;
@@ -559,10 +572,10 @@ export default function ExplodedMap({
         material.opacity = 1;
         material.color.set(
           muted
-            ? "#729f92"
+            ? SCENE.modelBase
             : p.id === hovering?.userData.id
-              ? "#d5eea2"
-              : "#729f92",
+              ? accent
+              : SCENE.modelBase,
         );
         project(
           labels.current.get(p.id),
@@ -690,6 +703,7 @@ export default function ExplodedMap({
     frame();
     setReady(true);
     return () => {
+      stopTheme();
       reliefCancelled = true;
       cancelAnimationFrame(raf);
       resize.disconnect();

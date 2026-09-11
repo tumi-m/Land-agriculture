@@ -17,6 +17,7 @@ import { noticeInDistrict, noticeCountLabel } from "@/lib/exploded-map";
 import { geoCentroid } from "d3-geo";
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import type { MapInspection } from "@/lib/map-selection";
+import { ATLAS } from "@/design/ramps";
 import { PROVINCE_SHAPES, DISTRICTS_BY_PROVINCE, DISTRICTS } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
 import rivers from "@/data/sa-rivers.json";
@@ -232,7 +233,7 @@ export default function AtlasMap({
             {
               id: "base",
               type: "background",
-              paint: { "background-color": "#162c32" },
+              paint: { "background-color": ATLAS.background },
             },
             {
               id: "relief",
@@ -294,9 +295,9 @@ export default function AtlasMap({
           exaggeration: TERRAIN_EXAGGERATION,
         });
       instance.setSky({
-        "sky-color": "#b4d8ed",
-        "horizon-color": "#e7ede2",
-        "fog-color": "#d4e5df",
+        "sky-color": ATLAS.sky,
+        "horizon-color": ATLAS.horizon,
+        "fog-color": ATLAS.fog,
         "fog-ground-blend": 0.6,
         "horizon-fog-blend": 0.7,
         "sky-horizon-blend": 0.65,
@@ -316,14 +317,14 @@ export default function AtlasMap({
         id: "province-fill",
         type: "fill",
         source: "provinces",
-        paint: { "fill-color": "#5bdbad", "fill-opacity": 0 },
+        paint: { "fill-color": ATLAS.provinceFill, "fill-opacity": 0 },
       });
       instance.addLayer({
         id: "province-borders",
         type: "line",
         source: "provinces",
         paint: {
-          "line-color": "#f4f8df",
+          "line-color": ATLAS.provinceBorders,
           "line-width": 1.2,
           "line-opacity": 0.5,
           "line-dasharray": [3, 3],
@@ -334,7 +335,7 @@ export default function AtlasMap({
         type: "line",
         source: "provinces",
         filter: ["==", ["get", "code"], ""],
-        paint: { "line-color": "#b8f6d9", "line-width": 2.5 },
+        paint: { "line-color": ATLAS.provinceFocus, "line-width": 2.5 },
       });
       instance.addSource("districts", {
         type: "geojson",
@@ -354,7 +355,7 @@ export default function AtlasMap({
         type: "fill",
         source: "districts",
         filter: ["==", ["get", "province"], ""],
-        paint: { "fill-color": "#d6f7ac", "fill-opacity": 0 },
+        paint: { "fill-color": ATLAS.districtFill, "fill-opacity": 0 },
       });
       instance.addLayer({
         id: "district-borders",
@@ -362,7 +363,7 @@ export default function AtlasMap({
         source: "districts",
         filter: ["==", ["get", "province"], ""],
         paint: {
-          "line-color": "#e1ffde",
+          "line-color": ATLAS.districtBorders,
           "line-width": 1,
           "line-opacity": 0.45,
         },
@@ -372,7 +373,7 @@ export default function AtlasMap({
         type: "line",
         source: "districts",
         filter: ["==", ["get", "id"], ""],
-        paint: { "line-color": "#f9ec9f", "line-width": 3 },
+        paint: { "line-color": ATLAS.districtFocus, "line-width": 3 },
       });
       instance.on("click", "district-fill", (event) => {
         if (
@@ -405,7 +406,7 @@ export default function AtlasMap({
         type: "line",
         source: "rivers",
         paint: {
-          "line-color": "#73cce1",
+          "line-color": ATLAS.rivers,
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1, 10, 2.5],
           "line-opacity": 0.8,
         },
@@ -450,13 +451,13 @@ export default function AtlasMap({
         id: "notice-parcel-fill",
         type: "fill",
         source: "notice-parcels",
-        paint: { "fill-color": "#d5ef86", "fill-opacity": 0.28 },
+        paint: { "fill-color": ATLAS.noticeParcelFill, "fill-opacity": 0.28 },
       });
       instance.addLayer({
         id: "notice-parcel-line",
         type: "line",
         source: "notice-parcels",
-        paint: { "line-color": "#e9ff8c", "line-width": 3 },
+        paint: { "line-color": ATLAS.noticeParcelLine, "line-width": 3 },
       });
       instance.on("click", "notice-parcel-fill", (event) => {
         if (infrastructureHit(instance, event.point)) return;

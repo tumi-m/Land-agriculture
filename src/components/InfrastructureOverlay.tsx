@@ -12,6 +12,7 @@ import {
   parseInfrastructureBounds,
   type InfrastructureKind,
 } from "@/lib/infrastructure";
+import { INFRA } from "@/design/ramps";
 export function infrastructureHit(
   map: LibreMap,
   point: MapMouseEvent["point"],
@@ -63,9 +64,9 @@ export default function InfrastructureOverlay({
       type: "fill",
       source: "local-dams",
       paint: {
-        "fill-color": "#35bedb",
+        "fill-color": INFRA.dams,
         "fill-opacity": 0.48,
-        "fill-outline-color": "#b0f3ff",
+        "fill-outline-color": INFRA.damsOutline,
       },
     });
     map.addLayer({
@@ -77,8 +78,8 @@ export default function InfrastructureOverlay({
           "match",
           ["get", "classification"],
           "Perennial",
-          "#65e2fc",
-          "#b3cddb",
+          INFRA.riverPerennial,
+          INFRA.riverOther,
         ],
         "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
       },
@@ -88,7 +89,7 @@ export default function InfrastructureOverlay({
       type: "line",
       source: "local-power",
       paint: {
-        "line-color": "#ffd36b",
+        "line-color": INFRA.power,
         "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 15, 4],
         "line-dasharray": [3, 1],
       },

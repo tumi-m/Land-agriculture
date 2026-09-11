@@ -13,6 +13,8 @@ import { cx, group } from "@/lib/format";
 import type { ProvinceCode } from "@/lib/types";
 
 import { METRICS, type Metric, valueOf } from "@/lib/land-metrics";
+import { LAND_RAMP_DARK, LAND_RAMP_LIGHT, SCENE } from "@/design/ramps";
+import { readToken } from "@/lib/tokens";
 
 const MAX_HEIGHT = 30;
 const BASE = 0.6;
@@ -26,27 +28,9 @@ const LIFT = 5;
 const INTRO_FROM = new THREE.Vector3(-10, 148, 60);
 const INTRO_TO = new THREE.Vector3(-12, 74, 104);
 
-/** Ramp steps as hex, matching the --land-* tokens so 2D and 3D agree. */
-const RAMP_LIGHT = [
-  "#e9eee1",
-  "#d3dec5",
-  "#bacaa6",
-  "#a0b687",
-  "#88a972",
-  "#688f53",
-  "#4f7540",
-  "#2a4524",
-];
-const RAMP_DARK = [
-  "#232d1e",
-  "#2e3f26",
-  "#3b532f",
-  "#4a6b39",
-  "#5c8546",
-  "#74a159",
-  "#90bc77",
-  "#b4d49e",
-];
+/** Ramp steps from the data ramps, so 2D and 3D agree. */
+const RAMP_LIGHT = LAND_RAMP_LIGHT;
+const RAMP_DARK = LAND_RAMP_DARK;
 
 interface DistrictPiece {
   id: string;
@@ -120,6 +104,22 @@ export default function LandScene({
   selectedRef.current = selected;
   const darkRef = useRef(dark);
   darkRef.current = dark;
+  /**
+   * UI colours read live from the tokens, so selection, outlines and the
+   * muted wash follow the theme. Rebuilt with `dark` because a theme flip
+   * re-renders anyway; the animation loop only reads the ref.
+   */
+  const palette = useMemo(
+    () => ({
+      select: readToken("--clay"),
+      line: readToken("--ink"),
+      wash: readToken("--surface"),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dark],
+  );
+  const paletteRef = useRef(palette);
+  paletteRef.current = palette;
 
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const [topDown, setTopDown] = useState(false);
@@ -479,9 +479,9 @@ export default function LandScene({
           (wantOpacity - material.opacity) * Math.min(1, dt * 6);
         const emissive = isSelected ? 0.09 : isHovered && !dimmed ? 0.14 : 0;
         material.emissive.set(
-          new THREE.Color(isSelected ? "#b3491a" : "#ffffff").multiplyScalar(
-            emissive,
-          ),
+          new THREE.Color(
+            isSelected ? paletteRef.current.select : SCENE.white,
+          ).multiplyScalar(emissive),
         );
 
         const line = o.outline.material as THREE.LineBasicMaterial;
@@ -489,7 +489,7 @@ export default function LandScene({
           ((dimmed ? 0 : isSelected ? 0.5 : 0.22) - line.opacity) *
           Math.min(1, dt * 6);
         line.color.set(
-          isSelected ? "#b3491a" : darkRef.current ? "#cfd4c4" : "#2a3320",
+          isSelected ? paletteRef.current.select : paletteRef.current.line,
         );
       }
 
@@ -542,13 +542,13 @@ export default function LandScene({
           material.opacity += (eased - material.opacity) * Math.min(1, dt * 7);
           material.color.lerpColors(
             new THREE.Color(coloursRef.current[code]),
-            new THREE.Color(darkRef.current ? "#232d1e" : "#e9eee1"),
+            new THREE.Color(paletteRef.current.wash),
             muted ? 0.62 : 0,
           );
           material.emissive.set(
-            new THREE.Color(isPicked ? "#b3491a" : "#ffffff").multiplyScalar(
-              isPicked ? 0.14 : isHovered ? 0.16 : 0,
-            ),
+            new THREE.Color(
+              isPicked ? paletteRef.current.select : SCENE.white,
+            ).multiplyScalar(isPicked ? 0.14 : isHovered ? 0.16 : 0),
           );
 
           const line = piece.outline.material as THREE.LineBasicMaterial;
@@ -556,10 +556,8 @@ export default function LandScene({
           line.opacity += (wanted * eased - line.opacity) * Math.min(1, dt * 7);
           line.color.set(
             isPicked || isHovered
-              ? "#b3491a"
-              : darkRef.current
-                ? "#cfd4c4"
-                : "#2a3320",
+              ? paletteRef.current.select
+              : paletteRef.current.line,
           );
         }
       }

@@ -1,0 +1,57 @@
+/* One token set for the whole app. Section 5 of docs/PLAN.md lists the
+   values and their contrast pairs; `clay` is the section's `accent`
+   (the green, kept), and `warn` marks deadlines within reach. The land ramp
+   stays stepped for magnitude on both surfaces. Components read these with
+   rgb(var(--x)); WebGL and MapLibre read them with readToken() in
+   src/lib/tokens.ts. Data colours live in src/design/ramps.ts, never here. */
+:root {
+  --paper: 244 243 238;
+  --surface: 255 255 255;
+  --raised: 255 255 255;
+  --ink: 22 32 28;
+  --muted: 86 98 92;
+  --faint: 100 110 104;
+  --rule: 225 226 220;
+  --clay: 26 112 75;
+  --clay-deep: 18 82 54;
+  --clay-soft: 224 240 231;
+  --good: 42 107 63;
+  --critical: 163 39 31;
+  --warn: 138 90 0;
+
+  /* Sequential land ramp, light surface: light = near zero, dark = most. */
+  --land-50: 233 238 225;
+  --land-100: 211 222 197;
+  --land-200: 186 202 166;
+  --land-300: 160 182 135;
+  --land-400: 136 169 114;
+  --land-500: 104 143 83;
+  --land-600: 79 117 64;
+  --land-700: 42 69 36;
+}
+
+.dark {
+  --paper: 14 21 19;
+  --surface: 21 30 27;
+  --raised: 27 38 34;
+  --ink: 232 237 233;
+  --muted: 163 173 167;
+  --faint: 138 148 142;
+  --rule: 42 53 49;
+  --clay: 127 214 164;
+  --clay-deep: 164 232 188;
+  --clay-soft: 31 64 46;
+  --good: 127 191 146;
+  --critical: 230 122 114;
+  --warn: 224 180 92;
+
+  /* Re-stepped for the dark surface rather than inverted. */
+  --land-50: 35 45 30;
+  --land-100: 46 63 38;
+  --land-200: 59 83 47;
+  --land-300: 74 107 57;
+  --land-400: 92 133 70;
+  --land-500: 116 161 89;
+  --land-600: 144 188 119;
+  --land-700: 180 212 158;
+}
