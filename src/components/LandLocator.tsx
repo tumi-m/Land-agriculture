@@ -1,21 +1,22 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parcelFor } from "@/lib/cadastre";
 import { onThemeChange } from "@/lib/tokens";
 import LandDossier, { NoticeBrowser } from "./LandDossier";
-import { type FarmNotice } from "@/content/farm-notices";
+import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import {
   toggleDetailState,
   type DetailState,
   type MapInspection,
 } from "@/lib/map-selection";
+import { useExplorer, parentOf } from "@/state/explorer";
+import { readUrlState, writeUrlState } from "@/state/url";
 import LiveStatus from "./LiveStatus";
 import ProvincePanel from "./ProvincePanel";
 import {
   METRICS,
-  type Metric,
   valueOf,
   rankProvinces,
 } from "@/lib/land-metrics";
@@ -43,26 +44,72 @@ const THEME_KEY = "all-theme";
 export default function LandLocator({ initial }: { initial: Dataset }) {
   const { dataset, state, changed, lastCheckedAt, refresh } =
     useLiveData(initial);
+  // The explorer's spine: selection, view and metric. Detail panel state,
+  // focus/compact chrome and the search box stay local — they are view
+  // concerns, not shareable state.
+  const view = useExplorer((s) => s.view);
+  const selection = useExplorer((s) => s.selection);
+  const metric = useExplorer((s) => s.metric);
+  const openIds = useExplorer((s) => s.openIds);
+  const setView = useExplorer((s) => s.setView);
+  const setMetric = useExplorer((s) => s.setMetric);
+  const selectProvince = useExplorer((s) => s.selectProvince);
+  const selectDistrict = useExplorer((s) => s.selectDistrict);
+  const selectNotice = useExplorer((s) => s.selectNotice);
+  const selectPoint = useExplorer((s) => s.selectPoint);
+  const toggleOpen = useExplorer((s) => s.toggleOpen);
+
+  // View-only state, outside the store on purpose.
   const [notice, setNotice] = useState<FarmNotice | null>(null);
   const [inspection, setInspection] = useState<MapInspection | null>(null);
   const [detailState, setDetailState] = useState<DetailState>("expanded");
   const [focusMap, setFocusMap] = useState(false);
   const [compactMap, setCompactMap] = useState(false);
-  const chooseNotice = useCallback((item: FarmNotice) => {
-    setNotice(item);
-    const parcel = parcelFor(item.id);
-    setInspection(
-      parcel
-        ? { coordinates: parcel.properties.coordinates, elevation: null }
-        : null,
-    );
-    setProvince(item.province);
-    setDistrict(null);
-    setFocusMap(false);
-    setMapView("atlas");
-    setDetailState("expanded");
-    setCompactMap(false);
-  }, []);
+  const [dark, setDark] = useState(false);
+  const [query, setQuery] = useState("");
+  const [urlReady, setUrlReady] = useState(false);
+
+  // The store is the truth for province/district; these are derived reads.
+  const province =
+    selection.kind === "province" || selection.kind === "district"
+      ? selection.province
+      : null;
+  const district =
+    selection.kind === "district" || selection.kind === "layer"
+      ? selection.district
+      : null;
+  const setDistrict = (id: string | null) => {
+    if (province) selectDistrict(province, id);
+  };
+
+  const hasFeed = dataset.source === "remote";
+  const adverts = useMemo(
+    () => (hasFeed ? dataset.listings : []),
+    [hasFeed, dataset.listings],
+  );
+
+  const chooseNotice = useCallback(
+    (item: FarmNotice) => {
+      setNotice(item);
+      const parcel = parcelFor(item.id);
+      setInspection(
+        parcel
+          ? { coordinates: parcel.properties.coordinates, elevation: null }
+          : null,
+      );
+      selectProvince(item.province);
+      setFocusMap(false);
+      setView("atlas");
+      setDetailState("expanded");
+      setCompactMap(false);
+    },
+    [selectProvince, setView],
+  );
+  // The URL hydrator runs before chooseNotice exists in its deps; a ref keeps
+  // the once-only effect stable.
+  const chooseNoticeRef = useRef(chooseNotice);
+  chooseNoticeRef.current = chooseNotice;
+
   const inspectPoint = useCallback((point: MapInspection) => {
     setInspection(point);
     setNotice(null);
@@ -74,39 +121,46 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     () => setDetailState("collapsed"),
     [],
   );
-  const chooseProvince = (code: ProvinceCode | null) => {
-    setProvince(code);
-    setNotice(null);
-    setInspection(null);
-    setDetailState("expanded");
-  };
-  const [mapView, setMapView] = useState<"anatomy" | "atlas" | "data">(
-    "anatomy",
+  const chooseProvince = useCallback(
+    (code: ProvinceCode | null) => {
+      selectProvince(code);
+      setNotice(null);
+      setInspection(null);
+      setDetailState("expanded");
+    },
+    [selectProvince],
   );
-  const [province, setProvince] = useState<ProvinceCode | null>("LP");
-  const [district, setDistrict] = useState<string | null>(null);
-  const [metric, setMetric] = useState<Metric>("advertised");
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
-  const [dark, setDark] = useState(false);
-  const [query, setQuery] = useState("");
-  const [urlReady, setUrlReady] = useState(false);
-
-  const hasFeed = dataset.source === "remote";
-  const adverts = useMemo(
-    () => (hasFeed ? dataset.listings : []),
-    [hasFeed, dataset.listings],
+  const chooseDistrict = useCallback(
+    (id: string | null) => {
+      if (!province) return;
+      selectDistrict(province, id);
+      setNotice(null);
+      setInspection(null);
+      setDetailState("expanded");
+    },
+    [province, selectDistrict],
   );
 
+  // The theme and URL hydrate in the effect below (store-backed).
+  // Hydrate from the URL once on mount, then keep it in step (debounced).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("province")?.toUpperCase();
-    if (code && (PROVINCE_ORDER as string[]).includes(code)) {
-      setProvince(code as ProvinceCode);
-      if (code !== "LP") {
-        setNotice(null);
-        setInspection(null);
+    const { at, view: urlView, metric: urlMetric } = readUrlState(
+      window.location.search,
+    );
+    if (at.kind !== "country") {
+      if (at.kind === "province") selectProvince(at.province);
+      else if (at.kind === "district") selectDistrict(at.province, at.district);
+      else if (at.kind === "notice") {
+        selectNotice(at.id);
+        const item = FARM_NOTICES.find((n) => n.id === at.id);
+        if (item) chooseNoticeRef.current(item);
+      } else if (at.kind === "point") {
+        selectPoint({ lng: at.lng, lat: at.lat });
+        setInspection({ coordinates: [at.lng, at.lat], elevation: null });
       }
     }
+    if (urlView !== "anatomy") setView(urlView);
+    if (urlMetric !== "advertised") setMetric(urlMetric);
     // Follows the `dark` class live, so WebGL readers of the tokens stay
     // in step when the theme flips without a remount.
     const stopTheme = onThemeChange(() => {
@@ -114,19 +168,35 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     });
     setUrlReady(true);
     return stopTheme;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once
   }, []);
 
   useEffect(() => {
     if (!urlReady) return;
-    const url = new URL(window.location.href);
-    if (province) url.searchParams.set("province", province);
-    else url.searchParams.delete("province");
-    window.history.replaceState(null, "", url);
-  }, [province, urlReady]);
+    const handle = window.setTimeout(() => {
+      const url = new URL(window.location.href);
+      // preserve unrelated params the app does not own
+      const incoming = new URLSearchParams(window.location.search);
+      for (const key of ["at", "view", "metric", "province"])
+        incoming.delete(key);
+      for (const [key, value] of incoming) url.searchParams.set(key, value);
+      const state = writeUrlState({ at: selection, view, metric });
+      const params = new URLSearchParams(
+        state ? state.slice(1) : incoming.toString(),
+      );
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        query ? `${url.pathname}?${query}` : url.pathname,
+      );
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [selection, view, metric, urlReady]);
 
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {
-    if (!province && !inspection && !notice) return;
+    if (selection.kind === "country" && !inspection && !notice) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (
@@ -143,26 +213,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         return;
       }
       // Step back out one level at a time.
-      if (district) setDistrict(null);
-      else setProvince(null);
+      selectProvince(parentOf(selection).kind === "province" ? (parentOf(selection) as { province: ProvinceCode }).province : null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [province, district, notice, inspection, focusMap]);
-
-  // A district only means something inside its province.
-  useEffect(() => {
-    setDistrict(null);
-  }, [province]);
-
-  const toggleOpen = useCallback((id: string) => {
-    setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  }, [selection, notice, inspection, focusMap, selectProvince]);
 
   const toggleTheme = () => {
     const next = !dark;
@@ -225,8 +280,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           id="map"
           className={cx(
             "explorer-shell",
-            mapView === "atlas" && "atlas-shell",
-            mapView === "anatomy" && "anatomy-shell",
+            view === "atlas" && "atlas-shell",
+            view === "anatomy" && "anatomy-shell",
             (province || notice || inspection) &&
               detailState === "expanded" &&
               !focusMap &&
@@ -247,7 +302,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               role="group"
               aria-label="Historical province measure"
               className="metric-switch"
-              hidden={mapView === "anatomy"}
+              hidden={view === "anatomy"}
             >
               {METRICS.map((m) => (
                 <button
@@ -270,33 +325,33 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             aria-label="Map presentation"
           >
             <button
-              aria-pressed={mapView === "anatomy"}
+              aria-pressed={view === "anatomy"}
               onClick={() => {
-                setMapView("anatomy");
+                setView("anatomy");
                 setNotice(null);
                 setInspection(null);
                 setCompactMap(false);
                 setFocusMap(false);
               }}
             >
-              {mapView === "atlas" ? "← Exploded overview" : "Exploded map"}
+              {view === "atlas" ? "← Exploded overview" : "Exploded map"}
             </button>
             <button
-              aria-pressed={mapView === "atlas"}
-              onClick={() => setMapView("atlas")}
+              aria-pressed={view === "atlas"}
+              onClick={() => setView("atlas")}
               aria-label="3D terrain"
             >
               3D terrain
             </button>
             <button
-              aria-pressed={mapView === "data"}
-              onClick={() => setMapView("data")}
+              aria-pressed={view === "data"}
+              onClick={() => setView("data")}
               aria-label="Compare provincial land figures"
             >
               Compare area
             </button>
           </div>
-          <div className="map-workspace-actions" hidden={mapView === "anatomy"}>
+          <div className="map-workspace-actions" hidden={view === "anatomy"}>
             <button
               aria-pressed={focusMap}
               onClick={() => setFocusMap((v) => !v)}
@@ -413,7 +468,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </aside>
             }
             <div className="map-stage" id="land-map-stage">
-              {mapView === "anatomy" ? (
+              {view === "anatomy" ? (
                 <ExplodedMap
                   selected={province}
                   district={district}
@@ -421,13 +476,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   onSelectDistrict={setDistrict}
                   onNotice={chooseNotice}
                   onTerrain={() => {
-                    setMapView("atlas");
+                    setView("atlas");
                     setNotice(null);
                     setInspection(null);
                     setFocusMap(false);
                   }}
                 />
-              ) : mapView === "atlas" ? (
+              ) : view === "atlas" ? (
                 <AtlasMap
                   onInspectInfrastructure={inspectInfrastructure}
                   notice={notice}
@@ -435,12 +490,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   onInspect={inspectPoint}
                   onSelectNotice={chooseNotice}
                   district={district}
-                  onSelectDistrict={(id) => {
-                    setDistrict(id);
-                    setNotice(null);
-                    setInspection(null);
-                    setDetailState("expanded");
-                  }}
+                  onSelectDistrict={chooseDistrict}
                   metric={displayMetric}
                   selected={province}
                   onSelect={(code) => {
@@ -448,7 +498,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     chooseProvince(code);
                   }}
                   onFallback={() => {
-                    setMapView("data");
+                    setView("data");
                   }}
                 />
               ) : (
@@ -460,16 +510,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     chooseProvince(code);
                   }}
                   district={district}
-                  onSelectDistrict={(id) => {
-                    setDistrict(id);
-                    setNotice(null);
-                    setInspection(null);
-                    setDetailState("expanded");
-                  }}
+                  onSelectDistrict={chooseDistrict}
                   dark={dark}
                 />
               )}
-              {mapView !== "anatomy" && (notice || inspection || province) && (
+              {view !== "anatomy" && (notice || inspection || province) && (
                 <button
                   className="map-selection-chip"
                   onClick={() => {
@@ -501,18 +546,18 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                   <b>{detailState === "expanded" && !focusMap ? "⌄" : "↗"}</b>
                 </button>
               )}
-              <div className="map-legend" hidden={mapView !== "data"}>
+              <div className="map-legend" hidden={view !== "data"}>
                 <div>
                   <span className="legend-ramp" />
                   <span>Lower</span>
                   <span>Higher</span>
                 </div>
                 <p>
-                  {mapView === "atlas"
+                  {view === "atlas"
                     ? "Province shading shows "
                     : "Height & colour show "}
                   {active.label.toLowerCase()}.<br />
-                  {mapView === "atlas"
+                  {view === "atlas"
                     ? "Provincial figures, not individual farm boundaries."
                     : "Statistical heights, not terrain elevation."}
                 </p>
@@ -525,7 +570,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 hidden={
                   detailState !== "expanded" ||
                   focusMap ||
-                  mapView === "anatomy"
+                  view === "anatomy"
                 }
               >
                 {notice || inspection ? (
@@ -547,12 +592,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     <ProvincePanel
                       code={province}
                       district={district}
-                      onSelectDistrict={(id) => {
-                        setDistrict(id);
-                        setNotice(null);
-                        setInspection(null);
-                        setDetailState("expanded");
-                      }}
+                      onSelectDistrict={chooseDistrict}
                       adverts={provinceAdverts}
                       openIds={openIds}
                       onToggle={toggleOpen}
@@ -567,7 +607,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               </div>
             )}
           </div>
-          <div className="explorer-footnote" hidden={mapView === "anatomy"}>
+          <div className="explorer-footnote" hidden={view === "anatomy"}>
             <p>
               <strong>
                 {displayMetric === "advertised"

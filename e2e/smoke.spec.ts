@@ -13,5 +13,5 @@ test("the explorer loads and the model or its fallback appears", async ({
 test("choosing Limpopo puts the province in the URL", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Limpopo" }).first().click();
-  await expect(page).toHaveURL(/province=LP/);
+  await expect(page).toHaveURL(/at=province/);
 });
