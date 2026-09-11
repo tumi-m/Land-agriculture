@@ -11,6 +11,10 @@ export function group(n: number): string {
   return `${n < 0 ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`;
 }
 
+export function plural(n: number, one: string, many: string = `${one}s`): string {
+  return n === 1 ? one : many;
+}
+
 export function hectares(n: number): string {
   if (n < 100) {
     const rounded = Math.round(n * 10) / 10;
