@@ -11,7 +11,35 @@
       "command": ["node", "scripts/build-dem.mjs", "720"],
       "inputs": ["scripts/build-dem.mjs"],
       "outputs": ["public/data/sa-dem.png", "public/data/sa-dem.json"]
+    },
+    "bake-rasters": {
+      "description": "Land cover, rain and soil grids to public/data/layers/",
+      "command": ["node", "scripts/data/bake-rasters.mjs"],
+      "inputs": [
+        "scripts/data/bake-rasters.mjs",
+        "scripts/data/sources.json",
+        "scripts/data/raster-colors.json",
+        "public/data/sa-dem.png",
+        "public/data/sa-dem.json"
+      ],
+      "outputs": [
+        "public/data/layers/landcover.values.png",
+        "public/data/layers/landcover.color.png",
+        "public/data/layers/landcover.json",
+        "public/data/layers/rain.values.png",
+        "public/data/layers/rain.color.png",
+        "public/data/layers/rain.json",
+        "public/data/layers/soil-ph.values.png",
+        "public/data/layers/soil-ph.color.png",
+        "public/data/layers/soil-ph.json",
+        "public/data/layers/soil-clay.values.png",
+        "public/data/layers/soil-clay.color.png",
+        "public/data/layers/soil-clay.json",
+        "public/data/layers/hillshade.values.png",
+        "public/data/layers/hillshade.color.png",
+        "public/data/layers/hillshade.json"
+      ]
     }
   },
-  "edges": []
+  "edges": [{ "from": "build-dem", "to": "bake-rasters" }]
 }

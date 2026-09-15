@@ -14,7 +14,7 @@
       "licence": "CC BY 4.0",
       "resolution": "10 m native, mode-resampled to the grid",
       "date": "2021",
-      "method": "Mode of 3\u00d73 native cells per grid cell",
+      "method": "Mode of 3×3 native cells per grid cell",
       "tiles": [
         "S21E015",
         "S21E018",
@@ -74,8 +74,9 @@
     "rain": {
       "source": "CHIRPS v2.0 annual totals",
       "licence": "Public domain (Creative Commons CC0 waiver by Pete Peterson)",
-      "resolution": "0.05\u00b0 native, averaged to the grid",
-      "date": "1991\u20132020 average",
+      "resolution": "0.05° native, averaged to the grid",
+      "date": "1991–2020 average",
+      "srcNodata": -9999,
       "years": [
         1991,
         1992,
@@ -109,13 +110,16 @@
         2020
       ],
       "url": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_annual/tifs/chirps-v2.0.{year}.tif",
-      "units": "mm/year"
+      "units": "mm/year",
+      "quantum": 1,
+      "quantumNote": "1 mm/year"
     },
     "soil-ph": {
-      "source": "SoilGrids 2.0 pH \u00d7 10 (phh2o)",
+      "source": "SoilGrids 2.0 pH × 10 (phh2o)",
       "licence": "CC BY 4.0",
       "resolution": "250 m native, depth-weighted to the grid",
       "date": "2020 release",
+      "srcNodata": -32768,
       "depths": [
         {
           "slug": "0-5cm",
@@ -131,13 +135,17 @@
         }
       ],
       "url": "https://files.isric.org/soilgrids/latest/data/phh2o/phh2o_{depth}_mean.vrt",
-      "units": "pH, stored \u00d710; divide by 10 on read"
+      "units": "pH",
+      "quantum": 0.05,
+      "quantumNote": "0.05 pH",
+      "displayFactor": 10
     },
     "soil-clay": {
       "source": "SoilGrids 2.0 clay content (clay)",
       "licence": "CC BY 4.0",
       "resolution": "250 m native, depth-weighted to the grid",
       "date": "2020 release",
+      "srcNodata": -32768,
       "depths": [
         {
           "slug": "0-5cm",
@@ -153,14 +161,17 @@
         }
       ],
       "url": "https://files.isric.org/soilgrids/latest/data/clay/clay_{depth}_mean.vrt",
-      "units": "g/kg; divide by 10 for %"
+      "units": "g/kg (divide by 10 for %)",
+      "quantum": 5,
+      "quantumNote": "5 g/kg, one twentieth of a percent"
     },
     "hillshade": {
       "source": "Mapzen / USGS / SRTM via AWS Terrain Tiles (the baked DEM)",
       "licence": "Attribution per Tilezen",
       "resolution": "About 2.3 km a DEM cell, shaded",
       "date": "Baked with the DEM",
-      "units": "Shade, 0–255"
+      "units": "Shade, 0–255",
+      "quantum": 1
     }
   }
 }

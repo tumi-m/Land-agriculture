@@ -53,13 +53,19 @@ function run(command, args) {
   );
 }
 
-/** Warps a band-per-input stack onto the grid. One band per input URL. */
-function warp(urls, resample, extra = []) {
+/**
+ * Warps a band-per-input stack onto the grid. One band per input URL.
+ * `srcNodata` is the missing-data marker in the source files; it differs by
+ * provider (CHIRPS stores -9999 over ocean without declaring it, SoilGrids
+ * declares -32768), so each layer names it in sources.json.
+ */
+function warp(urls, resample, srcNodata, extra = []) {
   const stack = join(scratch, "stack.vrt");
-  run("gdalbuildvrt", ["-q", "-overwrite", "-separate", stack, ...urls]);
+  // Remote sources need the /vsicurl/ prefix: gdalwarp cannot open a plain
+  // https:// path written into a VRT.
+  run("gdalbuildvrt", ["-overwrite", "-separate", stack, ...urls.map((url) => `/vsicurl/${url}`)]);
   const tif = join(scratch, "stack.tif");
   run("gdalwarp", [
-    "-q",
     "-overwrite",
     "-t_srs", "EPSG:4326",
     "-te", String(GRID.west), String(GRID.south), String(GRID.east), String(GRID.north),
@@ -67,7 +73,7 @@ function warp(urls, resample, extra = []) {
     "-r", resample,
     "-ot", "Float32",
     "-dstnodata", String(WARP_NODATA),
-    "-srcnodata", String(WARP_NODATA),
+    "-srcnodata", String(srcNodata),
     ...extra,
     stack,
     tif,
@@ -111,18 +117,31 @@ function bandAscii(tif, band) {
 
 function readAscii(path) {
   const lines = readFileSync(path, "utf8").trim().split("\n");
-  const header = lines.slice(0, 6).map((line) => line.trim().split(/\s+/));
-  const width = Number(header[0][1]);
-  const height = Number(header[1][1]);
-  const nodata = Number(header[5][1]);
+  // GDAL writes a 7-line AAIGrid header (dx/dy) when the grid's cells are
+  // non-square, and a 6-line one (cellsize) otherwise; key off the labels
+  // instead of counting lines, and read the nodata marker wherever it sits.
+  const KEYS = new Set(["ncols", "nrows", "xllcorner", "yllcorner", "cellsize", "dx", "dy", "NODATA_value"]);
+  let width = 0;
+  let height = 0;
+  let nodata = NaN;
+  let dataStart = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const [key, value] = lines[i].trim().split(/\s+/);
+    if (!KEYS.has(key)) {
+      dataStart = i;
+      break;
+    }
+    if (key === "ncols") width = Number(value);
+    if (key === "nrows") height = Number(value);
+    if (key === "NODATA_value") nodata = Number(value);
+  }
   const values = new Float64Array(width * height);
   for (let row = 0; row < height; row++) {
-    const cells = lines[6 + row].trim().split(/\s+/);
+    const cells = lines[dataStart + row].trim().split(/\s+/);
     for (let col = 0; col < width; col++) {
       const raw = Number(cells[col]);
-      // The AAIGrid nodata marker varies per layer (WARP_NODATA for warps,
-      // 0 for gdaldem hillshade); real zero is a valid shade value, so only
-      // an exact match to the header marker counts.
+      // Real zero is a valid value in every layer, so only an exact match to
+      // the header's nodata marker counts as missing.
       values[row * width + col] = raw === nodata ? NaN : raw;
     }
   }
@@ -159,14 +178,14 @@ function bakeLandcover(layer) {
 
 function bakeRain(layer) {
   const urls = layer.years.map((year) => layer.url.replace("{year}", String(year)));
-  const tif = warp(urls, "average");
+  const tif = warp(urls, "average", layer.srcNodata);
   const bands = layer.years.map((_, index) => bandAscii(tif, index + 1));
   return { bands, weights: layer.years.map(() => 1) };
 }
 
 function bakeSoil(layer) {
   const urls = layer.depths.map(({ slug }) => layer.url.replace("{depth}", slug));
-  const tif = warp(urls, "average");
+  const tif = warp(urls, "average", layer.srcNodata);
   const bands = layer.depths.map((_, index) => bandAscii(tif, index + 1));
   return { bands, weights: layer.depths.map((depth) => depth.weight) };
 }
@@ -215,22 +234,18 @@ const bakers = {
   hillshade: bakeHillshade,
 };
 
-/** Linear blend across sorted stops. */
-function rampColor(stops, value) {
-  for (let i = 0; i < stops.length - 1; i++) {
-    const [a, ca] = stops[i];
-    const [b, cb] = stops[i + 1];
-    if (value >= a && value <= b) {
-      const t = b === a ? 0 : (value - a) / (b - a);
-      return [
-        Math.round(ca[0] + (cb[0] - ca[0]) * t),
-        Math.round(ca[1] + (cb[1] - ca[1]) * t),
-        Math.round(ca[2] + (cb[2] - ca[2]) * t),
-      ];
+/** The ramp colour nearest to a value; the legend states these stops. */
+function nearestStop(stops, value) {
+  let best = stops[0][1];
+  let bestDistance = Infinity;
+  for (const [stopValue, color] of stops) {
+    const distance = Math.abs(stopValue - value);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = color;
     }
   }
-  const last = stops[stops.length - 1];
-  return value < stops[0][0] ? stops[0][1] : last[1];
+  return best;
 }
 
 function hexToRgb(hex) {
@@ -245,7 +260,14 @@ for (const [id, layer] of Object.entries(sources.layers)) {
   if (only && !only.includes(id)) continue;
   console.log(`bake: ${id}`);
   const { bands, weights } = bakers[id](layer);
-  const { width, height, values } = combine(bands, weights);
+  const combined = combine(bands, weights);
+  // Sources that store a scaled unit (SoilGrids pH is ×10) are divided down
+  // to their display unit before quantising, so values, sidecar and colour
+  // ramp all speak the same unit.
+  const factor = layer.displayFactor ?? 1;
+  const { width, height, values } = factor === 1
+    ? combined
+    : { ...combined, values: combined.values.map((v) => v / factor) };
 
   let min = Infinity;
   let max = -Infinity;
@@ -257,10 +279,14 @@ for (const [id, layer] of Object.entries(sources.layers)) {
   }
 
   const isCategorical = id === "landcover";
-  // Categories keep exact class codes; continuous layers use 65534 levels so
-  // the stored code 65535 stays free as the nodata marker.
+  // Categories keep exact class codes; continuous layers store a quantum.
+  // The quantum is a value the source honestly carries (a 250 m SoilGrids
+  // prediction does not resolve 1 g/kg of clay), capped so the stored code
+  // 65535 stays free as the nodata marker. Coarser quanta compress smaller;
+  // the sidecar's step and offset record exactly what was stored.
   const span = max - min || 1;
-  const step = isCategorical ? 1 : span / 65_534;
+  const quantum = layer.quantum ?? span / 65_534;
+  const step = isCategorical ? 1 : Math.max(quantum, span / 65_534);
   const offset = isCategorical ? 0 : -min;
 
   const valuesPng = new PNG({ width, height, colorType: 6 });
@@ -296,7 +322,10 @@ for (const [id, layer] of Object.entries(sources.layers)) {
     if (classColors) {
       rgb = classColors[String(Math.round(v))] ?? [0, 0, 0];
     } else if (ramp) {
-      rgb = rampColor(ramp, v);
+      // Snap to the ramp's own stops. A continuous blend would bake hundreds
+      // of near-identical colours into the PNG (1 MB per soil layer) without
+      // showing anything the legend does not already state.
+      rgb = nearestStop(ramp, v);
     } else {
       rgb = [Math.round(v), Math.round(v), Math.round(v)];
     }

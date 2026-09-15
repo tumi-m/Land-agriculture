@@ -1,0 +1,59 @@
+{
+  "layer": "soil-ph",
+  "west": 16.35,
+  "south": -35,
+  "east": 33.05,
+  "north": -22,
+  "width": 1024,
+  "height": 797,
+  "step": 0.05,
+  "offset": -4.933895047505697,
+  "nodata": 255,
+  "units": "pH",
+  "resolution": "250 m native, depth-weighted to the grid",
+  "source": "SoilGrids 2.0 pH × 10 (phh2o)",
+  "licence": "CC BY 4.0",
+  "date": "2020 release",
+  "colors": [
+    [
+      3.5,
+      "#d73027"
+    ],
+    [
+      4.5,
+      "#f46d43"
+    ],
+    [
+      5.5,
+      "#fdae61"
+    ],
+    [
+      6.5,
+      "#fee08b"
+    ],
+    [
+      7,
+      "#ffffbf"
+    ],
+    [
+      7.5,
+      "#d9ef8b"
+    ],
+    [
+      8,
+      "#a6d96a"
+    ],
+    [
+      8.5,
+      "#66bd63"
+    ],
+    [
+      9,
+      "#1a9850"
+    ],
+    [
+      10,
+      "#006837"
+    ]
+  ]
+}

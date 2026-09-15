@@ -1,0 +1,43 @@
+{
+  "layer": "soil-clay",
+  "west": 16.35,
+  "south": -35,
+  "east": 33.05,
+  "north": -22,
+  "width": 1024,
+  "height": 797,
+  "step": 5,
+  "offset": -28.57889461517334,
+  "nodata": 255,
+  "units": "g/kg (divide by 10 for %)",
+  "resolution": "250 m native, depth-weighted to the grid",
+  "source": "SoilGrids 2.0 clay content (clay)",
+  "licence": "CC BY 4.0",
+  "date": "2020 release",
+  "colors": [
+    [
+      0,
+      "#fddbc7"
+    ],
+    [
+      50,
+      "#f4a582"
+    ],
+    [
+      100,
+      "#d6604d"
+    ],
+    [
+      200,
+      "#b2182b"
+    ],
+    [
+      300,
+      "#67001f"
+    ],
+    [
+      400,
+      "#3f0008"
+    ]
+  ]
+}
