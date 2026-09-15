@@ -11,9 +11,11 @@ const OUT = "test-results/quality";
 
 console.log("quality: running e2e/quality.spec.ts (this drives a real browser)");
 try {
-  execFileSync("npx", ["playwright", "test", "e2e/quality.spec.ts"], {
-    stdio: "inherit",
-  });
+  execFileSync(
+    "npx",
+    ["playwright", "test", "--config=playwright.measure.config.ts", "e2e/quality.spec.ts"],
+    { stdio: "inherit" },
+  );
 } catch {
   console.error("quality: the spec failed to run; fix the run before trusting any table");
   process.exit(1);

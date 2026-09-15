@@ -19,6 +19,11 @@ dist/
 .next-dev/
 scripts/.cache-dem/
 
-test-results/
+# Run artifacts live here; the perf baseline is a committed zero point, so
+# the holder directory is re-included just enough for it to exist.
+test-results/*
+!test-results/perf/
+test-results/perf/*
+!test-results/perf/baseline.json
 playwright-report/
 .pipeline-cache/

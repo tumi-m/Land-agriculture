@@ -1,0 +1,18 @@
+{
+  "phone": {
+    "medianFirstFrameMs": 19756,
+    "sweepFramesPerSecond": 9.8,
+    "sweepFrames": 90,
+    "sweepElapsedMs": 9140,
+    "jsHeapBytes": 26813968,
+    "webglConsoleErrors": 0
+  },
+  "desktop": {
+    "medianFirstFrameMs": 4763,
+    "sweepFramesPerSecond": 23.6,
+    "sweepFrames": 90,
+    "sweepElapsedMs": 3821,
+    "jsHeapBytes": 26173012,
+    "webglConsoleErrors": 0
+  }
+}
