@@ -21,6 +21,7 @@
     "hooks": "git config core.hooksPath .githooks && echo \"hooks installed: $(git config core.hooksPath)\"",
     "budget": "node scripts/budget.mjs",
     "measure": "node scripts/measure.mjs",
+    "quality": "node scripts/quality.mjs",
     "shots:update": "playwright test e2e/screens.spec.ts --update-snapshots",
     "check": "npm run typecheck && npm run lint && npm run graph && npm test"
   },
