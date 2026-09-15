@@ -1,0 +1,31 @@
+{
+  "layer": "hillshade",
+  "west": 16.35,
+  "south": -35,
+  "east": 33.05,
+  "north": -22,
+  "width": 720,
+  "height": 560,
+  "step": 0.0012665181432538835,
+  "offset": -134,
+  "nodata": 255,
+  "units": "Shade, 0–255",
+  "resolution": "About 2.3 km a DEM cell, shaded",
+  "source": "Mapzen / USGS / SRTM via AWS Terrain Tiles (the baked DEM)",
+  "licence": "Attribution per Tilezen",
+  "date": "Baked with the DEM",
+  "colors": [
+    [
+      0,
+      "#1a1a1a"
+    ],
+    [
+      127,
+      "#808080"
+    ],
+    [
+      255,
+      "#ffffff"
+    ]
+  ]
+}

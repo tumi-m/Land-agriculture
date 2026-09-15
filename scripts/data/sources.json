@@ -1,0 +1,166 @@
+{
+  "grid": {
+    "west": 16.35,
+    "south": -35,
+    "east": 33.05,
+    "north": -22,
+    "width": 1024,
+    "height": 797,
+    "note": "Same box as the baked DEM; cells are under 2 km across."
+  },
+  "layers": {
+    "landcover": {
+      "source": "ESA WorldCover 2021 v200",
+      "licence": "CC BY 4.0",
+      "resolution": "10 m native, mode-resampled to the grid",
+      "date": "2021",
+      "method": "Mode of 3\u00d73 native cells per grid cell",
+      "tiles": [
+        "S21E015",
+        "S21E018",
+        "S21E021",
+        "S21E024",
+        "S21E027",
+        "S21E030",
+        "S21E033",
+        "S24E015",
+        "S24E018",
+        "S24E021",
+        "S24E024",
+        "S24E027",
+        "S24E030",
+        "S24E033",
+        "S27E015",
+        "S27E018",
+        "S27E021",
+        "S27E024",
+        "S27E027",
+        "S27E030",
+        "S27E033",
+        "S30E015",
+        "S30E018",
+        "S30E021",
+        "S30E024",
+        "S30E027",
+        "S30E030",
+        "S33E015",
+        "S33E018",
+        "S33E021",
+        "S33E024",
+        "S33E027",
+        "S33E030",
+        "S36E015",
+        "S36E018",
+        "S36E021",
+        "S36E024",
+        "S36E027"
+      ],
+      "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif",
+      "classes": {
+        "10": "Tree cover",
+        "20": "Shrubland",
+        "30": "Grassland",
+        "40": "Cropland",
+        "50": "Built-up",
+        "60": "Bare / sparse vegetation",
+        "70": "Snow and ice",
+        "80": "Permanent water bodies",
+        "90": "Herbaceous wetland",
+        "95": "Mangroves",
+        "100": "Moss and lichen"
+      },
+      "note": "Tile names give the southern edge of the row: S21 spans −18..−21 through S36 spanning −33..−36. Columns E015..E033 cover 15..33°E (E033 tiles cover 30..33°E). The 33.00–33.05°E strip east of that is ocean and stays nodata."
+    },
+    "rain": {
+      "source": "CHIRPS v2.0 annual totals",
+      "licence": "Public domain (Creative Commons CC0 waiver by Pete Peterson)",
+      "resolution": "0.05\u00b0 native, averaged to the grid",
+      "date": "1991\u20132020 average",
+      "years": [
+        1991,
+        1992,
+        1993,
+        1994,
+        1995,
+        1996,
+        1997,
+        1998,
+        1999,
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "url": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_annual/tifs/chirps-v2.0.{year}.tif",
+      "units": "mm/year"
+    },
+    "soil-ph": {
+      "source": "SoilGrids 2.0 pH \u00d7 10 (phh2o)",
+      "licence": "CC BY 4.0",
+      "resolution": "250 m native, depth-weighted to the grid",
+      "date": "2020 release",
+      "depths": [
+        {
+          "slug": "0-5cm",
+          "weight": 5
+        },
+        {
+          "slug": "5-15cm",
+          "weight": 10
+        },
+        {
+          "slug": "15-30cm",
+          "weight": 15
+        }
+      ],
+      "url": "https://files.isric.org/soilgrids/latest/data/phh2o/phh2o_{depth}_mean.vrt",
+      "units": "pH, stored \u00d710; divide by 10 on read"
+    },
+    "soil-clay": {
+      "source": "SoilGrids 2.0 clay content (clay)",
+      "licence": "CC BY 4.0",
+      "resolution": "250 m native, depth-weighted to the grid",
+      "date": "2020 release",
+      "depths": [
+        {
+          "slug": "0-5cm",
+          "weight": 5
+        },
+        {
+          "slug": "5-15cm",
+          "weight": 10
+        },
+        {
+          "slug": "15-30cm",
+          "weight": 15
+        }
+      ],
+      "url": "https://files.isric.org/soilgrids/latest/data/clay/clay_{depth}_mean.vrt",
+      "units": "g/kg; divide by 10 for %"
+    },
+    "hillshade": {
+      "source": "Mapzen / USGS / SRTM via AWS Terrain Tiles (the baked DEM)",
+      "licence": "Attribution per Tilezen",
+      "resolution": "About 2.3 km a DEM cell, shaded",
+      "date": "Baked with the DEM",
+      "units": "Shade, 0–255"
+    }
+  }
+}
