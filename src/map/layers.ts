@@ -40,8 +40,6 @@ export interface LayerDef {
   sources: Record<string, SourceSpecification>;
   /** Layer ids are prefixed with the def id to keep them unique. */
   layers: LayerSpecification[];
-  /** Insert before this map layer id; appended when absent. */
-  beforeId?: string;
   minzoom?: number;
   defaultOn: boolean;
   attribution: LayerAttribution;
@@ -102,6 +100,43 @@ const parcelSource: SourceSpecification = {
 
 export const LAYER_DEFS: LayerDef[] = [
   {
+    // Aerial imagery is the bottom raster: pre-refactor it was inserted
+    // before province-fill. Registry order is the stacking order, so it
+    // comes first and every other def appends above it.
+    id: "aerial",
+    group: "imagery",
+    label: "NGI aerial",
+    description:
+      "Chief Directorate: National Geo-spatial Information aerial imagery, from zoom 14.",
+    sources: {
+      aerial: {
+        type: "raster",
+        tiles: [AERIAL_TILES],
+        tileSize: 256,
+        minzoom: 14,
+        maxzoom: 19,
+        bounds: [16, -35.5, 33, -22],
+        attribution: AERIAL_ATTRIBUTION,
+      },
+    },
+    layers: [
+      {
+        id: "aerial",
+        type: "raster",
+        source: "aerial",
+        minzoom: 14,
+        paint: { "raster-opacity": 1, "raster-fade-duration": 350 },
+      },
+    ],
+    defaultOn: false,
+    attribution: {
+      text: "Chief Directorate: National Geo-spatial Information (NGI)",
+      url: "https://www.dffe.gov.za",
+      licence: "As documented in src/lib/aerial.ts",
+      date: "dates vary, catalogue 2014–2016",
+    },
+  },
+  {
     id: "provinces",
     group: "land",
     label: "Provinces",
@@ -134,7 +169,6 @@ export const LAYER_DEFS: LayerDef[] = [
         paint: { "line-color": ATLAS.provinceFocus, "line-width": 2.5 },
       },
     ],
-    beforeId: "aerial",
     defaultOn: true,
     attribution: PROVINCE_ATTRIBUTION,
   },
@@ -172,7 +206,6 @@ export const LAYER_DEFS: LayerDef[] = [
         paint: { "line-color": ATLAS.districtFocus, "line-width": 3 },
       },
     ],
-    beforeId: "province-fill",
     defaultOn: true,
     attribution: PROVINCE_ATTRIBUTION,
   },
@@ -195,7 +228,6 @@ export const LAYER_DEFS: LayerDef[] = [
         },
       },
     ],
-    beforeId: "province-fill",
     defaultOn: true,
     attribution: {
       text: "Natural Earth rivers and lake centerlines",
@@ -225,47 +257,12 @@ export const LAYER_DEFS: LayerDef[] = [
         paint: { "line-color": ATLAS.noticeParcelLine, "line-width": 3 },
       },
     ],
-    beforeId: "district-fill",
     defaultOn: true,
     attribution: {
       text: "CSG cadastre via the DFFE portal",
       url: "https://egis.environment.gov.za",
       licence: "Public service; confirm terms before reuse",
       date: "checked 9 Sep 2026",
-    },
-  },
-  {
-    id: "aerial",
-    group: "imagery",
-    label: "NGI aerial",
-    description:
-      "Chief Directorate: National Geo-spatial Information aerial imagery, from zoom 14.",
-    sources: {
-      aerial: {
-        type: "raster",
-        tiles: [AERIAL_TILES],
-        tileSize: 256,
-        minzoom: 14,
-        maxzoom: 19,
-        bounds: [16, -35.5, 33, -22],
-        attribution: AERIAL_ATTRIBUTION,
-      },
-    },
-    layers: [
-      {
-        id: "aerial",
-        type: "raster",
-        source: "aerial",
-        minzoom: 14,
-        paint: { "raster-opacity": 1, "raster-fade-duration": 350 },
-      },
-    ],
-    defaultOn: false,
-    attribution: {
-      text: "Chief Directorate: National Geo-spatial Information (NGI)",
-      url: "https://www.dffe.gov.za",
-      licence: "As documented in src/lib/aerial.ts",
-      date: "dates vary, catalogue 2014–2016",
     },
   },
 ];
@@ -280,14 +277,21 @@ export const REGISTRY_LAYER_IDS = LAYER_DEFS.flatMap(
   (def) => def.layers.map((layer) => layer.id),
 );
 
-/** Adds every def's sources and layers, in registry order. */
+/**
+ * Adds every def's sources and layers, in registry order. Registry order is
+ * the stacking order: each def appends above the ones before it, so the first
+ * def is the bottom layer. (An earlier version let a def carry a `beforeId`
+ * naming a layer later in the registry; MapLibre silently refuses to insert
+ * before a layer the style does not have, which dropped every vector layer
+ * from the Land view.)
+ */
 export function addMapLayers(map: LibreMap): void {
   for (const def of LAYER_DEFS) {
     for (const [sourceId, source] of Object.entries(def.sources)) {
       if (!map.getSource(sourceId)) map.addSource(sourceId, source);
     }
     for (const layer of def.layers) {
-      if (!map.getLayer(layer.id)) map.addLayer(layer, def.beforeId);
+      if (!map.getLayer(layer.id)) map.addLayer(layer);
     }
   }
 }

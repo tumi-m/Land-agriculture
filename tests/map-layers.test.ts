@@ -4,8 +4,40 @@ import {
   LAYER_DEFS,
   LAYER_ID_TO_DEF,
   REGISTRY_LAYER_IDS,
+  addMapLayers,
   setLayerVisibility,
 } from "../src/map/layers";
+
+test("addMapLayers adds every registry layer to a fresh map", () => {
+  // Regression pin: a beforeId naming a layer defined later in the registry
+  // made MapLibre skip every vector layer (it refuses to insert before a
+  // missing layer and only fires an error event), which silently emptied the
+  // Land view. Nothing may be dropped, and the added order must be registry
+  // order — it is the stacking order.
+  const added: string[] = [];
+  const fake = {
+    getSource: () => undefined,
+    addSource: () => undefined,
+    getLayer: (id: string) => (added.includes(id) ? {} : undefined),
+    addLayer: (layer: { id: string }) => {
+      added.push(layer.id);
+    },
+  } as unknown as Parameters<typeof addMapLayers>[0];
+  addMapLayers(fake);
+  assert.deepEqual(added, REGISTRY_LAYER_IDS);
+});
+
+test("the aerial raster stacks under the vector layers", () => {
+  // Pre-refactor the aerial layer was inserted before province-fill so the
+  // vector overlays draw over the imagery.
+  assert.equal(REGISTRY_LAYER_IDS[0], "aerial");
+  for (const id of ["province-fill", "district-fill", "notice-parcel-fill"]) {
+    assert.ok(
+      REGISTRY_LAYER_IDS.indexOf(id) > 0,
+      `${id} must come after the aerial raster`,
+    );
+  }
+});
 
 test("registry layer ids are unique and every def carries attribution", () => {
   const ids = REGISTRY_LAYER_IDS;
