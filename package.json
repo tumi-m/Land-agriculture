@@ -9,6 +9,7 @@
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "data:topo": "node scripts/build-topo.mjs",
+    "data:worker": "node scripts/maplibre-worker.mjs",
     "test": "node scripts/test.mjs",
     "build:sites": "opennextjs-cloudflare build && node scripts/stage-sites.mjs",
     "data:dem": "node scripts/build-dem.mjs",

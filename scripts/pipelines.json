@@ -1,5 +1,15 @@
 {
   "nodes": {
+    "maplibre-worker": {
+      "description": "MapLibre worker to public/maplibre/",
+      "command": ["node", "scripts/maplibre-worker.mjs"],
+      "inputs": ["scripts/maplibre-worker.mjs", "node_modules/maplibre-gl/package.json"],
+      "outputs": [
+        "public/maplibre/maplibre-gl-worker.mjs",
+        "public/maplibre/maplibre-gl-shared.mjs",
+        "public/maplibre/version.json"
+      ]
+    },
     "build-topo": {
       "description": "District boundaries to src/data/sa-districts.topo.json",
       "command": ["node", "scripts/build-topo.mjs", "0.05"],

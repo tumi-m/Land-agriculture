@@ -30,6 +30,7 @@ import {
 } from "@/lib/terrain";
 import { valueOf, type Metric } from "@/lib/land-metrics";
 import { group } from "@/lib/format";
+import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import type { ProvinceCode } from "@/lib/types";
 
 export default function AtlasMap({
@@ -183,6 +184,10 @@ export default function AtlasMap({
       host.current.clientWidth,
       devicePixelRatio,
     );
+    // The bundler rewrites import.meta.url to a file:// path, so MapLibre
+    // cannot find its own worker; point it at the copy in public/ or every
+    // GeoJSON source stays pending and the vector layers never draw.
+    maplibregl.setWorkerUrl(MAPLIBRE_WORKER_URL);
     try {
       instance = new maplibregl.Map({
         container: host.current,
