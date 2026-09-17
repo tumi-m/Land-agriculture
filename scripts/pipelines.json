@@ -49,7 +49,36 @@
         "public/data/layers/hillshade.color.png",
         "public/data/layers/hillshade.json"
       ]
+    },
+    "district-stats": {
+      "description": "District statistics to src/data/district-stats.json",
+      "command": ["node", "scripts/data/district-stats.mjs"],
+      "inputs": [
+        "scripts/data/district-stats.mjs",
+        "src/data/sa-districts.topo.json",
+        "src/data/notice-parcels.json",
+        "src/data/nc-district-evidence.json",
+        "src/content/farm-notices.ts",
+        "src/content/northern-cape-notices.json",
+        "src/content/notice-coverage.json",
+        "public/data/sa-dem.png",
+        "public/data/sa-dem.json",
+        "public/data/layers/rain.json",
+        "public/data/layers/rain.values.png",
+        "public/data/layers/landcover.json",
+        "public/data/layers/landcover.values.png",
+        "public/data/layers/soil-ph.json",
+        "public/data/layers/soil-ph.values.png",
+        "public/data/layers/soil-clay.json",
+        "public/data/layers/soil-clay.values.png",
+        "public/data/layers/hillshade.json"
+      ],
+      "outputs": ["src/data/district-stats.json"]
     }
   },
-  "edges": [{ "from": "build-dem", "to": "bake-rasters" }]
+  "edges": [
+    { "from": "build-dem", "to": "bake-rasters" },
+    { "from": "build-topo", "to": "district-stats" },
+    { "from": "bake-rasters", "to": "district-stats" }
+  ]
 }

@@ -39,6 +39,14 @@ Verified at unit level (132 tests, `npm run check` green). `build`/`e2e`/
 workspace and two `next build` runs clobber `.next`; M5.4 adds no UI. Re-run
 the full loop with M5.5, which mounts the first page that uses these modules.
 
+**M2.2 · District statistics pipeline** — landed 17 Sep 2026. The committed
+set: `scripts/data/district-stats.mjs`, `src/data/district-stats.json`,
+`tests/district-stats.test.ts`, and the additive `district-stats` node in
+`scripts/pipelines.json`. 52 districts, every stat with source, date and
+resolution; `npm run check` green with 6 new tests. `build`/`e2e`/`shots`
+skipped as for M5.4: data-only, no UI, and a concurrent M1.3 loop holds port
+3100. QC3 and M2.3 exercise it.
+
 **Baseline tooling fixes** (not a plan task; from the 17 Sep tooling review) —
 landed in the working tree 17 Sep 2026, unstaged; commit separately from the
 staged M5.4 set. Owns:
@@ -53,7 +61,6 @@ staged M5.4 set. Owns:
 
 | Task | Scope | Files it owns |
 |---|---|---|
-| M2.2 | District statistics pipeline | `scripts/data/district-stats.mjs`, `src/data/district-stats.json`, `tests/district-stats.test.ts` |
 | M2.5 | Notices + cadastral match | `scripts/notices/*`, `src/content/notices/*`, `docs/data/match-report.md` |
 
 ## Blocked — wait for M1.3 to land
@@ -81,7 +88,8 @@ staged M5.4 set. Owns:
 |---|---|
 | M0, M1.1, M1.2 | committed |
 | M1.3 | locked, see above |
-| M1.4–M1.7, M2, M3, M4 | not started |
+| M1.4–M1.7, M2 except M2.2, M3, M4 | not started |
+| M2.2 | committed |
 | M5.0–M5.2 | committed (`b48b3be`) |
 | M5.3 | committed |
 | M5.4 | committed |
