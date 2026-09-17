@@ -1,0 +1,59 @@
+# Milestone status — for owners claiming work
+
+Recorded 17 Sep 2026 against commit `b48b3be`. The plan and its checks live in
+`docs/PLAN-MAP-10X.md`; this page is the live occupancy list so two owners
+never edit the same files. Update it in the same commit that starts or lands a
+task.
+
+## Occupied — do not touch these files until released
+
+**M1.3 · Scene split and camera** — mid-flight in one working tree, `npm run
+check` green (110 tests), uncommitted. Locked files:
+
+- `src/scene/` (new: `camera.ts`, `core.ts`, `labels.ts`, `picking.ts`,
+  `pieces.ts`) and `src/components/explorer/` (new)
+- `src/components/ExplodedMap.tsx` (being deleted), `LandLocator.tsx`,
+  `src/state/explorer.ts`, `src/styles/anatomy.css`
+- `.dependency-cruiser.cjs`, `e2e/perf.spec.ts`, `e2e/quality.spec.ts`,
+  `scripts/test-explorer.tsx`
+
+The stash this came from (`stash@{0}`, 1,133 deletions) is applied and should
+be dropped once the task commits.
+
+## Free to claim now — no overlap with the locked set
+
+| Task | Scope | Files it owns |
+|---|---|---|
+| M2.2 | District statistics pipeline | `scripts/data/district-stats.mjs`, `src/data/district-stats.json`, `tests/district-stats.test.ts` |
+| M2.5 | Notices + cadastral match | `scripts/notices/*`, `src/content/notices/*`, `docs/data/match-report.md` |
+| M5.3 | Rubric scorer | `src/lib/adjudication/rubric.ts`, `tests/adjudication-rubric.test.ts` |
+| M5.4 | Append-only log + signature | `src/lib/adjudication/log.ts`, `signature.ts`, `public/adjudication/log.json`, tests |
+
+## Blocked — wait for M1.3 to land
+
+- M1.4–M1.7 (labels, shell, search, poster) build on `src/scene/` and
+  `ModelView.tsx`.
+- M2.1, M2.3, M2.4 edit `pieces.ts`; the inspect registry mounts over the new
+  scene.
+- All of M3 and M4: the plan's order is strict (`docs/PLAN-MAP-10X.md`,
+  "Order of work").
+
+## How to claim
+
+1. Say which task and which files before the first edit, in the task thread.
+2. If a needed file is in the locked list, wait for M1.3 to land, then rebase.
+3. The loop after every change: `npm run check`. Before a commit:
+   `npm run build && npm run e2e && npm run shots`, then look at the PNGs.
+4. Standing rules apply (`AGENTS.md`): no invented data, every number carries
+   source and date, secrets from the environment only, one task one small
+   diff.
+
+## Current phase state (checked against the tree, not assumed)
+
+| Phase | State |
+|---|---|
+| M0, M1.1, M1.2 | committed |
+| M1.3 | locked, see above |
+| M1.4–M1.7, M2, M3, M4 | not started |
+| M5.0–M5.2 | committed (`b48b3be`) |
+| M5.6 | will stop and ask for `ADJUDICATION_SIGNING_KEY` |

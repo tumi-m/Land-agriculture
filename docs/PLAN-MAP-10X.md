@@ -2,7 +2,8 @@
 
 The map plan agreed in the session of 15 September 2026, written down so it
 survives the session. Executed one task at a time; each task's **Check** decides
-done.
+done. When several owners work in parallel, `docs/milestone-status.md` is the
+occupancy list: claim a file set there before the first edit.
 
 **Decisions:** round-specific QC metrics · map first, photos deferred · no new
 dependencies · this plan lives in `docs/PLAN-MAP-10X.md`.

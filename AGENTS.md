@@ -15,6 +15,7 @@ Next.js 15 (App Router), React 19, TypeScript strict, Tailwind 3. three.js for t
 7. One task, one small diff. Don't start the next task.
 
 ## The loop
+- Claim work first: check `docs/milestone-status.md`, which lists locked file sets and blocked tasks; update it in the same commit that starts or lands a task.
 - Fast, after every change: `npm run check` (typecheck, lint, dependency graph, unit tests)
 - Before a commit: `npm run build && npm run e2e && npm run shots`, then look at the new PNGs in `test-results/shots/`
 - The same check failing three times means stop editing: add a test or logging that isolates it, or split the task.
