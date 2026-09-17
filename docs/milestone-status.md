@@ -20,14 +20,27 @@ check` green (110 tests), uncommitted. Locked files:
 The stash this came from (`stash@{0}`, 1,133 deletions) is applied and should
 be dropped once the task commits.
 
+**M5.3 · Rubric scorer** — claimed 17 Sep 2026, work started. Owns:
+
+- `src/lib/adjudication/rubric.ts`, `tests/adjudication-rubric.test.ts`
+
+**M5.4 · Append-only log + signature** — landed 17 Sep 2026. The committed
+set:
+
+- `src/lib/adjudication/log.ts`, `src/lib/adjudication/signature.ts`,
+  `public/adjudication/log.json`, `tests/adjudication-log.test.ts`
+
+Verified at unit level (132 tests, `npm run check` green). `build`/`e2e`/
+`shots` were skipped in this commit because a concurrent M1.3 loop shares the
+workspace and two `next build` runs clobber `.next`; M5.4 adds no UI. Re-run
+the full loop with M5.5, which mounts the first page that uses these modules.
+
 ## Free to claim now — no overlap with the locked set
 
 | Task | Scope | Files it owns |
 |---|---|---|
 | M2.2 | District statistics pipeline | `scripts/data/district-stats.mjs`, `src/data/district-stats.json`, `tests/district-stats.test.ts` |
 | M2.5 | Notices + cadastral match | `scripts/notices/*`, `src/content/notices/*`, `docs/data/match-report.md` |
-| M5.3 | Rubric scorer | `src/lib/adjudication/rubric.ts`, `tests/adjudication-rubric.test.ts` |
-| M5.4 | Append-only log + signature | `src/lib/adjudication/log.ts`, `signature.ts`, `public/adjudication/log.json`, tests |
 
 ## Blocked — wait for M1.3 to land
 
@@ -56,4 +69,6 @@ be dropped once the task commits.
 | M1.3 | locked, see above |
 | M1.4–M1.7, M2, M3, M4 | not started |
 | M5.0–M5.2 | committed (`b48b3be`) |
+| M5.3 | claimed (rubric scorer), see above |
+| M5.4 | committed |
 | M5.6 | will stop and ask for `ADJUDICATION_SIGNING_KEY` |
