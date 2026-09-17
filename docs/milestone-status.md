@@ -7,18 +7,23 @@ task.
 
 ## Occupied — do not touch these files until released
 
-**M1.3 · Scene split and camera** — mid-flight in one working tree, `npm run
-check` green (110 tests), uncommitted. Locked files:
+**M1.3 · Scene split and camera** — landed 17 Sep 2026. The committed set:
 
-- `src/scene/` (new: `camera.ts`, `core.ts`, `labels.ts`, `picking.ts`,
-  `pieces.ts`) and `src/components/explorer/` (new)
-- `src/components/ExplodedMap.tsx` (being deleted), `LandLocator.tsx`,
+- `src/scene/` (`camera.ts`, `core.ts`, `labels.ts`, `picking.ts`,
+  `pieces.ts`) and `src/components/explorer/ModelView.tsx`
+- `src/components/ExplodedMap.tsx` deleted at parity; `LandLocator.tsx`,
   `src/state/explorer.ts`, `src/styles/anatomy.css`
 - `.dependency-cruiser.cjs`, `e2e/perf.spec.ts`, `e2e/quality.spec.ts`,
-  `scripts/test-explorer.tsx`
+  `scripts/test-explorer.tsx`, `e2e/model.spec.ts`, `tests/camera.test.ts`,
+  `tests/explorer.test.ts`
 
-The stash this came from (`stash@{0}`, 1,133 deletions) is applied and should
-be dropped once the task commits.
+Verified with `npm run check` (149 tests green), `npm run build` green, and a
+scripted browser walk on a quiet server: province select enables the slider,
+depth 1 separates the model, a district opens four slice labels, Reassemble
+returns depth 0, and isolate toggles both ways. The full e2e suite could not
+finish on this box while concurrent sessions held the port and saturated the
+two CPUs (Chromium crashed with "Target crashed"); the M1.3 spec itself
+passes when the machine is quiet. Re-run the full loop at the first QC2 task.
 
 **M5.3 · Rubric scorer** — landed 17 Sep 2026. The committed set:
 
@@ -47,15 +52,20 @@ resolution; `npm run check` green with 6 new tests. `build`/`e2e`/`shots`
 skipped as for M5.4: data-only, no UI, and a concurrent M1.3 loop holds port
 3100. QC3 and M2.3 exercise it.
 
-**M5.5 · The three t4 statements on /verify** — claimed 17 Sep 2026, work
-started. Owns:
+**M5.5 · The three t4 statements on /verify** — landed 17 Sep 2026. The
+committed set:
 
 - `src/lib/adjudication/verify.ts`, `tests/adjudication-verify.test.ts`
 - `src/app/verify/page.tsx`, `src/app/verify/ReceiptChecker.tsx`,
   `e2e/verify.spec.ts`, `src/app/sitemap.ts`
 
-It consumes the landed M5.2/M5.3/M5.4 modules; no overlap with the locked M1.3
-set. The full loop re-run the M5.4 note asks for happens with this task.
+Verified with `npm run check` (149 tests green), `npm run build` green
+(`/verify` 5.57 kB, 112 kB First Load JS), and `e2e/verify.spec.ts` 4/4 green
+on a warm server: empty state (never a sample round), a generated test vector
+passes 3 of 3, a tampered total fails loudly with its reason, and unreadable
+text is refused with a message. The mixed-tree full suite was not a clean
+signal while M1.3 staged its refactor in the same working tree (see M1.3's
+note); the first single-task QC2 run should re-run the full loop.
 
 **Baseline tooling fixes** (not a plan task; from the 17 Sep tooling review) —
 committed 17 Sep 2026 in its own commit. Owns:
@@ -72,14 +82,17 @@ committed 17 Sep 2026 in its own commit. Owns:
 |---|---|---|
 | M2.5 | Notices + cadastral match | `scripts/notices/*`, `src/content/notices/*`, `docs/data/match-report.md` |
 
-## Blocked — wait for M1.3 to land
+M1.3 has landed, which frees M1.4 (label placement), M1.5 (explorer shell),
+M1.6 (search and outline), M1.7 (poster and first run), M2.1 (textures on the
+slices), M2.3 (inspect card registry) and M2.4 (layers panel, lenses). Claim
+each from `docs/PLAN-MAP-10X.md`'s Files column, one at a time and in that
+order; M2.3 and M2.4 also wait on M2.1's `pieces.ts` edits.
 
-- M1.4–M1.7 (labels, shell, search, poster) build on `src/scene/` and
-  `ModelView.tsx`.
-- M2.1, M2.3, M2.4 edit `pieces.ts`; the inspect registry mounts over the new
-  scene.
-- All of M3 and M4: the plan's order is strict (`docs/PLAN-MAP-10X.md`,
-  "Order of work").
+## The plan order still applies
+
+- M3 and M4 follow the plan's order of work (`docs/PLAN-MAP-10X.md`).
+- M5.6 is the one task that will stop and ask for the organiser's key
+  (`ADJUDICATION_SIGNING_KEY`).
 
 ## How to claim
 
@@ -95,11 +108,11 @@ committed 17 Sep 2026 in its own commit. Owns:
 
 | Phase | State |
 |---|---|
-| M0, M1.1, M1.2 | committed |
-| M1.3 | locked, see above |
-| M1.4–M1.7, M2 except M2.2, M3, M4 | not started |
+| M0, M1.1–M1.3 | committed |
+| M1.4–M1.7, M2 except M2.2, M3, M4 | open |
 | M2.2 | committed |
 | M5.0–M5.2 | committed (`b48b3be`) |
 | M5.3 | committed |
 | M5.4 | committed |
+| M5.5 | committed |
 | M5.6 | will stop and ask for `ADJUDICATION_SIGNING_KEY` |
