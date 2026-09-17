@@ -20,9 +20,13 @@ check` green (110 tests), uncommitted. Locked files:
 The stash this came from (`stash@{0}`, 1,133 deletions) is applied and should
 be dropped once the task commits.
 
-**M5.3 · Rubric scorer** — claimed 17 Sep 2026, work started. Owns:
+**M5.3 · Rubric scorer** — landed 17 Sep 2026. The committed set:
 
 - `src/lib/adjudication/rubric.ts`, `tests/adjudication-rubric.test.ts`
+
+Verified at unit level: the ranking re-derives from published scores,
+reordering a score changes the verdict, ties break on the leaf digest, and
+the commitment moves with each input (`npm run check` green).
 
 **M5.4 · Append-only log + signature** — landed 17 Sep 2026. The committed
 set:
@@ -34,6 +38,16 @@ Verified at unit level (132 tests, `npm run check` green). `build`/`e2e`/
 `shots` were skipped in this commit because a concurrent M1.3 loop shares the
 workspace and two `next build` runs clobber `.next`; M5.4 adds no UI. Re-run
 the full loop with M5.5, which mounts the first page that uses these modules.
+
+**Baseline tooling fixes** (not a plan task; from the 17 Sep tooling review) —
+landed in the working tree 17 Sep 2026, unstaged; commit separately from the
+staged M5.4 set. Owns:
+
+- `scripts/quality.mjs` (baseline write gated behind `--write-baseline`),
+  `scripts/measure.mjs` (truthful Pass/Fail, no write on failure),
+  `scripts/budget.mjs` + `scripts/budget-baseline.mjs` (new; the limit reads
+  from `docs/baseline.md`'s budget row instead of a constant),
+  `package.json` (`quality:baseline` script)
 
 ## Free to claim now — no overlap with the locked set
 
@@ -69,6 +83,6 @@ the full loop with M5.5, which mounts the first page that uses these modules.
 | M1.3 | locked, see above |
 | M1.4–M1.7, M2, M3, M4 | not started |
 | M5.0–M5.2 | committed (`b48b3be`) |
-| M5.3 | claimed (rubric scorer), see above |
+| M5.3 | committed |
 | M5.4 | committed |
 | M5.6 | will stop and ask for `ADJUDICATION_SIGNING_KEY` |
