@@ -1,13 +1,20 @@
 // Runs the M0.3 quality spec and renders its raw measurements into
-// test-results/quality/baseline.json plus the human table in
-// docs/map-quality-baseline.md. The harness only measures; QC passes compare
-// later numbers against these. This script is a measurement run, not a gate,
-// so it exits 0 even when the page has problems — they are the baseline.
+// test-results/quality/latest.json on every run. The human table in
+// docs/map-quality-baseline.md is the fixed QC0 zero point, so it is only
+// rewritten when the run explicitly asks (--write-baseline, exposed as
+// `npm run quality:baseline`); a routine measurement never clobbers the
+// point later rounds compare against. This script is a measurement run,
+// not a gate, so it exits 0 even when the page has problems — they are the
+// latest run's numbers, not the zero point.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const OUT = "test-results/quality";
+
+// Only an explicit --write-baseline (npm run quality:baseline) may replace
+// the committed zero point.
+const writeBaseline = process.argv.includes("--write-baseline");
 
 console.log("quality: running e2e/quality.spec.ts (this drives a real browser)");
 try {
@@ -41,8 +48,9 @@ const KINDS = [
 const count = (state, kind) =>
   state.problems.filter((p) => p.kind === kind).length;
 
-// Baseline JSON: one row per state with the counts rolled up, kept beside the
-// human table so later QC can diff numbers without parsing markdown.
+// Latest-run JSON: one row per state with the counts rolled up plus the
+// recording time, so any two runs are diffable without parsing markdown.
+// Written on every run; the committed zero point in docs/ is not.
 mkdirSync(OUT, { recursive: true });
 const rows = states.map((state) => ({
   state: state.state,
@@ -56,8 +64,8 @@ const rows = states.map((state) => ({
   unrendered: count(state, "unrendered-value"),
 }));
 writeFileSync(
-  join(OUT, "baseline.json"),
-  JSON.stringify(rows, null, 2),
+  join(OUT, "latest.json"),
+  JSON.stringify({ recordedAt: new Date().toISOString(), states: rows }, null, 2),
 );
 
 const header = [
@@ -68,7 +76,7 @@ const header = [
 const lines = [
   `# Map quality baseline`,
   ``,
-  `Recorded by \`npm run quality\` (M0.3). One row per measured state at`,
+  `Recorded by \`npm run quality:baseline\` (M0.3). One row per measured state at`,
   `390x844 and 1440x900 in light and dark: anatomy at four explode depths,`,
   `atlas with the dossier closed, atlas with a notice open. Numbers are the`,
   `fixed QC0 zero point; later "30% fewer" claims are computed from them.`,
@@ -81,7 +89,14 @@ const lines = [
   ),
   ``,
 ];
-writeFileSync("docs/map-quality-baseline.md", lines.join("\n"));
+if (writeBaseline) {
+  writeFileSync("docs/map-quality-baseline.md", lines.join("\n"));
+} else {
+  console.log(
+    "quality: docs/map-quality-baseline.md untouched; `npm run quality:baseline` replaces the QC0 zero point",
+  );
+  console.log(lines.join("\n"));
+}
 
 const totals = {
   overlays: Math.max(...rows.map((r) => r.overlays)),
@@ -92,8 +107,9 @@ const totals = {
   unrendered: rows.reduce((sum, r) => sum + r.unrendered, 0),
 };
 console.log(
-  `quality: ${rows.length} states -> ${OUT}/baseline.json and docs/map-quality-baseline.md`,
+  `quality: ${rows.length} states -> ${OUT}/latest.json` +
+    (writeBaseline ? " and docs/map-quality-baseline.md (zero point replaced)" : ""),
 );
 console.log(
-  `quality: baseline sums ${JSON.stringify(totals)}`,
+  `quality: latest-run sums ${JSON.stringify(totals)}`,
 );

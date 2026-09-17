@@ -47,9 +47,18 @@ resolution; `npm run check` green with 6 new tests. `build`/`e2e`/`shots`
 skipped as for M5.4: data-only, no UI, and a concurrent M1.3 loop holds port
 3100. QC3 and M2.3 exercise it.
 
+**M5.5 · The three t4 statements on /verify** — claimed 17 Sep 2026, work
+started. Owns:
+
+- `src/lib/adjudication/verify.ts`, `tests/adjudication-verify.test.ts`
+- `src/app/verify/page.tsx`, `src/app/verify/ReceiptChecker.tsx`,
+  `e2e/verify.spec.ts`, `src/app/sitemap.ts`
+
+It consumes the landed M5.2/M5.3/M5.4 modules; no overlap with the locked M1.3
+set. The full loop re-run the M5.4 note asks for happens with this task.
+
 **Baseline tooling fixes** (not a plan task; from the 17 Sep tooling review) —
-landed in the working tree 17 Sep 2026, unstaged; commit separately from the
-staged M5.4 set. Owns:
+committed 17 Sep 2026 in its own commit. Owns:
 
 - `scripts/quality.mjs` (baseline write gated behind `--write-baseline`),
   `scripts/measure.mjs` (truthful Pass/Fail, no write on failure),
