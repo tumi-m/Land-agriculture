@@ -29,6 +29,9 @@ export type LandLayerId = "land" | "soil" | "climate" | "opportunity";
  */
 export type ViewName = "model" | "land";
 
+/** The named camera angles the model's camera pill offers. */
+export type CameraPresetId = "three-quarter" | "top" | "side";
+
 /** One open panel at a time, over or beside the stage. */
 export type SheetName =
   | "none"
@@ -54,8 +57,16 @@ export interface ExplorerState {
   selection: Selection;
   /** Depth of the exploded model, 0 assembled to 1 fully separated. */
   depth: number;
+  /** How far a chosen district's four slices have peeled apart, 0–1. */
+  peel: number;
   /** Historical measure for the province solids (0.5 height shows). */
   metric: Metric;
+  /** The camera angle the model is at, or null while the user orbits freely. */
+  cameraPreset: CameraPresetId | null;
+  /** Isolate: every piece but the chosen district leaves the stage. */
+  isolate: boolean;
+  /** Slice ids the user has switched off in the model's region console. */
+  hidden: Set<string>;
   /** The map layer defs currently on, by def id. */
   layers: Set<string>;
   /** The land camera's last shareable pose; not written for the model. */
@@ -76,7 +87,12 @@ export interface ExplorerState {
   back: () => void;
   setView: (view: ViewName) => void;
   setDepth: (depth: number) => void;
+  setPeel: (peel: number) => void;
+  setHidden: (hidden: Set<string>) => void;
+  toggleHidden: (id: string) => void;
   setMetric: (metric: Metric) => void;
+  setCameraPreset: (preset: CameraPresetId | null) => void;
+  setIsolate: (isolate: boolean) => void;
   toggleLayer: (id: string) => void;
   setCamera: (pose: CameraPose | null) => void;
   openSheet: (sheet: SheetName) => void;
@@ -124,7 +140,11 @@ export const useExplorer = create<ExplorerState>((set) => ({
   view: "model",
   selection: { kind: "country" },
   depth: 0,
+  peel: 0,
   metric: "advertised",
+  cameraPreset: "three-quarter",
+  isolate: false,
+  hidden: new Set<string>(),
   layers: initialLayers,
   camera: null,
   sheet: "none",
@@ -173,7 +193,18 @@ export const useExplorer = create<ExplorerState>((set) => ({
   back: () => set((state) => ({ selection: parentOf(state.selection) })),
   setView: (view) => set({ view, sheet: "none" }),
   setDepth: (depth) => set({ depth }),
+  setPeel: (peel) => set({ peel }),
+  setHidden: (hidden) => set({ hidden }),
   setMetric: (metric) => set({ metric }),
+  setCameraPreset: (cameraPreset) => set({ cameraPreset }),
+  setIsolate: (isolate) => set({ isolate }),
+  toggleHidden: (id) =>
+    set((state) => {
+      const hidden = new Set(state.hidden);
+      if (hidden.has(id)) hidden.delete(id);
+      else hidden.add(id);
+      return { hidden };
+    }),
   toggleLayer: (id) =>
     set((state) => {
       const layers = new Set(state.layers);
@@ -193,3 +224,15 @@ export const useExplorer = create<ExplorerState>((set) => ({
       return { openIds };
     }),
 }));
+
+/**
+ * The selected district of the open province, which is what isolate keeps on
+ * the stage. Null when the selection is not a district or layer, because
+ * there is nothing narrower to isolate.
+ */
+export function isolatedDistrict(
+  selection: Selection,
+): { province: ProvinceCode; district: string } | null {
+  if (selection.kind !== "district" && selection.kind !== "layer") return null;
+  return { province: selection.province, district: selection.district };
+}

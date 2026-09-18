@@ -35,7 +35,7 @@ const LandScene = dynamic(() => import("./LandScene"), {
   ),
 });
 
-const ExplodedMap = dynamic(() => import("./ExplodedMap"), { ssr: false });
+const ModelView = dynamic(() => import("./explorer/ModelView"), { ssr: false });
 
 const AtlasMap = dynamic(() => import("./AtlasMap"), { ssr: false });
 
@@ -76,6 +76,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const view = useExplorer((s) => s.view);
   const selection = useExplorer((s) => s.selection);
   const metric = useExplorer((s) => s.metric);
+  const depth = useExplorer((s) => s.depth);
+  const setDepth = useExplorer((s) => s.setDepth);
   const openIds = useExplorer((s) => s.openIds);
   const setView = useExplorer((s) => s.setView);
   const setMetric = useExplorer((s) => s.setMetric);
@@ -122,9 +124,6 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     selection.kind === "district" || selection.kind === "layer"
       ? selection.district
       : null;
-  const setDistrict = (id: string | null) => {
-    if (province) selectDistrict(province, id);
-  };
 
   const hasFeed = dataset.source === "remote";
   const adverts = useMemo(
@@ -193,9 +192,12 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
   // Hydrate from the URL once on mount, then keep it in step (debounced).
   useEffect(() => {
-    const { at, view: urlView, metric: urlMetric } = readUrlState(
-      window.location.search,
-    );
+    const {
+      at,
+      view: urlView,
+      metric: urlMetric,
+      depth: urlDepth,
+    } = readUrlState(window.location.search);
     if (at.kind !== "country") {
       if (at.kind === "province") selectProvince(at.province);
       else if (at.kind === "district") selectDistrict(at.province, at.district);
@@ -227,6 +229,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     }
     if (urlView !== "model") setView(urlView);
     if (urlMetric !== "advertised") setMetric(urlMetric);
+    if (urlDepth !== null) setDepth(urlDepth);
     // Follows the `dark` class live, so WebGL readers of the tokens stay
     // in step when the theme flips without a remount.
     const stopTheme = onThemeChange(() => {
@@ -257,7 +260,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       ])
         incoming.delete(key);
       for (const [key, value] of incoming) url.searchParams.set(key, value);
-      const state = writeUrlState({ at: selection, view, metric });
+      const state = writeUrlState({ at: selection, view, metric, depth });
       const params = new URLSearchParams(
         state ? state.slice(1) : incoming.toString(),
       );
@@ -269,7 +272,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       );
     }, 200);
     return () => window.clearTimeout(handle);
-  }, [selection, view, metric, urlReady]);
+  }, [selection, view, metric, depth, urlReady]);
 
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {
@@ -564,11 +567,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             }
             <div className="map-stage" id="land-map-stage">
               {showModel ? (
-                <ExplodedMap
-                  selected={province}
-                  district={district}
-                  onSelect={chooseProvince}
-                  onSelectDistrict={setDistrict}
+                <ModelView
                   onNotice={chooseNotice}
                   onTerrain={() => {
                     setView("land");

@@ -1,13 +1,13 @@
 # Milestone status — for owners claiming work
 
-Recorded 17 Sep 2026 against commit `b48b3be`. The plan and its checks live in
+Recorded 18 Sep 2026 against the M1.3 landing. The plan and its checks live in
 `docs/PLAN-MAP-10X.md`; this page is the live occupancy list so two owners
 never edit the same files. Update it in the same commit that starts or lands a
 task.
 
 ## Occupied — do not touch these files until released
 
-**M1.3 · Scene split and camera** — landed 17 Sep 2026. The committed set:
+**M1.3 · Scene split and camera** — landed 18 Sep 2026. The committed set:
 
 - `src/scene/` (`camera.ts`, `core.ts`, `labels.ts`, `picking.ts`,
   `pieces.ts`) and `src/components/explorer/ModelView.tsx`
@@ -15,15 +15,25 @@ task.
   `src/state/explorer.ts`, `src/styles/anatomy.css`
 - `.dependency-cruiser.cjs`, `e2e/perf.spec.ts`, `e2e/quality.spec.ts`,
   `scripts/test-explorer.tsx`, `e2e/model.spec.ts`, `tests/camera.test.ts`,
-  `tests/explorer.test.ts`
+  `tests/explorer.test.ts`, `tests/scene-core.test.ts`
 
-Verified with `npm run check` (149 tests green), `npm run build` green, and a
-scripted browser walk on a quiet server: province select enables the slider,
-depth 1 separates the model, a district opens four slice labels, Reassemble
-returns depth 0, and isolate toggles both ways. The full e2e suite could not
-finish on this box while concurrent sessions held the port and saturated the
-two CPUs (Chromium crashed with "Target crashed"); the M1.3 spec itself
-passes when the machine is quiet. Re-run the full loop at the first QC2 task.
+Verified with `npm run check` (150 tests green), `npm run build` green, and
+`npm run shots` green. The full e2e suite reads 20/22 on this 2-core box:
+`e2e/model.spec.ts:11` and one screens baseline fail, and both pass when
+run alone. Chasing those two isolated the cause to Chromium's software-GL
+frame scheduler: under `--use-angle=swiftshader` it stalls permanently (or
+the renderer crashes with "Target crashed") at random points once the WebGL
+scene is mid-interaction, so Playwright actionability and screenshot waits
+never see a frame. It reproduces against both `next dev` and `next start`,
+with and without antialias and shadows. Three real faults came out of that
+chase and are fixed in this commit: the camera bar's `backdrop-filter`
+livelocked headless screenshot compositing over the live canvas (it is now
+a plain opaque panel), the ResizeObserver rebuilt the GL surface on no-op
+resizes (now skipped), and software rasterisers now skip antialias and
+shadows so cheap devices and CI get frames they can actually produce
+(`softwareRenderer` in `src/scene/core.ts`, pinned in
+`tests/scene-core.test.ts`). QC2 should re-run the full loop on a machine
+with more cores and confirm the two flaky specs are green there.
 
 **M5.3 · Rubric scorer** — landed 17 Sep 2026. The committed set:
 

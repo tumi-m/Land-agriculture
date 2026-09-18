@@ -2,142 +2,106 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import {
-  applyRelief,
   DEM_ATTRIBUTION,
   loadDem,
   RELIEF_EXAGGERATION,
-  surfacePoint,
 } from "@/lib/dem";
-import RIVERS from "@/data/sa-rivers.json";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import {
-  PROVINCE_SHAPES,
-  DISTRICTS_BY_PROVINCE,
-  projectedRings,
-} from "@/lib/geo";
+import { DISTRICTS_BY_PROVINCE, PROVINCE_SHAPES } from "@/lib/geo";
 import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import {
   LAND_LAYERS,
-  noticesForDistrict,
   noticeCountLabel,
-  explosionOffset,
-  sliceHeight,
+  noticesForDistrict,
   modelDistance,
+  sliceHeight,
   spacedLabels,
   type LandLayer,
 } from "@/lib/exploded-map";
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
-import GovernmentNotices from "./GovernmentNotices";
+import GovernmentNotices from "@/components/GovernmentNotices";
 import type { ProvinceCode } from "@/lib/types";
 import { SCENE } from "@/design/ramps";
-import { onThemeChange, readToken } from "@/lib/tokens";
+import { isolatedDistrict, useExplorer } from "@/state/explorer";
+import {
+  CAMERA_PRESETS,
+  DEFAULT_PRESET,
+  presetDirection,
+  presetFor,
+  visibleViewRegion,
+  type CameraPresetId,
+} from "@/scene/camera";
+import { createSceneCore } from "@/scene/core";
+import { pieceTransforms } from "@/scene/depth";
+import {
+  applyReliefToPieces,
+  buildFootprints,
+  buildRivers,
+  buildTethers,
+  makePiece,
+  type Piece,
+} from "@/scene/pieces";
+import {
+  firstHit,
+  isTap,
+  normalisedPointer,
+  pickableMeshes,
+} from "@/scene/picking";
+import { clampLabelX, projectToScreen } from "@/scene/labels";
 
-type Piece = {
-  id: string;
-  province: ProvinceCode;
-  group: THREE.Group;
-  meshes: THREE.Mesh[];
-  centre: THREE.Vector3;
-  size: THREE.Vector3;
-  anchor: THREE.Vector3;
-  /** World centre before re-centring — needed to map vertices back to lon/lat. */
-  origin: THREE.Vector3;
-};
-/** Slab thickness in world units; relief is measured against it. */
-export const EXTRUDE_DEPTH = 0.6;
+/** How long the camera flight to a new selection takes. */
+const FLIGHT_MS = 1000;
+export { EXTRUDE_DEPTH, makePiece } from "@/scene/pieces";
 
-export function makePiece(
-  id: string,
-  province: ProvinceCode,
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
-  stack: boolean,
-): Piece {
-  const shapes = projectedRings(geometry).map(({ outer, holes }) => {
-    const shape = new THREE.Shape(
-      outer.map(([x, y]) => new THREE.Vector2(x, y)),
-    );
-    for (const hole of holes)
-      shape.holes.push(
-        new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))),
-      );
-    return shape;
-  });
-  const geometry3d = new THREE.ExtrudeGeometry(shapes, {
-    depth: EXTRUDE_DEPTH,
-    bevelEnabled: true,
-    bevelSize: 0.07,
-    bevelThickness: 0.06,
-    bevelSegments: 2,
-  });
-  geometry3d.rotateX(-Math.PI / 2);
-  geometry3d.computeBoundingBox();
-  const box = geometry3d.boundingBox!;
-  const centre = box.getCenter(new THREE.Vector3());
-  centre.y = 0;
-  const size = box.getSize(new THREE.Vector3());
-  geometry3d.translate(-centre.x, 0, -centre.z);
-  const group = new THREE.Group();
-  group.position.copy(centre);
-  const meshes = (stack ? LAND_LAYERS : [LAND_LAYERS[0]]).map((layer, i) => {
-    const material = new THREE.MeshStandardMaterial({
-      color: layer.colour,
-      roughness: 0.65,
-      metalness: 0.12,
-      transparent: true,
-    });
-    const mesh = new THREE.Mesh(geometry3d, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.position.y = stack ? sliceHeight(i, 0) : 0;
-    mesh.userData = { id, province, layer: layer.id };
-    group.add(mesh);
-    const line = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geometry3d, 25),
-      new THREE.LineBasicMaterial({
-        color: layer.colour,
-        transparent: true,
-        opacity: 0.65,
-      }),
-    );
-    mesh.add(line);
-    return mesh;
-  });
-  return {
-    id,
-    province,
-    group,
-    meshes,
-    centre,
-    size,
-    anchor: centre.clone(),
-    origin: centre.clone(),
-  };
-}
-export default function ExplodedMap({
-  selected,
-  district,
-  onSelect,
-  onSelectDistrict,
+/**
+ * The Model view: the exploded map of South Africa, its floating labels and
+ * the slice dossier. The three.js renderer lives in `src/scene/core.ts`, what
+ * is drawn in `src/scene/pieces.ts`, picking in `src/scene/picking.ts` and the
+ * depth transforms in `src/scene/depth.ts`; this component keeps them in step
+ * with the explorer store and owns the chrome around the canvas.
+ */
+export default function ModelView({
   onNotice,
   onTerrain,
 }: {
-  selected: ProvinceCode | null;
-  district: string | null;
-  onSelect: (p: ProvinceCode | null) => void;
-  onSelectDistrict: (d: string | null) => void;
   onNotice: (n: FarmNotice) => void;
   onTerrain: () => void;
 }) {
+  const selected = useExplorer((s) => {
+    const kind = s.selection.kind;
+    if (kind === "province" || kind === "district" || kind === "layer")
+      return s.selection.province;
+    if (kind === "notice") {
+      const id = s.selection.id;
+      return FARM_NOTICES.find((n) => n.id === id)?.province ?? null;
+    }
+    return null;
+  });
+  const district = useExplorer((s) =>
+    s.selection.kind === "district" || s.selection.kind === "layer"
+      ? s.selection.district
+      : null,
+  );
+  const depth = useExplorer((s) => s.depth);
+  const peel = useExplorer((s) => s.peel);
+  const isolate = useExplorer((s) => s.isolate);
+  const hiddenStore = useExplorer((s) => s.hidden);
+  const cameraPreset = useExplorer((s) => s.cameraPreset);
+  const setDepth = useExplorer((s) => s.setDepth);
+  const setPeel = useExplorer((s) => s.setPeel);
+  const setHidden = useExplorer((s) => s.setHidden);
+  const toggleHidden = useExplorer((s) => s.toggleHidden);
+  const setIsolate = useExplorer((s) => s.setIsolate);
+  const setCameraPreset = useExplorer((s) => s.setCameraPreset);
+  const selectProvince = useExplorer((s) => s.selectProvince);
+  const selectDistrict = useExplorer((s) => s.selectDistrict);
+
   const host = useRef<HTMLDivElement>(null),
     labels = useRef(new Map<string, HTMLButtonElement>()),
     sliceLabels = useRef(new Map<string, HTMLButtonElement>());
   const leaders = useRef(new Map<string, SVGLineElement>());
   const [infoOpen, setInfoOpen] = useState(!!district);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [explode, setExplode] = useState(0.72),
-    [peel, setPeel] = useState(0.82),
-    [layer, setLayer] = useState<LandLayer>("opportunity"),
-    [hidden, setHidden] = useState<string[]>([]),
+  const [layer, setLayer] = useState<LandLayer>("opportunity"),
     [ready, setReady] = useState(false),
     [relief, setRelief] = useState(false),
     [reliefFailed, setReliefFailed] = useState(false),
@@ -145,35 +109,13 @@ export default function ExplodedMap({
     [failed, setFailed] = useState(false),
     [auto, setAuto] = useState(false),
     [hover, setHover] = useState("");
-  const latest = useRef({
-    selected,
-    district,
-    explode,
-    peel,
-    hidden,
-    onSelect,
-    onSelectDistrict,
-    layer,
-  });
-  latest.current = {
-    selected,
-    district,
-    explode,
-    peel,
-    hidden,
-    onSelect,
-    onSelectDistrict,
-    layer,
-  };
-  const world = useRef<{
-    renderer: THREE.WebGLRenderer;
-    camera: THREE.PerspectiveCamera;
-    controls: OrbitControls;
-    provinces: Piece[];
-    districts: Piece[];
-    frame: () => void;
-    wake: () => void;
-  } | null>(null);
+  const core = useRef<ReturnType<typeof createSceneCore>>(null);
+  const frameScene = useRef<() => void>(() => {});
+  const sheetFrame = useRef<(box: DOMRect | null) => void>(() => {});
+  /** Drops any camera flight in progress, so a preset or zoom is not undone. */
+  const cancelFlight = useRef<() => void>(() => {});
+  const latest = useRef({ selected, district, depth, peel, layer });
+  latest.current = { selected, district, depth, peel, layer };
   const layerMeta = LAND_LAYERS.find((l) => l.id === layer)!;
   const districtShape = selected
     ? DISTRICTS_BY_PROVINCE[selected].find((d) => d.id === district)
@@ -182,6 +124,7 @@ export default function ExplodedMap({
     selected && district
       ? noticesForDistrict(selected, district)
       : FARM_NOTICES.filter((n) => !selected || n.province === selected);
+
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || (!infoOpen && !controlsOpen)) return;
@@ -197,68 +140,35 @@ export default function ExplodedMap({
     window.addEventListener("keydown", close, true);
     return () => window.removeEventListener("keydown", close, true);
   }, [infoOpen, controlsOpen]);
+
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-        powerPreference: "high-performance",
-      });
-    } catch {
+    const world: {
+      provinces: Piece[];
+      districts: Piece[];
+      allBox: THREE.Box3;
+      centre: THREE.Vector3;
+      footprints: { id: string; outline: THREE.LineSegments }[];
+      tethers: { piece: Piece; line: THREE.Line }[];
+      waterGroup: THREE.Group;
+    } = {
+      provinces: [],
+      districts: [],
+      allBox: new THREE.Box3(),
+      centre: new THREE.Vector3(),
+      footprints: [],
+      tethers: [],
+      waterGroup: new THREE.Group(),
+    };
+    const engine = createSceneCore({ host: el, onFrame: (speed) => animate(speed) });
+    if (!engine) {
       setFailed(true);
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-    renderer.setSize(el.clientWidth, el.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    el.appendChild(renderer.domElement);
-    const scene = new THREE.Scene();
-    // Keep all geographic context crisp at every zoom level.
-    const camera = new THREE.PerspectiveCamera(
-      38,
-      el.clientWidth / el.clientHeight,
-      0.1,
-      1200,
-    );
-    camera.position.set(0, 110, 135);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.minDistance = 20;
-    controls.maxDistance = 700;
-    controls.maxPolarAngle = 1.35;
-    controls.minPolarAngle = 0.15;
-    controls.enablePan = true;
-    scene.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 2.2));
-    const sun = new THREE.DirectionalLight(SCENE.sun, 3);
-    sun.position.set(-60, 120, 60);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    Object.assign(sun.shadow.camera, {
-      left: -140,
-      right: 140,
-      top: 140,
-      bottom: -140,
-      far: 400,
-    });
-    sun.shadow.bias = -0.001;
-    scene.add(sun);
-    const rim = new THREE.DirectionalLight(SCENE.rim, 2);
-    rim.position.set(80, 45, -100);
-    scene.add(rim);
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(650, 650),
-      new THREE.ShadowMaterial({ opacity: 0.35 }),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -1;
-    floor.receiveShadow = true;
-    scene.add(floor);
+    core.current = engine;
+    const { renderer, scene, camera, controls } = engine;
+
     const provinces = PROVINCE_SHAPES.map((p) =>
       makePiece(p.code, p.code, p.geometry, false),
     );
@@ -277,104 +187,40 @@ export default function ExplodedMap({
       piece.anchor.copy(piece.centre);
       scene.add(piece.group);
     }
+    world.provinces = provinces;
+    world.districts = districts;
+    world.allBox = allBox;
+    world.centre = centre;
+
+    scene.add(world.waterGroup);
 
     // Relief arrives after the map does. The slabs draw flat straight away and
     // lift onto the real land surface once the elevation grid resolves, so a
     // slow connection costs detail rather than a wait — and a failed fetch just
     // leaves the map as it was.
     let reliefCancelled = false;
-    const waterGroup = new THREE.Group();
-    scene.add(waterGroup);
-
     void loadDem().then((dem) => {
       if (reliefCancelled) return;
       if (!dem) {
         setReliefFailed(true);
         return;
       }
-
-      // The major rivers, draped on the land surface. Six lines from Natural
-      // Earth — the Orange, Vaal, Limpopo and Okavango — which is what the
-      // irrigation schemes in the dossiers actually draw from.
-      for (const feature of RIVERS.features) {
-        const coordinates = feature.geometry.coordinates as unknown;
-        const parts: [number, number][][] =
-          feature.geometry.type === "MultiLineString"
-            ? (coordinates as [number, number][][])
-            : [coordinates as [number, number][]];
-        for (const line of parts) {
-          const points = line.map(([lon, lat]) =>
-            surfacePoint(dem, lon, lat, EXTRUDE_DEPTH + 0.16 + centre.y).sub(
-              centre,
-            ),
-          );
-          if (points.length < 2) continue;
-          waterGroup.add(
-            new THREE.Line(
-              new THREE.BufferGeometry().setFromPoints(points),
-              new THREE.LineBasicMaterial({
-                color: SCENE.water,
-                transparent: true,
-                opacity: 0.85,
-              }),
-            ),
-          );
-        }
-      }
+      buildRivers(dem, centre)
+        .children.slice()
+        .forEach((child) => world.waterGroup.add(child));
       setWater(true);
-      for (const piece of [...provinces, ...districts]) {
-        const geometry = piece.meshes[0].geometry;
-        applyRelief(geometry, dem, EXTRUDE_DEPTH, piece.origin);
-        for (const mesh of piece.meshes) {
-          const material = mesh.material as THREE.MeshStandardMaterial;
-          material.vertexColors = true;
-          material.needsUpdate = true;
-        }
-        // The outlines snapshot the geometry, so they have to be rebuilt.
-        for (const mesh of piece.meshes) {
-          for (const child of mesh.children) {
-            if (child instanceof THREE.LineSegments) {
-              child.geometry.dispose();
-              child.geometry = new THREE.EdgesGeometry(geometry, 25);
-            }
-          }
-        }
-      }
+      applyReliefToPieces([...provinces, ...districts], dem);
       setRelief(true);
-      wake();
+      engine.wake();
     });
-    const footprints = provinces.map((p) => {
-      const outline = new THREE.LineSegments(
-        new THREE.EdgesGeometry(p.meshes[0].geometry, 25),
-        new THREE.LineBasicMaterial({
-          color: SCENE.footprint,
-          transparent: true,
-          opacity: 0.4,
-        }),
-      );
-      outline.position.copy(p.centre);
-      outline.position.y = -0.2;
-      scene.add(outline);
-      return { id: p.id, outline };
-    });
-    const tethers = districts.map((p) => {
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        p.centre,
-        p.centre,
-      ]);
-      const line = new THREE.Line(
-        geometry,
-        new THREE.LineDashedMaterial({
-          color: SCENE.tether,
-          transparent: true,
-          opacity: 0.32,
-          dashSize: 0.5,
-          gapSize: 0.5,
-        }),
-      );
-      scene.add(line);
-      return { piece: p, line };
-    });
+
+    for (const footprint of buildFootprints(provinces)) {
+      scene.add(footprint.outline);
+      world.footprints.push(footprint);
+    }
+    world.tethers = buildTethers(districts);
+    for (const tether of world.tethers) scene.add(tether.line);
+
     const grid = new THREE.GridHelper(
       220,
       22,
@@ -383,33 +229,7 @@ export default function ExplodedMap({
     );
     grid.position.y = -1.2;
     scene.add(grid);
-    const ray = new THREE.Raycaster(),
-      mouse = new THREE.Vector2();
-    let pointerStart: { x: number; y: number } | null = null;
-    let moving = false;
-    let hovering: THREE.Mesh | null = null;
-    // Hover is the one interactive state in this scene, so it follows the
-    // accent token and refreshes when the theme flips.
-    let accent = readToken("--clay");
-    const stopTheme = onThemeChange(() => {
-      accent = readToken("--clay");
-    });
-    let raf = 0;
-    let previous = performance.now();
-    let activeUntil = previous + 1800;
-    const wake = () => {
-      activeUntil = performance.now() + 1800;
-      if (!raf && !document.hidden) raf = requestAnimationFrame(animate);
-    };
-    const visibility = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-      } else wake();
-    };
-    controls.addEventListener("change", wake);
-    document.addEventListener("visibilitychange", visibility);
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     let flight: {
       from: THREE.Vector3;
       to: THREE.Vector3;
@@ -417,22 +237,42 @@ export default function ExplodedMap({
       targetTo: THREE.Vector3;
       time: number;
     } | null = null;
+
+    /**
+     * The M1.1 pure function's inputs: pieces in scene units plus the current
+     * depth and selection. Both the framing and the animation loop read it, so
+     * the drawn offsets and the camera target can never disagree.
+     */
+    const depthInput = () => ({
+      depth: latest.current.depth,
+      selection: useExplorer.getState().selection,
+      provinces: provinces.map((p) => ({
+        id: p.id as ProvinceCode,
+        centre: [p.centre.x, p.centre.z] as [number, number],
+      })),
+      districts: districts.map((p) => ({
+        id: p.id,
+        province: p.province,
+        centre: [p.centre.x, p.centre.z] as [number, number],
+      })),
+    });
+
+    /**
+     * Frames the selection. `setViewOffset`, applied through `setSheet`,
+     * already biases the visible region around an open sheet.
+     */
     const frame = () => {
-      wake();
+      engine.wake();
       const { selected, district } = latest.current;
       const parent = provinces.find((p) => p.id === selected);
       const child = districts.find(
         (p) => p.id === district && p.province === selected,
       );
+      const transform = child ? pieceTransforms(depthInput()).get(child.id) : null;
       const target = (child ?? parent)?.centre.clone() ?? new THREE.Vector3();
-      if (child && parent) {
-        const offset = explosionOffset(
-          [child.centre.x, child.centre.z],
-          [parent.centre.x, parent.centre.z],
-          latest.current.explode,
-        );
-        target.x += offset[0];
-        target.z += offset[1];
+      if (child && transform) {
+        target.x += transform.offsetX;
+        target.z += transform.offsetZ;
       }
       target.y = child ? 12 : parent ? 5 : 0;
       const size =
@@ -440,141 +280,97 @@ export default function ExplodedMap({
       const span = Math.max(size.x + 30, size.z + 30, child ? 48 : 0);
       const aspect = Math.min(camera.aspect, 1.4);
       const distance = modelDistance(span, aspect, camera.fov);
-      const direction = new THREE.Vector3(-0.18, 0.83, 1).normalize();
       flight = {
         from: camera.position.clone(),
-        to: target.clone().addScaledVector(direction, distance),
+        to: target
+          .clone()
+          .addScaledVector(presetDirection(DEFAULT_PRESET), distance),
         targetFrom: controls.target.clone(),
         targetTo: target,
         time: performance.now(),
       };
     };
-    world.current = {
-      renderer,
-      camera,
-      controls,
-      provinces,
-      districts,
-      frame,
-      wake,
-    };
-    const getHit = (event: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      mouse.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      ray.setFromCamera(mouse, camera);
-      const { selected } = latest.current;
-      return ray.intersectObjects(
-        (selected
-          ? districts.filter((d) => d.province === selected)
-          : provinces
-        ).flatMap((p) => p.meshes.filter((m) => m.visible)),
-        false,
-      )[0];
-    };
-    const down = (e: PointerEvent) => {
-      pointerStart = { x: e.clientX, y: e.clientY };
-      moving = false;
+    frameScene.current = frame;
+    cancelFlight.current = () => {
       flight = null;
-      controls.autoRotate = false;
-      setAuto(false);
     };
-    const move = (e: PointerEvent) => {
-      wake();
-      if (
-        pointerStart &&
-        Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 6
-      )
-        moving = true;
-      if (e.pointerType === "touch") return;
-      hovering = (getHit(e)?.object as THREE.Mesh) ?? null;
-      el.style.cursor = hovering ? "pointer" : "grab";
-      setHover(hovering?.userData.id ?? "");
-    };
-    const up = (e: PointerEvent) => {
-      if (
-        !pointerStart ||
-        moving ||
-        Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 6
-      ) {
-        pointerStart = null;
+
+    /** Shows the sub-rectangle of the canvas an open sheet leaves free. */
+    const setSheet = (box: DOMRect | null) => {
+      const width = el.clientWidth;
+      const height = el.clientHeight;
+      if (!box || width < 1 || height < 1) {
+        camera.clearViewOffset();
+        camera.updateProjectionMatrix();
         return;
       }
-      pointerStart = null;
-      const hit = getHit(e);
-      if (!hit) return;
-      const d = hit.object.userData;
-      if (latest.current.selected) {
-        if (latest.current.district !== d.id) {
-          setHidden([]);
-          setPeel(0.82);
-        }
-        latest.current.onSelectDistrict(d.id);
-        setLayer(d.layer);
-        setInfoOpen(true);
-        setControlsOpen(false);
-      } else latest.current.onSelect(d.province);
-    };
-    const cancel = () => {
-      wake();
-      pointerStart = null;
-      hovering = null;
-      setHover("");
-    };
-    renderer.domElement.addEventListener("pointerdown", down);
-    renderer.domElement.addEventListener("pointermove", move);
-    renderer.domElement.addEventListener("pointerup", up);
-    renderer.domElement.addEventListener("pointercancel", cancel);
-    renderer.domElement.addEventListener("pointerleave", cancel);
-    const resize = new ResizeObserver(() => {
-      const w = el.clientWidth,
-        h = el.clientHeight;
-      if (!w || !h) return;
-      renderer.setSize(w, h);
-      camera.aspect = w / h;
+      // A side sheet on a wide stage, a bottom sheet on a narrow one.
+      const inset =
+        box.width < width * 0.6
+          ? { right: Math.round(width - box.left) }
+          : { bottom: Math.round(height - box.top) };
+      const region = visibleViewRegion(width, height, inset);
+      if (region)
+        camera.setViewOffset(
+          width,
+          height,
+          region.x,
+          region.y,
+          region.width,
+          region.height,
+        );
+      else camera.clearViewOffset();
       camera.updateProjectionMatrix();
-      frame();
-    });
-    resize.observe(el);
+      engine.wake();
+    };
+    sheetFrame.current = setSheet;
+
+    const ray = new THREE.Raycaster(),
+      mouse = new THREE.Vector2();
+    let pointerStart: { x: number; y: number } | null = null;
+    let hovering: THREE.Mesh | null = null;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const project = (
       node: HTMLButtonElement | undefined,
-      p: THREE.Vector3,
+      point: THREE.Vector3,
       visible: boolean,
     ) => {
       if (!node) return;
-      const projected = p.clone().project(camera);
-      visible = visible && projected.z < 1 && projected.z > -1;
-      node.style.transform = `translate(${((projected.x + 1) / 2) * el.clientWidth}px,${((1 - projected.y) / 2) * el.clientHeight}px) translate(-50%,-100%)`;
+      const screen = projectToScreen(point, camera, el.clientWidth, el.clientHeight);
+      visible = visible && !screen.behind;
+      node.style.transform = `translate(${screen.x}px,${screen.y}px) translate(-50%,-100%)`;
       node.style.opacity = visible ? "1" : "0";
       node.style.pointerEvents = visible ? "auto" : "none";
       node.tabIndex = visible ? 0 : -1;
     };
-    const animate = () => {
-      raf = 0;
+
+    const animate = (speed: number) => {
       const now = performance.now();
-      if (
-        document.hidden ||
-        (now > activeUntil && !flight && !controls.autoRotate)
-      )
-        return;
-      const dt = Math.min((now - previous) / 1000, 0.08);
-      previous = now;
-      const speed = reduced ? 1 : Math.min(1, dt * 7);
       const state = latest.current;
-      waterGroup.visible = !state.selected;
+      const store = useExplorer.getState();
+      const solo = store.isolate ? isolatedDistrict(store.selection) : null;
+      const transforms = pieceTransforms(depthInput());
+      world.waterGroup.visible = !state.selected;
       for (const p of provinces) {
-        const muted = !!state.selected;
-        p.group.visible = p.id !== state.selected;
-        p.group.position.y = 0;
+        const transform = transforms.get(p.id);
+        const muted = !!state.selected || !!transform?.ghost;
+        p.group.visible =
+          p.id !== state.selected && (!solo || p.id === solo.province);
+        p.group.position.lerp(
+          new THREE.Vector3(
+            p.centre.x + (transform?.offsetX ?? 0),
+            0,
+            p.centre.z + (transform?.offsetZ ?? 0),
+          ),
+          speed,
+        );
         const material = p.meshes[0].material as THREE.MeshStandardMaterial;
         material.opacity = 1;
         material.color.set(
           muted
             ? SCENE.modelBase
             : p.id === hovering?.userData.id
-              ? accent
+              ? engine.accent()
               : SCENE.modelBase,
         );
         project(
@@ -583,28 +379,37 @@ export default function ExplodedMap({
           !state.selected,
         );
       }
-      for (const f of footprints) f.outline.visible = f.id === state.selected;
+      for (const { id, outline } of world.footprints)
+        outline.visible = id === state.selected;
       const parent = provinces.find((p) => p.id === state.selected);
       for (const p of districts) {
-        p.group.visible = p.province === state.selected;
+        const transform = transforms.get(p.id);
+        p.group.visible =
+          p.province === state.selected && (!solo || p.id === solo.district);
         if (!p.group.visible) {
           project(labels.current.get(p.id), p.centre, false);
           continue;
         }
         const chosen = p.id === state.district;
-        const offset = explosionOffset(
-          [p.centre.x, p.centre.z],
-          [parent!.centre.x, parent!.centre.z],
-          state.explode,
-        );
         const target = p.centre
           .clone()
-          .add(new THREE.Vector3(offset[0], chosen ? 7 : 3, offset[1]));
+          .add(
+            new THREE.Vector3(
+              transform?.offsetX ?? 0,
+              transform?.lift ?? 0,
+              transform?.offsetZ ?? 0,
+            ),
+          );
         p.group.position.lerp(target, speed);
         p.meshes.forEach((m, i) => {
-          m.visible = !chosen || !state.hidden.includes(LAND_LAYERS[i].id);
-          m.position.y +=
-            (sliceHeight(i, chosen ? state.peel : 0) - m.position.y) * speed;
+          m.visible = !chosen || !store.hidden.has(LAND_LAYERS[i].id);
+          // The chosen district's Peel slider trims its own separation; the
+          // depth stages come from the tested pure function.
+          const want = sliceHeight(
+            i,
+            chosen ? state.peel : (transform?.layerGap ?? 0),
+          );
+          m.position.y += (want - m.position.y) * speed;
           const mat = m.material as THREE.MeshStandardMaterial;
           mat.opacity = 1;
           mat.emissive.set(LAND_LAYERS[i].colour);
@@ -652,7 +457,7 @@ export default function ExplodedMap({
             const visible = a.mesh.visible && a.position.z < 1;
             const x = ((a.position.x + 1) / 2) * el.clientWidth,
               y = ((1 - a.position.y) / 2) * el.clientHeight;
-            const labelX = Math.max(8, Math.min(x - 210, el.clientWidth - 220));
+            const labelX = clampLabelX(x, 210, el.clientWidth);
             if (node) {
               node.style.transform = `translate(${labelX}px,${ys[i]}px)`;
               node.style.opacity = visible ? "1" : "0";
@@ -669,9 +474,12 @@ export default function ExplodedMap({
           });
         }
       }
-      for (const { piece, line } of tethers) {
-        line.visible =
-          piece.province === state.selected && state.explode > 0.03;
+      if (parent) {
+        for (const footprint of world.footprints)
+          footprint.outline.visible = footprint.id === parent.id;
+      }
+      for (const { piece, line } of world.tethers) {
+        line.visible = piece.province === state.selected && state.depth > 0.03;
         if (!line.visible) continue;
         const position = line.geometry.getAttribute("position");
         position.setXYZ(0, piece.centre.x, 0, piece.centre.z);
@@ -690,76 +498,159 @@ export default function ExplodedMap({
         for (const line of leaders.current.values()) line.style.opacity = "0";
       }
       if (flight) {
-        const t = reduced ? 1 : Math.min(1, (now - flight.time) / 1000),
+        const t = reduced ? 1 : Math.min(1, (now - flight.time) / FLIGHT_MS),
           e = 1 - Math.pow(1 - t, 3);
         camera.position.lerpVectors(flight.from, flight.to, e);
         controls.target.lerpVectors(flight.targetFrom, flight.targetTo, e);
         if (t === 1) flight = null;
       }
-      controls.update();
-      renderer.render(scene, camera);
-      if (!raf) raf = requestAnimationFrame(animate);
+      if (!flight) {
+        // Which preset the current angle matches — null once the user orbits
+        // away from all three. Kept in the store so the chrome can show it.
+        const matched = presetFor(camera.position.clone().sub(controls.target), 4);
+        if (useExplorer.getState().cameraPreset !== matched)
+          useExplorer.setState({ cameraPreset: matched });
+      }
     };
+
+    const hoverRef = { current: "" };
+    setHover(hoverRef.current);
+
+    const getHit = (clientX: number, clientY: number) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      normalisedPointer(clientX, clientY, rect, mouse);
+      ray.setFromCamera(mouse, camera);
+      return firstHit(
+        ray,
+        pickableMeshes(provinces, districts, latest.current.selected),
+      );
+    };
+    const down = (e: PointerEvent) => {
+      pointerStart = { x: e.clientX, y: e.clientY };
+      flight = null;
+      controls.autoRotate = false;
+      setAuto(false);
+    };
+    const move = (e: PointerEvent) => {
+      engine.wake();
+      if (e.pointerType === "touch") return;
+      hovering = (getHit(e.clientX, e.clientY)?.object as THREE.Mesh) ?? null;
+      el.style.cursor = hovering ? "pointer" : "grab";
+      const id = hovering?.userData.id ?? "";
+      if (hoverRef.current !== id) {
+        hoverRef.current = id;
+        setHover(id);
+      }
+    };
+    const up = (e: PointerEvent) => {
+      if (!isTap(pointerStart, { x: e.clientX, y: e.clientY })) {
+        pointerStart = null;
+        return;
+      }
+      pointerStart = null;
+      const hit = getHit(e.clientX, e.clientY);
+      if (!hit) return;
+      const d = hit.object.userData;
+      const store = useExplorer.getState();
+      if (store.selection.kind === "country") {
+        store.selectProvince(d.province);
+        return;
+      }
+      if (latest.current.district !== d.id) {
+        store.setHidden(new Set());
+        store.setPeel(0.82);
+      }
+      store.selectDistrict(d.province, d.id);
+      setLayer(d.layer);
+      setInfoOpen(true);
+      setControlsOpen(false);
+    };
+    const cancel = () => {
+      engine.wake();
+      pointerStart = null;
+      hovering = null;
+      if (hoverRef.current !== "") {
+        hoverRef.current = "";
+        setHover("");
+      }
+    };
+    renderer.domElement.addEventListener("pointerdown", down);
+    renderer.domElement.addEventListener("pointermove", move);
+    renderer.domElement.addEventListener("pointerup", up);
+    renderer.domElement.addEventListener("pointercancel", cancel);
+    renderer.domElement.addEventListener("pointerleave", cancel);
+
     frame();
     setReady(true);
+
     return () => {
-      stopTheme();
       reliefCancelled = true;
-      cancelAnimationFrame(raf);
-      resize.disconnect();
-      controls.removeEventListener("change", wake);
-      document.removeEventListener("visibilitychange", visibility);
-      controls.dispose();
       renderer.domElement.removeEventListener("pointerdown", down);
       renderer.domElement.removeEventListener("pointermove", move);
       renderer.domElement.removeEventListener("pointerup", up);
       renderer.domElement.removeEventListener("pointercancel", cancel);
       renderer.domElement.removeEventListener("pointerleave", cancel);
-      const geometry = new Set<THREE.BufferGeometry>(),
-        materials = new Set<THREE.Material>();
-      scene.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (mesh.geometry) geometry.add(mesh.geometry);
-        if (mesh.material)
-          (Array.isArray(mesh.material)
-            ? mesh.material
-            : [mesh.material]
-          ).forEach((m) => materials.add(m));
-      });
-      geometry.forEach((g) => g.dispose());
-      materials.forEach((m) => m.dispose());
-      sun.shadow.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
-      world.current = null;
+      engine.dispose();
+      core.current = null;
     };
+    // Built once on purpose; later changes reach the scene through the store
+    // and the refs the animation loop reads. The effect is empty on purpose.
   }, []);
+
   useEffect(() => {
-    world.current?.frame();
+    if (!core.current) return;
+    frameScene.current();
   }, [selected, district]);
+
   useEffect(() => {
-    world.current?.wake();
-  }, [explode, peel, hidden, layer]);
+    core.current?.wake();
+  }, [depth, peel, hiddenStore, layer, isolate]);
+
+  // An open sheet claims part of the stage: frame the model in what is left.
+  useEffect(() => {
+    const box = infoOpen
+      ? document
+          .querySelector<HTMLElement>(".anatomy-dossier")
+          ?.getBoundingClientRect() ?? null
+      : null;
+    sheetFrame.current(box);
+  }, [infoOpen, controlsOpen, selected, district]);
+
   const zoom = (factor: number) => {
-    const w = world.current;
-    if (!w) return;
-    const offset = w.camera.position
+    const engine = core.current;
+    if (!engine) return;
+    cancelFlight.current();
+    const offset = engine.camera.position
       .clone()
-      .sub(w.controls.target)
+      .sub(engine.controls.target)
       .multiplyScalar(factor);
     offset.setLength(THREE.MathUtils.clamp(offset.length(), 20, 700));
-    w.camera.position.copy(w.controls.target).add(offset);
-    w.wake();
+    engine.camera.position.copy(engine.controls.target).add(offset);
+    engine.wake();
   };
   const chooseDistrict = (id: string) => {
-    setHidden([]);
+    setHidden(new Set());
     setInfoOpen(true);
     setControlsOpen(false);
-    onSelectDistrict(id);
+    selectDistrict(selected!, id);
     setPeel(0.82);
   };
+  const applyPreset = (id: CameraPresetId) => {
+    const engine = core.current;
+    if (!engine) return;
+    cancelFlight.current();
+    const distance = engine.camera.position
+      .clone()
+      .sub(engine.controls.target)
+      .length();
+    engine.camera.position
+      .copy(engine.controls.target)
+      .addScaledVector(presetDirection(id), distance);
+    setCameraPreset(id);
+    engine.wake();
+  };
   return (
-    <div className="anatomy-stage">
+    <div className="anatomy-stage" data-camera={cameraPreset ?? "free"}>
       <p className="anatomy-source" role="status">
         {relief
           ? `Regional relief (~2.3 km grid), vertical scale ×${RELIEF_EXAGGERATION}${
@@ -785,11 +676,11 @@ export default function ExplodedMap({
         </div>
       )}
       <div className="anatomy-breadcrumb">
-        <button onClick={() => onSelect(null)}>South Africa</button>
+        <button onClick={() => selectProvince(null)}>South Africa</button>
         {selected && (
           <>
             <span>/</span>
-            <button onClick={() => onSelectDistrict(null)}>
+            <button onClick={() => selectDistrict(selected, null)}>
               {PROVINCES[selected].name}
             </button>
           </>
@@ -827,24 +718,36 @@ export default function ExplodedMap({
         </button>
         <button
           aria-label="Reframe selection"
-          onClick={() => world.current?.frame()}
+          onClick={() => frameScene.current()}
         >
           ⌖
         </button>
         <button
           aria-pressed={auto}
           onClick={() => {
-            const w = world.current;
-            if (w) {
-              w.controls.autoRotate = !auto;
-              w.controls.autoRotateSpeed = 0.65;
-              setAuto(!auto);
-              w.wake();
+            const engine = core.current;
+            if (engine) {
+              engine.controls.autoRotate = !auto;
+              engine.controls.autoRotateSpeed = 0.65;
+              engine.wake();
             }
+            setAuto(!auto);
           }}
         >
           {auto ? "Pause" : "Orbit"}
         </button>
+      </div>
+      <div className="anatomy-camera" role="group" aria-label="Camera angle">
+        {CAMERA_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            aria-pressed={cameraPreset === preset.id}
+            aria-label={`${preset.label} view`}
+            onClick={() => applyPreset(preset.id)}
+          >
+            {preset.label}
+          </button>
+        ))}
       </div>
       {(selected
         ? DISTRICTS_BY_PROVINCE[selected]
@@ -860,7 +763,7 @@ export default function ExplodedMap({
           style={{ opacity: 0 }}
           tabIndex={-1}
           onClick={() =>
-            selected ? chooseDistrict(p.id) : onSelect(p.id as ProvinceCode)
+            selected ? chooseDistrict(p.id) : selectProvince(p.id as ProvinceCode)
           }
         >
           {p.name.replace(/ District$/, "")}
@@ -938,6 +841,15 @@ export default function ExplodedMap({
               Inspect real terrain & data ↗
             </button>
           )}
+          {districtShape && (
+            <button
+              className="anatomy-isolate"
+              aria-pressed={isolate}
+              onClick={() => setIsolate(!isolate)}
+            >
+              {isolate ? "Show surrounding land" : "Isolate this district"}
+            </button>
+          )}
         </div>
       )}
       <div className="anatomy-mobile-dock">
@@ -990,7 +902,7 @@ export default function ExplodedMap({
               aria-label="Select province to explode"
               value={selected ?? ""}
               onChange={(e) =>
-                onSelect((e.target.value || null) as ProvinceCode | null)
+                selectProvince((e.target.value || null) as ProvinceCode | null)
               }
             >
               <option value="">South Africa</option>
@@ -1010,7 +922,7 @@ export default function ExplodedMap({
                 onChange={(e) =>
                   e.target.value
                     ? chooseDistrict(e.target.value)
-                    : onSelectDistrict(null)
+                    : selectDistrict(selected, null)
                 }
               >
                 <option value="">All districts</option>
@@ -1025,16 +937,16 @@ export default function ExplodedMap({
         </div>
         <label className="anatomy-slider">
           <span>
-            Separate regions <b>{Math.round(explode * 100)}%</b>
+            Separate regions <b>{Math.round(depth * 100)}%</b>
           </span>
           <input
             type="range"
             min="0"
             max="1"
             step=".01"
-            value={explode}
+            value={depth}
             disabled={!selected}
-            onChange={(e) => setExplode(Number(e.target.value))}
+            onChange={(e) => setDepth(Number(e.target.value))}
           />
         </label>
         {district && (
@@ -1057,14 +969,8 @@ export default function ExplodedMap({
             {LAND_LAYERS.map((l) => (
               <button
                 key={l.id}
-                aria-pressed={!hidden.includes(l.id)}
-                onClick={() =>
-                  setHidden((v) =>
-                    v.includes(l.id)
-                      ? v.filter((x) => x !== l.id)
-                      : [...v, l.id],
-                  )
-                }
+                aria-pressed={!hiddenStore.has(l.id)}
+                onClick={() => toggleHidden(l.id)}
               >
                 <i style={{ background: l.colour }} />
                 {l.name}
@@ -1075,18 +981,19 @@ export default function ExplodedMap({
         <button
           className="anatomy-reassemble"
           onClick={() => {
-            if (explode === 0) {
-              setExplode(0.72);
+            if (depth === 0) {
+              setDepth(0.72);
               setPeel(0.82);
             } else {
-              setExplode(0);
+              setDepth(0);
               setPeel(0);
-              setHidden([]);
-              onSelectDistrict(null);
+              setHidden(new Set());
+              setIsolate(false);
+              selectDistrict(selected!, null);
             }
           }}
         >
-          {explode === 0 ? "Separate regions" : "Reassemble"}
+          {depth === 0 ? "Separate regions" : "Reassemble"}
         </button>
       </div>
       <p className="anatomy-footnote">

@@ -79,7 +79,13 @@ async function anatomyDepths(
       if (!slider) return;
       const min = Number(slider.min || 0);
       const max = Number(slider.max || 1);
-      slider.value = String(min + (max - min) * d);
+      // React tracks the value through its own property descriptor, so a
+      // plain assignment does not reach the store. The native setter does.
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(slider, String(min + (max - min) * d));
       slider.dispatchEvent(new Event("input", { bubbles: true }));
       slider.dispatchEvent(new Event("change", { bubbles: true }));
     }, depth);

@@ -18,12 +18,20 @@ module.exports = {
       to: { dependencyTypes: ["core", "localmodule"], path: "maplibre-gl" },
     },
     {
-      name: "three-stays-in-scene-components",
+      name: "three-stays-in-scene-code",
       severity: "error",
       comment:
-        "three.js belongs to the 3D components. Other modules never touch the renderer. (Until P3.3 lands, ExplodedMap and LandScene are the designated homes.)",
-      from: { path: "^src", pathNot: ["^src/components/ExplodedMap.tsx", "^src/components/LandScene.tsx"] },
-      to: { dependencyTypes: ["core", "localmodule"], path: "three" },
+        "three.js belongs to the 3D scene: src/scene, the ModelView and LandScene wrappers, and the DEM helper. Other modules never touch the renderer. (Until M2.4 lands, LandScene is one of the designated homes.)",
+      from: {
+        path: "^src",
+        pathNot: [
+          "^src/components/explorer/ModelView.tsx",
+          "^src/components/LandScene.tsx",
+          "^src/scene/",
+          "^src/lib/dem.ts",
+        ],
+      },
+      to: { path: "three" },
     },
     {
       name: "state-stays-dependency-free",

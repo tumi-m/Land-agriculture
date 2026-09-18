@@ -103,6 +103,52 @@
 .anatomy-tools button:hover {
   background: #2d504a;
 }
+.anatomy-camera {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 1.3rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid #53777388;
+  background: #102a31f2;
+  border-radius: 9px;
+  /* No backdrop-filter here: blurring over the live WebGL canvas wedges
+     Chromium's software compositor, which headless e2e depends on. The more
+     opaque background keeps the same contrast without the blur. */
+}
+.anatomy-camera button {
+  min-width: 44px;
+  min-height: 34px;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: #d6e9e0;
+}
+.anatomy-camera button[aria-pressed="true"] {
+  background: #d2e58e;
+  color: #14332a;
+  font-weight: 650;
+}
+.anatomy-isolate {
+  display: block;
+  width: 100%;
+  margin-top: 0.8rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #bbd099;
+  border-radius: 6px;
+  background: #d5e69e;
+  color: #1c392b;
+  font-size: 0.72rem;
+  font-weight: 650;
+  min-height: 36px;
+}
+.anatomy-isolate[aria-pressed="true"] {
+  background: #29483f;
+  color: #efffcb;
+}
 .anatomy-label {
   position: absolute;
   left: 0;
@@ -374,6 +420,13 @@
   .anatomy-tools {
     right: 0.7rem;
     top: 0.8rem;
+  }
+  .anatomy-camera {
+    top: 0.8rem;
+    left: auto;
+    right: 0.7rem;
+    transform: none;
+    top: 5.4rem;
   }
   .anatomy-label {
     font-size: 0.61rem;

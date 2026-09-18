@@ -74,7 +74,12 @@ async function sweepThroughput(page: import("@playwright/test").Page) {
           if (queue.length && elapsed - lastStep >= stepMs) {
             const next = queue.shift() as number;
             if (slider) {
-              slider.value = String(next);
+              // React only sees a value change through the native setter.
+              const setter = Object.getOwnPropertyDescriptor(
+                HTMLInputElement.prototype,
+                "value",
+              )?.set;
+              setter?.call(slider, String(next));
               slider.dispatchEvent(new Event("input", { bubbles: true }));
               slider.dispatchEvent(new Event("change", { bubbles: true }));
             }

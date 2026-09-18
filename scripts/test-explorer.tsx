@@ -249,7 +249,8 @@ import {
   noticesForDistrict,
   LAND_LAYERS,
 } from "../src/lib/exploded-map";
-import ExplodedMap, { makePiece } from "../src/components/ExplodedMap";
+import { makePiece } from "../src/scene/pieces";
+import ModelView from "../src/components/explorer/ModelView";
 import { DISTRICTS_BY_PROVINCE } from "../src/lib/geo";
 test("exploded pieces return to their geographic positions and separation stays bounded", () => {
   assert.deepEqual(explosionOffset([20, 10], [0, 0], 0), [0, 0]);
@@ -299,25 +300,20 @@ test("district slice geometry preserves finite positions and a shared geographic
   }
 });
 test("exploded view exposes keyboard selectors, layer controls and truthful data scope", () => {
-  const district = DISTRICTS_BY_PROVINCE.LP.find((d) =>
-    d.name.includes("Mopani"),
-  )!;
+  // The store's SSR snapshot is its creation state, so this render proves the
+  // country-level controls and the honest caption. District depth (Peel,
+  // layer switches, notice list) is asserted through the store in
+  // tests/explorer.test.ts and driven for real in e2e/model.spec.ts.
   const html = renderToStaticMarkup(
-    <ExplodedMap
-      selected="LP"
-      district={district.id}
-      onSelect={() => {}}
-      onSelectDistrict={() => {}}
-      onNotice={() => {}}
-      onTerrain={() => {}}
-    />,
+    <ModelView onNotice={() => {}} onTerrain={() => {}} />,
   );
   assert.match(html, /Select province to explode/);
-  assert.match(html, /Select district to peel/);
-  assert.match(html, /Peel layers/);
-  assert.match(html, /Reassemble/);
-  assert.match(html, /California/);
+  assert.match(html, /Regions &amp; layers/);
   assert.match(html, /not measured soil strata/);
+  assert.match(html, /Government land/);
+  assert.match(html, /data-camera="three-quarter"/);
+  assert.match(html, /aria-label="Top view"/);
+  assert.doesNotMatch(html, /undefined|NaN/);
 });
 
 import GovernmentNotices from "../src/components/GovernmentNotices";
