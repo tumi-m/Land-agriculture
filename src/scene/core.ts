@@ -22,6 +22,19 @@ export function softwareRenderer(gpu: string): boolean {
   return /swiftshader|llvmpipe|softpipe|software/i.test(gpu);
 }
 
+/**
+ * The pause left between frames when there is no GPU.
+ *
+ * A software rasteriser can spend most of a frame budget inside one render.
+ * Asking for the next frame straight away leaves the main thread no room to
+ * dispatch a click or present what it just drew, so the page keeps drawing
+ * and stops answering — which is what a cheap Android without working
+ * drivers does, and what CI sees as a permanent stall. About fifteen frames
+ * a second costs smoothness on hardware nobody is running and buys back
+ * responsiveness on hardware people are.
+ */
+export const SOFTWARE_FRAME_GAP_MS = 64;
+
 /** Reads the GPU string before the renderer exists, so antialias can be skipped. */
 function gpuString(): string {
   const probe = document.createElement("canvas");
@@ -136,15 +149,36 @@ export function createSceneCore({
   });
 
   let frameHandle = 0;
+  let gapHandle = 0;
   let previous = performance.now();
   // Software rendering settles slower per frame, so give interactions there a
   // wider window of live frames to land in.
   const awakeMs = software ? 3000 : 1800;
   let activeUntil = previous + awakeMs;
+
+  /** Asks for the next frame, leaving a gap when there is no GPU. */
+  const requestFrame = () => {
+    if (frameHandle || gapHandle || document.hidden) return;
+    if (software) {
+      gapHandle = window.setTimeout(() => {
+        gapHandle = 0;
+        if (!document.hidden) frameHandle = requestAnimationFrame(tick);
+      }, SOFTWARE_FRAME_GAP_MS);
+    } else {
+      frameHandle = requestAnimationFrame(tick);
+    }
+  };
+
+  const stopFrames = () => {
+    cancelAnimationFrame(frameHandle);
+    clearTimeout(gapHandle);
+    frameHandle = 0;
+    gapHandle = 0;
+  };
+
   const wake = () => {
     activeUntil = performance.now() + awakeMs;
-    if (!frameHandle && !document.hidden)
-      frameHandle = requestAnimationFrame(tick);
+    requestFrame();
   };
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -158,15 +192,12 @@ export function createSceneCore({
     onFrame(reduced ? 1 : Math.min(1, delta * 7));
     controls.update();
     renderer.render(scene, camera);
-    if (now <= activeUntil || controls.autoRotate) {
-      frameHandle = requestAnimationFrame(tick);
-    }
+    if (now <= activeUntil || controls.autoRotate) requestFrame();
   };
 
   const visibility = () => {
     if (document.hidden) {
-      cancelAnimationFrame(frameHandle);
-      frameHandle = 0;
+      stopFrames();
       previous = performance.now();
     } else wake();
   };
@@ -204,7 +235,7 @@ export function createSceneCore({
     accent: () => accent,
     dispose: () => {
       stopTheme();
-      cancelAnimationFrame(frameHandle);
+      stopFrames();
       resize.disconnect();
       controls.removeEventListener("change", wake);
       document.removeEventListener("visibilitychange", visibility);

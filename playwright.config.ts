@@ -12,7 +12,11 @@ export default defineConfig({
   // perf baseline lives under it, so keep artifacts elsewhere.
   outputDir: "test-results/artifacts",
   timeout: 60_000,
-  retries: 0,
+  // A software rasteriser on a shared runner stalls at random points, and the
+  // failing set differs run to run. A retry is not a pass: the test still has
+  // to succeed, and a fault that reproduces still fails the gate. Locally,
+  // where a stall is a real finding, there is no retry.
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   expect: { timeout: 20_000 },
   use: {
@@ -22,7 +26,13 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm run dev -- -p 3100",
+    // CI serves the production build. `next dev` compiles each route on its
+    // first request, and on a two-core runner that lands on top of software
+    // rendering — the page is still being built when the first assertion
+    // waits on it. Locally `dev` stays, so the loop keeps its fast edit cycle.
+    command: process.env.CI
+      ? "npm run start -- -p 3100"
+      : "npm run dev -- -p 3100",
     port: 3100,
     reuseExistingServer: true,
     timeout: 120_000,
