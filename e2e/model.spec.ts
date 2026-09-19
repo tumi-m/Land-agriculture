@@ -96,3 +96,48 @@ test("isolate keeps the chosen district and Show surrounding land restores it", 
   await expect(isolate).toHaveAttribute("aria-pressed", "false");
   await expect(isolate).toHaveText("Isolate this district");
 });
+
+test("Back walks out the way you came in, and the page survives it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".anatomy-stage")).toBeVisible({ timeout: 20_000 });
+  const start = page.url();
+
+  // Each change of place gets its own history entry.
+  await page.getByRole("button", { name: "Limpopo" }).first().click();
+  await expect(page).toHaveURL(/at=province%3ALP/);
+
+  // The depth slider adjusts the same place, so it must not add an entry —
+  // otherwise Back would crawl through every tick of the drag.
+  const slider = page.locator(".anatomy-slider input[type='range']").first();
+  await slider.evaluate((input) => {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, "1");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(page).toHaveURL(/depth=1/);
+
+  await page
+    .locator(".anatomy-label", { hasText: /District|Mopani|Vhembe/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/at=district%3ALP/);
+
+  // One Back per place, not one per write.
+  await page.goBack();
+  await expect(page).toHaveURL(/at=province%3ALP/);
+  await expect(page).not.toHaveURL(/at=district/);
+
+  await page.goBack();
+  await expect(page).toHaveURL(start);
+
+  // Still the app, not the browser's "cannot go back" or a blank tab: this
+  // is the defect the entries fix.
+  await expect(page.locator(".anatomy-stage")).toBeVisible();
+  await expect(slider).toBeDisabled();
+});

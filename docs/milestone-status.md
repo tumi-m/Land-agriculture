@@ -289,3 +289,46 @@ full suite and confirm 1 and 2.
   Limpopo, North West, Mpumalanga, Northern Cape, Western Cape and Natal over
   each other. This is the known M1.4 defect, and these notices make it more
   visible: more provinces now carry advert counts to draw.
+
+## Landed 19 Sep 2026 — T3 (part): Back stops leaving the page
+
+`src/state/url.ts`, `src/components/LandLocator.tsx`, `tests/url-merge.test.ts`
+(6 tests), `e2e/model.spec.ts`.
+
+Every URL write replaced the current history entry, so the first Back left the
+site — measured, not inferred: with the change reverted, Back lands on
+`about:blank`.
+
+`isNavigation(previous, next)` is the whole decision, and it is pure: a change
+of `at` or `view` is a place and gets its own entry; the measure, the depth and
+the camera pose adjust the same place and replace, so a slider drag leaves one
+entry rather than one per tick. The first write of a session replaces, so
+arriving on a link leaves nothing behind the page you arrived on.
+
+The trap, and the reason `written` is a ref: `popstate` adopts the restored
+entry *before* the debounced write runs. Without that the write would see a
+changed place, push a new entry, and Back would land where it started and
+never leave. `popstate` also restores `depth` now, which it previously read
+and dropped.
+
+**Checks:** `npm run check` green, 180/180 (174 + 6). `build` and `budget`
+green — 189.9 kB of 230 kB. The new e2e walks country → province → district,
+presses Back twice, and asserts the app is still there; it was run against a
+reverted writer first to confirm it fails (`about:blank`), then the probe was
+removed.
+
+**Still open in T3**, and deliberately not started here: `cam` is emitted by
+the codec but nothing writes it — `setCamera` exists in the store and no
+component calls it, so the Land camera pose is neither captured on `moveend`
+nor restored on load. That needs MapLibre, and the check for it ("a land link
+with `cam=` reopens at that pose") needs working tile services, which this
+sandbox does not have. The plan's point step in the Back walk is deferred for
+the same reason; the walk here is model-only.
+
+## T2 (cadastral matching) is blocked in this environment, not skipped
+
+The CSG MapServer that `src/lib/cadastre.ts` points at refuses connections
+from this sandbox (immediate failure, not a timeout). Matching 49 notices to
+cadastral parcels cannot be done without querying it, and Rule 1 forbids
+writing matches that were not read from the service. T2 needs a machine that
+can reach `dffeportal.environment.gov.za`. Mapped boundaries stay at two.

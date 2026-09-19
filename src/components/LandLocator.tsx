@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parcelFor } from "@/lib/cadastre";
 import { onThemeChange } from "@/lib/tokens";
 import LandDossier, { NoticeBrowser } from "./LandDossier";
@@ -12,7 +12,12 @@ import {
   type MapInspection,
 } from "@/lib/map-selection";
 import { useExplorer, parentOf, type Selection } from "@/state/explorer";
-import { mergeUrlSearch, readUrlState } from "@/state/url";
+import {
+  isNavigation,
+  mergeUrlSearch,
+  readUrlState,
+  type UrlFields,
+} from "@/state/url";
 import LiveStatus from "./LiveStatus";
 import ProvincePanel from "./ProvincePanel";
 import {
@@ -264,6 +269,11 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     [selectProvince, selectDistrict, selectNotice, selectPoint, setView],
   );
 
+  // What the last write put in the bar, so the next one knows whether the
+  // place changed. A ref, not state: it must be current the moment popstate
+  // runs, before the debounced write reads it.
+  const written = useRef<UrlFields | null>(null);
+
   // Hydrate from the URL once on mount, then keep it in step (debounced).
   useEffect(() => {
     const {
@@ -294,17 +304,18 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     const handle = window.setTimeout(() => {
       // mergeUrlSearch keeps every parameter the app does not own — a
       // campaign tag, a referrer — and replaces only its own seven keys.
-      const search = mergeUrlSearch(window.location.search, {
-        at: selection,
-        view,
-        metric,
-        depth,
-      });
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${search}`,
-      );
+      const next: UrlFields = { at: selection, view, metric, depth };
+      const search = mergeUrlSearch(window.location.search, next);
+      const url = `${window.location.pathname}${search}`;
+      // A new place gets its own entry so Back returns to the last one
+      // instead of leaving the site. A new measure or depth on the same
+      // place replaces, so a slider drag leaves one entry, not a hundred.
+      if (isNavigation(written.current, next)) {
+        window.history.pushState(null, "", url);
+      } else {
+        window.history.replaceState(null, "", url);
+      }
+      written.current = next;
     }, 200);
     return () => window.clearTimeout(handle);
   }, [selection, view, metric, depth, urlReady]);
@@ -316,13 +327,23 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     if (!urlReady) return;
     const onPop = () => {
       const state = readUrlState(window.location.search);
+      // Adopt the restored entry before the write effect runs. Without this
+      // the effect would see a changed place and push a new entry, so Back
+      // would land where it started and never leave.
+      written.current = {
+        at: state.at,
+        view: state.view,
+        metric: state.metric,
+        depth: state.depth,
+      };
       applySelection(state.at);
       setView(state.view);
       setMetric(state.metric);
+      if (state.depth !== null) setDepth(state.depth);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [urlReady, applySelection, setView, setMetric]);
+  }, [urlReady, applySelection, setView, setMetric, setDepth]);
 
   // The province the map frames while a point or parcel is inspected.
   useEffect(() => {

@@ -301,4 +301,26 @@ export function mergeUrlSearch(search: string, state: UrlFields): string {
   return query ? `?${query}` : "";
 }
 
+/**
+ * Whether a URL write should add a history entry or replace the current one.
+ *
+ * Selection and view are navigation: opening a province, dropping into a
+ * district, going to the land are all things Back should undo. Everything
+ * else — the measure, the explode depth, the camera pose — adjusts the same
+ * place, and pushing an entry for each would bury the page under a hundred
+ * of them before a slider drag finished.
+ *
+ * The first write of a session replaces, so arriving on a link does not leave
+ * an entry behind the page you arrived on.
+ */
+export function isNavigation(
+  previous: UrlFields | null,
+  next: UrlFields,
+): boolean {
+  if (!previous) return false;
+  return (
+    encodeAt(previous.at) !== encodeAt(next.at) || previous.view !== next.view
+  );
+}
+
 export { parentOf, selectionOf };
