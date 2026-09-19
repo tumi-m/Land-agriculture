@@ -11,8 +11,8 @@ import {
   type DetailState,
   type MapInspection,
 } from "@/lib/map-selection";
-import { useExplorer, parentOf } from "@/state/explorer";
-import { readUrlState, writeUrlState } from "@/state/url";
+import { useExplorer, parentOf, type Selection } from "@/state/explorer";
+import { mergeUrlSearch, readUrlState } from "@/state/url";
 import LiveStatus from "./LiveStatus";
 import ProvincePanel from "./ProvincePanel";
 import {
@@ -55,6 +55,8 @@ interface LocalUi {
   dark: boolean;
   query: string;
   urlReady: boolean;
+  /** The province the map is framing while a point or parcel is selected. */
+  lastProvince: ProvinceCode | null;
 }
 
 const initialUi: LocalUi = {
@@ -66,6 +68,7 @@ const initialUi: LocalUi = {
   dark: false,
   query: "",
   urlReady: false,
+  lastProvince: null,
 };
 
 export default function LandLocator({ initial }: { initial: Dataset }) {
@@ -116,10 +119,23 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   );
 
   // The store is the truth for province/district; these are derived reads.
-  const province =
-    selection.kind === "province" || selection.kind === "district"
+  // A notice names its own province. A point, parcel or photo does not, so
+  // the map keeps the province it was already showing rather than flying the
+  // camera back out to the country the moment someone inspects the ground.
+  const selectionProvince: ProvinceCode | null =
+    selection.kind === "province" ||
+    selection.kind === "district" ||
+    selection.kind === "layer"
       ? selection.province
-      : null;
+      : selection.kind === "notice"
+        ? (FARM_NOTICES.find((item) => item.id === selection.id)?.province ??
+          null)
+        : null;
+  const keepsProvince =
+    selection.kind === "point" ||
+    selection.kind === "parcel" ||
+    selection.kind === "photo";
+  const province = keepsProvince ? ui.lastProvince : selectionProvince;
   const district =
     selection.kind === "district" || selection.kind === "layer"
       ? selection.district
@@ -144,22 +160,28 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         focusMap: false,
         compactMap: false,
       }));
-      selectProvince(item.province);
+      // The notice is the selection, so the link carries the farm rather than
+      // its province, and a shared link reopens the dossier.
+      selectNotice(item.id);
       setView("land");
     },
-    [selectProvince, setView],
+    [selectNotice, setView],
   );
 
-  const inspectPoint = useCallback((point: MapInspection) => {
-    setUi((u) => ({
-      ...u,
-      inspection: point,
-      notice: null,
-      detailState: "expanded",
-      focusMap: false,
-      compactMap: false,
-    }));
-  }, []);
+  const inspectPoint = useCallback(
+    (point: MapInspection) => {
+      setUi((u) => ({
+        ...u,
+        inspection: point,
+        notice: null,
+        detailState: "expanded",
+        focusMap: false,
+        compactMap: false,
+      }));
+      selectPoint({ lng: point.coordinates[0], lat: point.coordinates[1] });
+    },
+    [selectPoint],
+  );
   const inspectInfrastructure = useCallback(
     () => setDetailState("collapsed"),
     [setDetailState],
@@ -190,6 +212,50 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     [province, selectDistrict],
   );
 
+  /**
+   * Applies one selection from a link: on first paint, and again whenever the
+   * browser restores an entry. Every kind the grammar carries is handled here,
+   * so a shared farm or point link opens the same screen the sharer saw.
+   */
+  const applySelection = useCallback(
+    (at: Selection) => {
+      if (at.kind === "province") {
+        selectProvince(at.province);
+        setUi((u) => ({ ...u, notice: null, inspection: null }));
+      } else if (at.kind === "district") {
+        selectDistrict(at.province, at.district);
+        setUi((u) => ({ ...u, notice: null, inspection: null }));
+      } else if (at.kind === "notice") {
+        selectNotice(at.id);
+        const item = FARM_NOTICES.find((n) => n.id === at.id) ?? null;
+        const parcel = item ? parcelFor(item.id) : null;
+        setUi((u) => ({
+          ...u,
+          notice: item,
+          inspection: parcel
+            ? { coordinates: parcel.properties.coordinates, elevation: null }
+            : null,
+          detailState: "expanded",
+        }));
+        if (item) setView("land");
+      } else if (at.kind === "point") {
+        selectPoint({ lng: at.lng, lat: at.lat });
+        setUi((u) => ({
+          ...u,
+          notice: null,
+          inspection: { coordinates: [at.lng, at.lat], elevation: null },
+          detailState: "expanded",
+        }));
+      } else if (at.kind === "country") {
+        selectProvince(null);
+        setUi((u) => ({ ...u, notice: null, inspection: null }));
+      }
+      // parcel and photo links are accepted by the grammar but have no
+      // screen yet; they resolve to the land view without a false selection.
+    },
+    [selectProvince, selectDistrict, selectNotice, selectPoint, setView],
+  );
+
   // Hydrate from the URL once on mount, then keep it in step (debounced).
   useEffect(() => {
     const {
@@ -198,35 +264,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       metric: urlMetric,
       depth: urlDepth,
     } = readUrlState(window.location.search);
-    if (at.kind !== "country") {
-      if (at.kind === "province") selectProvince(at.province);
-      else if (at.kind === "district") selectDistrict(at.province, at.district);
-      else if (at.kind === "notice") {
-        selectNotice(at.id);
-        const item = FARM_NOTICES.find((n) => n.id === at.id);
-        if (item) {
-          // Hydrate the same state chooseNotice sets, inlined so this
-          // once-only effect never depends on a callback.
-          const parcel = parcelFor(item.id);
-          setUi((u) => ({
-            ...u,
-            notice: item,
-            inspection: parcel
-              ? { coordinates: parcel.properties.coordinates, elevation: null }
-              : null,
-            detailState: "expanded",
-          }));
-          selectProvince(item.province);
-          setView("land");
-        }
-      } else if (at.kind === "point") {
-        selectPoint({ lng: at.lng, lat: at.lat });
-        setUi((u) => ({
-          ...u,
-          inspection: { coordinates: [at.lng, at.lat], elevation: null },
-        }));
-      }
-    }
+    if (at.kind !== "country") applySelection(at);
     if (urlView !== "model") setView(urlView);
     if (urlMetric !== "advertised") setMetric(urlMetric);
     if (urlDepth !== null) setDepth(urlDepth);
@@ -246,33 +284,43 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   useEffect(() => {
     if (!urlReady) return;
     const handle = window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      // preserve unrelated params the app does not own
-      const incoming = new URLSearchParams(window.location.search);
-      for (const key of [
-        "at",
-        "view",
-        "metric",
-        "province",
-        "depth",
-        "layers",
-        "cam",
-      ])
-        incoming.delete(key);
-      for (const [key, value] of incoming) url.searchParams.set(key, value);
-      const state = writeUrlState({ at: selection, view, metric, depth });
-      const params = new URLSearchParams(
-        state ? state.slice(1) : incoming.toString(),
-      );
-      const query = params.toString();
+      // mergeUrlSearch keeps every parameter the app does not own — a
+      // campaign tag, a referrer — and replaces only its own seven keys.
+      const search = mergeUrlSearch(window.location.search, {
+        at: selection,
+        view,
+        metric,
+        depth,
+      });
       window.history.replaceState(
         null,
         "",
-        query ? `${url.pathname}?${query}` : url.pathname,
+        `${window.location.pathname}${search}`,
       );
     }, 200);
     return () => window.clearTimeout(handle);
   }, [selection, view, metric, depth, urlReady]);
+
+  // Back and Forward. The writer replaces the current entry rather than
+  // pushing one, so this applies entries the browser restores from elsewhere
+  // instead of fighting the debounced write.
+  useEffect(() => {
+    if (!urlReady) return;
+    const onPop = () => {
+      const state = readUrlState(window.location.search);
+      applySelection(state.at);
+      setView(state.view);
+      setMetric(state.metric);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [urlReady, applySelection, setView, setMetric]);
+
+  // The province the map frames while a point or parcel is inspected.
+  useEffect(() => {
+    if (keepsProvince || selectionProvince === ui.lastProvince) return;
+    patch({ lastProvince: selectionProvince });
+  }, [keepsProvince, selectionProvince, ui.lastProvince, patch]);
 
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {

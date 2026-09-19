@@ -270,4 +270,35 @@ export function writeUrlState(state: UrlFields): string {
   return query ? `?${query}` : "";
 }
 
+/** The query keys this app owns. Everything else in a link is left alone. */
+export const URL_KEYS = [
+  "at",
+  "view",
+  "metric",
+  "province",
+  "depth",
+  "layers",
+  "cam",
+] as const;
+
+/**
+ * Folds the explorer state into an existing search string.
+ *
+ * Parameters the app does not own — a campaign tag, a referrer, anything a
+ * link carried in — survive the write, and the app's own keys are replaced
+ * rather than appended. Returns a search string with its leading `?`, or an
+ * empty string when nothing is left to carry.
+ */
+export function mergeUrlSearch(search: string, state: UrlFields): string {
+  const params = new URLSearchParams(search);
+  for (const key of URL_KEYS) params.delete(key);
+  for (const [key, value] of new URLSearchParams(
+    writeUrlState(state).replace(/^\?/, ""),
+  )) {
+    params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export { parentOf, selectionOf };
