@@ -1,13 +1,79 @@
 # Milestone status — for owners claiming work
 
-Recorded 18 Sep 2026 against the M1.3 landing. The plan and its checks live in
+Recorded 18 Sep 2026 against the M1.3 landing; reconciled 19 Sep 2026 by the
+P00 pass (see "P00 reconciliation" below). The plan and its checks live in
 `docs/PLAN-MAP-10X.md`; this page is the live occupancy list so two owners
-never edit the same files. Update it in the same commit that starts or lands a
-task.
+never edit the same files. Update it in the same commit that starts or lands
+a task. The capability roadmap (P00–P28) now lives in
+`docs/ASBONGE_IMPLEMENTATION_PLAN.md`; the P/M cross-reference is below.
+
+## P00 reconciliation — evidence recorded 19 Sep 2026
+
+The recovery pass (`docs/ASBONGE_REPOSITORY_RECOVERY.md`) ran in this
+Codespace against local `main` at `3d3f481` (one commit ahead of
+origin/main `404d91f`):
+
+- **Working tree clean.** No staged, unstaged or untracked files. The
+  reported "uncommitted work in an expired session" is not present as
+  filesystem work; nothing needed a private backup.
+- **M1.3 resolved.** The full scene split exists as local commit `3d3f481`
+  (all claimed files present: `src/scene/{camera,core,labels,picking,pieces}.ts`,
+  `src/components/explorer/ModelView.tsx`, `ExplodedMap.tsx` deleted,
+  `e2e/model.spec.ts`, three scene test files). It was a **push gap**, not
+  lost work. Backup branch `recovery/m13-scene-split` now holds it on the
+  remote. Origin/main stays at `404d91f` until the owner says push.
+- **Stash `M1.3 wip` is subsumed** by `3d3f481` (every overlapping file
+  byte-identical). Kept, not dropped.
+- **Branches need no merge.** `origin/codex/agriculture-experience` has zero
+  commits not on main (an ancestor). `origin/claude/kind-brahmagupta-meee5k`
+  has two unique plan commits whose content was already copied byte-identical
+  onto main by `918ec16`.
+- **Isolated verification on `3d3f481`** (2-core Codespace, Node 24.20.0,
+  no concurrent builds): results recorded below in "P00 checks actually run".
+
+### P/M cross-reference (capability plan → this ledger)
+
+| Capability plan | Existing M tasks | State |
+|---|---|---|
+| P00 reconcile | (this pass) | complete 19 Sep 2026 |
+| P01 feed safety | none — new slice | next: `src/lib/source.ts`, `src/lib/types.ts` |
+| P11 store/URL wiring | M1.2 (codecs) done; integration open | `LandLocator.tsx` |
+| P15 budgets + initial-load resilience | M0.3–M0.5, QC1 done; initial-imagery debt open | `e2e/land.spec.ts`, Land view |
+| P16 terrain/scene | M1.3 landed; M1.4–M1.7, M2.1 open | scene set |
+| P04/P06/P13 notices + cadastral | M2.5 owns files | unclaimed |
+| P19 soil honesty | M2.2 data done; UI wiring open | inspect cards |
+| P26 verifier trust | M5.0–M5.5 done; log binding open | `/verify` |
+
+### P00 checks actually run (19 Sep 2026, this 2-core Codespace, Node 24.20.0)
+
+- `npm run check`: green — typecheck, lint, graph, 150/150 unit tests.
+- `npm run build`: green — `/` 85.3 kB route size, 188 kB First Load JS
+  (historical baseline row 197.1 kB preserved untouched in `docs/baseline.md`).
+- `npm run budget`: green — `/` first-load 185.4 kB gzip of the 230 kB limit.
+- `npm run e2e` (full, isolated): 18 passed, 4 failed — `e2e/model.spec.ts:11`,
+  both light screens baselines, `e2e/shots.spec.ts`.
+- Reruns confirm the **software-GL stall**, not regressions: model:11 passes
+  alone (as the M1.3 note records), the screens failures are screenshot
+  compositing timeouts (`net::ERR_ABORTED` / 20 s timeout), and shots died
+  mid-screenshot. The failing set differs run to run. Three of four shot
+  PNGs were captured today with healthy rendered content (variance-checked;
+  the owner should still eyeball `test-results/shots/` — the agent could not
+  view them). This box had ~400 MB free RAM during the run; QC2 on a machine
+  with more cores and memory remains the gate for these four.
+- No application logic changed in this slice. Baselines preserved.
+
+**Owner decisions recorded:** the M1.3 commit is backed up on
+`origin/recovery/m13-scene-split`; origin/main stays at `404d91f` until the
+owner says push (Vercel may auto-deploy main).
 
 ## Occupied — do not touch these files until released
 
-**M1.3 · Scene split and camera** — landed 18 Sep 2026. The committed set:
+**M1.3 · Scene split and camera** — landed 18 Sep 2026 in local commit
+`3d3f481` (not yet on origin/main; backed up on
+`origin/recovery/m13-scene-split`). **P00 reconciliation confirmed the files
+exist on this tree and are internally consistent** — the remote review at
+`404d91f` saw none of this because the commit was never pushed, not because
+the work was lost. The committed set:
 
 - `src/scene/` (`camera.ts`, `core.ts`, `labels.ts`, `picking.ts`,
   `pieces.ts`) and `src/components/explorer/ModelView.tsx`

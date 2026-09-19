@@ -28,7 +28,9 @@ other shared 2.15 kB).
 
 ## Notes
 
-- Lint has no ESLint config or dependency yet (`next lint` is a no-op shell);
-  P0.6 adds it.
+- ~~Lint has no ESLint config or dependency yet~~ Stale as of 15 Sep 2026:
+  ESLint 9 is installed (`eslint.config.mjs`, `npm run lint` with
+  `--max-warnings 0`) and part of `npm run check`. Historical measurements
+  above are preserved unchanged.
 - Build compiles with `Linting and checking validity of types` as part of
   `next build`, so the 62 s includes typecheck.
