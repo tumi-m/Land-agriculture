@@ -181,7 +181,15 @@ test("notice deadlines expire at South African local time and missing boundaries
     new Set(FARM_NOTICES.map((n) => n.id)).size,
     FARM_NOTICES.length,
   );
-  assert.ok(FARM_NOTICES.every((n) => n.coordinates === null));
+  // A notice carries coordinates only when its own document prints them, and
+  // then the record has to say so and the point has to be in the country.
+  for (const notice of FARM_NOTICES) {
+    if (notice.coordinates === null) continue;
+    const [lng, lat] = notice.coordinates;
+    assert.equal(notice.placedBy, "coordinates", `${notice.id} placement`);
+    assert.ok(lng >= 16 && lng <= 33.1, `${notice.id} longitude`);
+    assert.ok(lat >= -35.5 && lat <= -21.9, `${notice.id} latitude`);
+  }
 });
 test("collapse and reopen retain a reversible detail state", () => {
   assert.equal(toggleDetailState("expanded"), "collapsed");

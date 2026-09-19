@@ -8,7 +8,7 @@
   "coverage": {
     "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
     "checked": "2026-09-09",
-    "scope": "All 53 linked 2026 PDFs on this index were read for Northern Cape coverage. Fifteen NC notices were found; all had passed deadlines. Other years, municipalities and unadvertised state land are outside this review."
+    "scope": "The index was enumerated on 9 September 2026: 53 linked 2026 PDFs. All of them have now been read — the Northern Cape ones on 9 September, the remaining 31 on 19 September. Forty-nine notices are carried here; four documents are deliberately excluded, listed below. Other years, municipalities and unadvertised state land are outside this review, and the index itself has not been re-enumerated since 9 September."
   },
   "districts": {
     "alfred-nzo-district": {
@@ -87,7 +87,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -174,7 +174,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -261,7 +261,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -349,7 +349,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 1,
@@ -436,7 +436,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -520,11 +520,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -606,11 +606,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 1,
+        "count": 2,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -696,7 +696,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -784,7 +784,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -872,7 +872,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -957,7 +957,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1045,7 +1045,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1129,11 +1129,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1220,7 +1220,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1309,7 +1309,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1392,11 +1392,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1482,7 +1482,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1568,7 +1568,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1656,7 +1656,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1743,7 +1743,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1827,11 +1827,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 5,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -1918,7 +1918,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2005,7 +2005,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2091,7 +2091,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2174,11 +2174,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2261,11 +2261,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 2,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2353,7 +2353,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 1,
@@ -2440,7 +2440,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2529,7 +2529,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2616,7 +2616,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2700,11 +2700,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2791,7 +2791,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2880,7 +2880,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -2967,7 +2967,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3051,11 +3051,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 3,
+        "count": 6,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3142,7 +3142,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3230,7 +3230,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3316,7 +3316,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3399,11 +3399,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3489,7 +3489,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3572,11 +3572,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 2,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3665,7 +3665,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3747,11 +3747,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3838,7 +3838,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -3928,7 +3928,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4012,11 +4012,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 1,
+        "count": 2,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4103,7 +4103,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4188,11 +4188,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 3,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4275,11 +4275,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4363,11 +4363,11 @@
         "method": "Grid cells whose centre falls inside the district boundary (even-odd point-in-polygon over every ring); nodata cells excluded, on the 720×560 DEM grid; mean/min/max in metres above sea level; the baked DEM stores ocean as 0 m, so a coastal district's minimum can be 0"
       },
       "notices": {
-        "count": 0,
+        "count": 1,
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4455,7 +4455,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,
@@ -4542,7 +4542,7 @@
         "unit": "notices",
         "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
         "date": "2026-09-09",
-        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 1 notice(s) read \"District awaiting confirmation\" and count nowhere"
+        "method": "Notices in src/content/farm-notices.ts counted by their district label; a notice spanning two districts counts once in each; 2 notice(s) read \"District awaiting confirmation\" and count nowhere"
       },
       "parcels": {
         "count": 0,

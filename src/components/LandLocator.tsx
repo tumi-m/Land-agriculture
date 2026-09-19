@@ -42,6 +42,20 @@ const AtlasMap = dynamic(() => import("./AtlasMap"), { ssr: false });
 const THEME_KEY = "all-theme";
 
 /**
+ * Where a notice can be inspected on the ground: its matched cadastral parcel
+ * first, then the coordinates its own document prints, and otherwise nowhere —
+ * a district is not a farm location.
+ */
+function noticePoint(notice: FarmNotice): MapInspection | null {
+  const parcel = parcelFor(notice.id);
+  if (parcel)
+    return { coordinates: parcel.properties.coordinates, elevation: null };
+  return notice.coordinates
+    ? { coordinates: notice.coordinates, elevation: null }
+    : null;
+}
+
+/**
  * View-only concerns that are not shareable state. Grouped into one local
  * state object so the component body stays on the store for everything that
  * is: selection, view, metric, depth and layers live in useExplorer.
@@ -149,13 +163,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
 
   const chooseNotice = useCallback(
     (item: FarmNotice) => {
-      const parcel = parcelFor(item.id);
       setUi((u) => ({
         ...u,
         notice: item,
-        inspection: parcel
-          ? { coordinates: parcel.properties.coordinates, elevation: null }
-          : null,
+        inspection: noticePoint(item),
         detailState: "expanded",
         focusMap: false,
         compactMap: false,
@@ -228,13 +239,10 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       } else if (at.kind === "notice") {
         selectNotice(at.id);
         const item = FARM_NOTICES.find((n) => n.id === at.id) ?? null;
-        const parcel = item ? parcelFor(item.id) : null;
         setUi((u) => ({
           ...u,
           notice: item,
-          inspection: parcel
-            ? { coordinates: parcel.properties.coordinates, elevation: null }
-            : null,
+          inspection: item ? noticePoint(item) : null,
           detailState: "expanded",
         }));
         if (item) setView("land");

@@ -215,8 +215,19 @@ export default function LandDossier({
               <p className="dossier-callout">
                 {parcelFor(notice.id)
                   ? "Cadastral parcel matched by farm name, number, portion, registration division and province. Source geometry is a reference boundary; confirm the current survey and lease extent with DLRRD."
-                  : "District location only. Farm coordinates and lease-unit boundaries are awaiting a cadastral match. Map clicks analyse the clicked point, not this unlocated farm."}
+                  : notice.coordinates
+                    ? "Point from the notice itself. It locates the farm, not its boundary: the lease extent and the cadastral parcel still have to be confirmed with DLRRD."
+                    : "District location only. Farm coordinates and lease-unit boundaries are awaiting a cadastral match. Map clicks analyse the clicked point, not this unlocated farm."}
               </p>
+              {notice.placedBy && notice.placedBy !== "notice" && (
+                <p className="dossier-note">
+                  {notice.placedBy === "coordinates"
+                    ? "The notice names no province or municipality. This farm sits in the district its printed coordinates fall inside."
+                    : notice.placedBy === "municipality"
+                      ? "The notice names no district. This is the district of the local municipality it does name."
+                      : "The notice names no district or municipality. Only the provincial office that takes the application is known."}
+                </p>
+              )}
               {parcelFor(notice.id) && (
                 <>
                   <a

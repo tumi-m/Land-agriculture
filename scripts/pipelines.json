@@ -60,6 +60,7 @@
         "src/data/nc-district-evidence.json",
         "src/content/farm-notices.ts",
         "src/content/northern-cape-notices.json",
+        "src/content/notices-2026.json",
         "src/content/notice-coverage.json",
         "public/data/sa-dem.png",
         "public/data/sa-dem.json",

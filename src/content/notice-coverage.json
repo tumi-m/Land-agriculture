@@ -1,7 +1,32 @@
 {
   "checked": "2026-09-09",
   "source": "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79",
-  "scope": "All 53 linked 2026 PDFs on this index were read for Northern Cape coverage. Fifteen NC notices were found; all had passed deadlines. Other years, municipalities and unadvertised state land are outside this review.",
+  "scope": "The index was enumerated on 9 September 2026: 53 linked 2026 PDFs. All of them have now been read — the Northern Cape ones on 9 September, the remaining 31 on 19 September. Forty-nine notices are carried here; four documents are deliberately excluded, listed below. Other years, municipalities and unadvertised state land are outside this review, and the index itself has not been re-enumerated since 9 September.",
+  "secondReview": {
+    "checked": "2026-09-19",
+    "files": 31,
+    "added": 27,
+    "excluded": 4,
+    "note": "Read from the source PDFs. Where a notice does not name its province or district, the record says what placed it: the stated local municipality, the notice's own coordinates, or only the provincial office that takes the application."
+  },
+  "excludedFiles": [
+    {
+      "file": "Notice-withdrawal-Zandfontein-Advert.pdf",
+      "reason": "Withdrawal notice, not an offer. It withdraws the Zandfontein 382 advert of 17 July 2026 (closing 14 August 2026) until further notice."
+    },
+    {
+      "file": "zandfontein-16-july2026.pdf",
+      "reason": "The advert withdrawn by the notice above. Not carried as an opportunity."
+    },
+    {
+      "file": "readvertisement-for-elandspruit-farm-vers2.pdf",
+      "reason": "The document carries a withdrawal statement for its own re-advertisement (Elandspruit 107 JT portions 8 and 10, Rustenburg 108 JT portion 14)."
+    },
+    {
+      "file": "AMENDED-Woolton-Spilsby-Vetted-Re-Advert-22Apr2026.pdf",
+      "reason": "Superseded: this April re-advert (closing 13 May 2026, three lease units, 1 658.5817 ha) is replaced by Vetted-Lease-Woolton-Spilsby.pdf, which is carried as woolton-spilsby."
+    }
+  ],
   "reviewedFiles": [
     "Vetted-Lease-Woolton-Spilsby.pdf",
     "Paardevlei-Vaalpunt-Monte-Christo.pdf",

@@ -1,4 +1,5 @@
 import northernCapeNotices from "./northern-cape-notices.json";
+import notices2026 from "./notices-2026.json";
 import type { ProvinceCode } from "@/lib/types";
 export const NOTICE_INDEX =
   "https://www.dlrrd.gov.za/index.php/component/content/article/235-application-to-lease-state-farms?Itemid=437&catid=79";
@@ -20,6 +21,17 @@ export interface FarmNotice {
   priority: string;
   reference: string;
   coordinates: [number, number] | null;
+  /** When this record was read against its source document. */
+  checkedAt?: string;
+  /**
+   * What put the farm in its province and district.
+   *
+   * `notice` is the document naming them. `municipality` is the district the
+   * stated local municipality belongs to. `coordinates` is the district the
+   * notice's own coordinates fall inside. `office` is weaker still: only the
+   * provincial office that takes the application is named.
+   */
+  placedBy?: "notice" | "municipality" | "coordinates" | "office";
 }
 const base =
   "https://www.dlrrd.gov.za/images/application_to_lease_state_farms/2026/";
@@ -181,4 +193,7 @@ export const FARM_NOTICES: FarmNotice[] = [
     coordinates: null,
   },
   ...(northernCapeNotices as FarmNotice[]),
+  // The rest of the 2026 index, read 19 September 2026. Four of the reviewed
+  // documents are deliberately not here: see notice-coverage.json.
+  ...(notices2026 as FarmNotice[]),
 ];
