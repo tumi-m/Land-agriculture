@@ -25,9 +25,9 @@ origin/main `404d91f`):
 - **Stash `M1.3 wip` is subsumed** by `3d3f481` (every overlapping file
   byte-identical). Kept, not dropped.
 - **Branches need no merge.** `origin/codex/agriculture-experience` has zero
-  commits not on main (an ancestor). `origin/claude/kind-brahmagupta-meee5k`
-  has two unique plan commits whose content was already copied byte-identical
-  onto main by `918ec16`.
+  commits not on main (an ancestor). The session branch had two unique plan
+  commits whose content was already copied byte-identical onto main by
+  `918ec16`.
 - **Isolated verification on `3d3f481`** (2-core Codespace, Node 24.20.0,
   no concurrent builds): results recorded below in "P00 checks actually run".
 
