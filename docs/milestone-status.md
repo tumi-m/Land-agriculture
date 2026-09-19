@@ -192,3 +192,100 @@ order; M2.3 and M2.4 also wait on M2.1's `pieces.ts` edits.
 | M5.4 | committed |
 | M5.5 | committed |
 | M5.6 | will stop and ask for `ADJUDICATION_SIGNING_KEY` |
+
+## Landed 19 Sep 2026 — four correctness slices
+
+Applied from the 19 September patch series onto `b5f2dad`. The series was
+written against `404d91f`, before the M1.3 scene split reached the remote, so
+two of its assumptions were stale and are recorded here rather than carried:
+
+- **Its ledger commit was dropped.** It declared M1.3 "claimed but not in this
+  repository" and told owners not to rebuild it. The P00 pass above had already
+  resolved that: M1.3 was a push gap, is commit `3d3f481`, and is on main.
+  Applying the commit would have written a falsehood into this file. Its other
+  change — the stale baseline lint note — `b5f2dad` had already made.
+- **Two conflicts in `LandLocator.tsx`**, both because M1.3 wired `depth`
+  through the URL while the series rewrote the reader and the writer. Resolved
+  by keeping both: `applySelection` and `mergeUrlSearch` now carry `depth`.
+
+### The slices
+
+**P01 · Feed safety** — `src/lib/source.ts`, `src/lib/types.ts`,
+`LiveStatus.tsx`, `ParcelCard.tsx`, `tests/source.test.ts` (12 tests).
+A feed record needs an id, a title, a known province, a point inside South
+Africa and an extent above zero, or it is dropped and counted. An unstated
+status is `unknown` and reads "Status not stated" — it no longer becomes
+`open`, which advertised an application window nobody published. Only http(s)
+links survive. 10 s timeout, 2 MB cap, 500-record cap. A configured feed that
+fails says "Advert feed unavailable" with its reason.
+
+**P11 (part) · The link carries the selection** — `src/state/url.ts`,
+`LandLocator.tsx`, `tests/url-merge.test.ts` (5 tests), `e2e/land.spec.ts`.
+`mergeUrlSearch` owns seven keys and leaves the rest of a link alone. A notice
+click selects the notice; a point click selects the point. One
+`applySelection` serves first paint and `popstate`.
+Still open: the writer replaces the history entry rather than pushing one, so
+Back still leaves the page, and no renderer consumes `layers` or `cam`.
+
+**P15 (part) · The Land view survives failing imagery** — `AtlasMap.tsx`,
+`e2e/land.spec.ts`. Map setup moved out of the `load` handler into a `setup()`
+that runs on `load` or on an 8 s watchdog, whichever is first. MapLibre only
+fires `load` after a visually complete render, so failing tiles used to hold
+the boundaries, notices and controls with them.
+
+**M2.5 (first half) · The rest of the 2026 index** —
+`src/content/notices-2026.json` (27 records), `farm-notices.ts`,
+`notice-coverage.json`, `LandDossier.tsx`, `LandLocator.tsx`,
+`tests/notices.test.ts` (7 tests), `scripts/test-explorer.tsx`.
+22 notices in four provinces become **49 in all nine**. Four documents are
+excluded with a stated reason. Three notices print their own coordinates and
+carry them; `placedBy` records what placed every indirectly located farm.
+Two follow-ons this tree needed and the series did not carry:
+`src/data/district-stats.json` is derived from the notices and was rebuilt
+(49 notices, 2 awaiting a district, 2 parcels), and `scripts/pipelines.json`
+did not list `notices-2026.json` among the district-stats inputs, so the DAG
+would have skipped that rebuild. Both are in the commit.
+Still open: the cadastral matching half. Mapped boundaries stay at two.
+
+### Checks actually run (19 Sep 2026, 4-core sandbox, Node 22.22.2)
+
+- `npm run check`: **green** — typecheck, lint, graph, **174/174** unit tests
+  (150 on `b5f2dad` plus the 24 these slices add).
+- `npm run build`: green. `npm run budget`: green — `/` first-load 189.8 kB
+  gzip of the 230 kB limit, up from 185.4 kB.
+- `npm run e2e`: **19 passed, 4 failed.** Both new assertions pass: the
+  country-scale tap writes `at=point:lng,lat`, and imagery blocked from the
+  first request still leaves parsed boundaries and a stated reason.
+- `npm run shots`: green, and the four PNGs were reviewed.
+
+**The four e2e failures, each checked against `b5f2dad` in the same sandbox
+rather than assumed:**
+
+1. `land.spec.ts` "a district tap inside a province selects the district" —
+   **fails on main here too**, earlier in fact (the vector sources never
+   finish loading). This sandbox cannot reach the tile services reliably.
+   Environmental, not a regression.
+2. `screens.spec.ts` phone-dark and desktop-dark — **fail on main here too**,
+   at the same 0.24 pixel ratio. The sandbox's Chromium is build 1194
+   (141.0.7390.37); Playwright 1.63 pins 1243, and the binaries had to be
+   bridged to run at all. Left untouched: regenerating them would bake a
+   non-pinned browser's dark rendering into the repo.
+3. `screens.spec.ts` phone-light — **the one real visual change.** 0.03 of
+   pixels, just over the 0.02 tolerance, and the diff is entirely the province
+   advert labels and the government-land chip reading 49 where they read 22.
+   phone-light *passed* on main with this same bridged browser, so this state
+   renders the same here as on the pinned build; the baseline was regenerated
+   for that state only and re-run twice to confirm it is stable.
+
+QC2 on a machine with the pinned browser and working network should re-run the
+full suite and confirm 1 and 2.
+
+### Two defects found while verifying, neither introduced here
+
+- **Hydration mismatch on `/`.** "Hydration failed because the server rendered
+  text didn't match the client" fires on first load. Reproduced identically on
+  `b5f2dad`, so it predates this series. Unowned; worth a slice of its own.
+- **Phone labels overlap badly.** The reviewed `phone-light.png` stacks
+  Limpopo, North West, Mpumalanga, Northern Cape, Western Cape and Natal over
+  each other. This is the known M1.4 defect, and these notices make it more
+  visible: more provinces now carry advert counts to draw.
