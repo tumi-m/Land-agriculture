@@ -29,11 +29,20 @@ export default function LiveStatus({
   }, []);
 
   const live = dataset.source === 'remote';
+  // A configured feed that could not be read is not the same as no feed at
+  // all: one means the catalogue is unavailable, the other that none was set.
+  const failed = !live && !!dataset.sourceError;
   const dot =
-    state === 'error' ? 'bg-critical' : changed ? 'bg-clay' : live ? 'bg-good' : 'bg-faint';
+    state === 'error' || failed
+      ? 'bg-critical'
+      : changed
+        ? 'bg-clay'
+        : live
+          ? 'bg-good'
+          : 'bg-faint';
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" title={dataset.sourceError}>
       <span className="relative flex h-2 w-2" aria-hidden="true">
         {live && state !== 'error' && (
           <span className={cx('absolute inline-flex h-full w-full animate-halo rounded-full', dot)} />
@@ -47,8 +56,20 @@ export default function LiveStatus({
             ? 'Adverts updated'
             : live
               ? 'Advert feed live'
-              : 'No advert feed'}
+              : failed
+                ? 'Advert feed unavailable'
+                : 'No advert feed'}
       </span>
+      {failed && (
+        <span className="eyebrow hidden lg:inline text-critical">
+          {dataset.sourceError}
+        </span>
+      )}
+      {live && !!dataset.rejected && (
+        <span className="eyebrow hidden lg:inline text-muted">
+          {dataset.rejected} record{dataset.rejected === 1 ? '' : 's'} dropped
+        </span>
+      )}
       {live && (
         <>
           <span className="eyebrow hidden lg:inline" suppressHydrationWarning>

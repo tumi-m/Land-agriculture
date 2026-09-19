@@ -11,6 +11,7 @@ const STATUS_STYLE: Record<Listing['status'], string> = {
   'closing-soon': 'border-clay text-clay',
   assessment: 'border-rule text-muted',
   allocated: 'border-rule text-faint',
+  unknown: 'border-rule text-muted',
 };
 
 const STATUS_LABEL: Record<Listing['status'], string> = {
@@ -18,6 +19,7 @@ const STATUS_LABEL: Record<Listing['status'], string> = {
   'closing-soon': 'Closing soon',
   assessment: 'Under assessment',
   allocated: 'Allocated',
+  unknown: 'Status not stated',
 };
 
 /** A live advert from the configured feed. Never used for invented listings. */

@@ -10,9 +10,24 @@ export type Enterprise =
   | 'dairy'
   | 'forestry';
 
-export type ListingStatus = 'open' | 'closing-soon' | 'assessment' | 'allocated';
+/**
+ * A feed that does not state a status leaves it unknown. There is no default
+ * that means "accepting applications": that has to be published, not assumed.
+ */
+export type ListingStatus =
+  | 'open'
+  | 'closing-soon'
+  | 'assessment'
+  | 'allocated'
+  | 'unknown';
 
-export type Tenure = 'lease-30yr' | 'caretaker' | 'lease-10yr' | 'grant';
+/** As with status, a tenure the feed does not state stays unknown. */
+export type Tenure =
+  | 'lease-30yr'
+  | 'caretaker'
+  | 'lease-10yr'
+  | 'grant'
+  | 'unknown';
 
 export interface ApplicationStep {
   title: string;
@@ -79,5 +94,7 @@ export interface Dataset {
   source: 'seed' | 'remote';
   /** Set when a remote source was configured but could not be read. */
   sourceError?: string;
+  /** Records the feed sent that failed validation and were dropped. */
+  rejected?: number;
   listings: Listing[];
 }
