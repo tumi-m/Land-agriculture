@@ -180,13 +180,19 @@ test("country-scale tap inspects a point, not a district", async ({ page }) => {
     (box?.y ?? 0) + (target?.y ?? 0),
   );
 
-  // The point dossier opens. The selection kind stays country, so no district
-  // is chosen: this is what "tap inspects at country scale" means today.
+  // The point dossier opens, and the tap is the selection: the link carries
+  // the point so the same spot reopens for whoever it is sent to.
   await expect(page.locator(".map-selection-chip")).toContainText(
     "Selected point",
   );
-  expect(await atKind(page), "a country tap must not select a district").not.toBe(
-    "district",
+  await expect
+    .poll(() => atKind(page), { timeout: 10_000 })
+    .toBe("point");
+  const at = await page.evaluate(
+    () => new URLSearchParams(window.location.search).get("at") ?? "",
+  );
+  expect(at, "the point link carries its coordinates").toMatch(
+    /^point:-?\d+\.\d+,-?\d+\.\d+$/,
   );
 });
 
@@ -285,19 +291,50 @@ test("a basemap that fails mid-session says so and keeps the land", async ({
   expect(counts.provinces).toBeGreaterThan(0);
 });
 
+test("imagery that fails from the first request still leaves a usable map", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Blocked before the first request: the case that used to deadlock the view.
+  await page.route("**/s2cloudless_3857/**", (route) => route.abort());
+  await page.route("**/terrain_3857/**", (route) => route.abort());
+  await page.goto("/?view=atlas");
+  await page
+    .locator(".terrain-canvas canvas")
+    .waitFor({ state: "visible", timeout: 30_000 });
+  expect(await findLiveMap(page)).toBe(true);
+
+  // MapLibre's load event never comes without imagery, so the setup runs on
+  // its watchdog instead: the cover lifts and the land layers are added.
+  await expect(page.locator(".terrain-loading")).toBeHidden({
+    timeout: 60_000,
+  });
+  const counts = await waitForVectorFeatures(
+    page,
+    ["provinces", "districts"],
+    ["provinces", "districts"],
+  );
+  expect(counts.provinces, "provinces parsed no features").toBeGreaterThan(0);
+
+  // And it says what went wrong rather than pretending the imagery is coming.
+  const notice = page.locator(".terrain-notice");
+  await expect(notice).toBeVisible({ timeout: 30_000 });
+  await expect(notice).toContainText(
+    /imagery could not load|relief may be incomplete|loading slowly/,
+  );
+});
+
 /*
- * Two defects measured on 15 September 2026, recorded rather than hidden:
+ * The two defects measured on 15 September 2026 are fixed and pinned above:
  *
- * 1. A country-scale tap opens the point dossier but never sets the store
- *    selection, so the URL gets no `at=point:` even though the grammar can
- *    read one. The test above pins the half that works.
- * 2. With the imagery routes blocked from the first request, `load` never
- *    fires (MapLibre fires it only once the map is fully loaded, and errored
- *    tiles never count as loaded). The `load` handler is where the vector
- *    layers are added, so the Land view sits on its loading state forever: no
- *    layers, no markers, no notice, nothing to act on.
+ * 1. A country-scale tap now sets the point selection, so the link carries
+ *    `at=point:lng,lat` ("country-scale tap inspects a point").
+ * 2. Imagery blocked from the first request no longer deadlocks the view: the
+ *    setup runs on a watchdog when MapLibre's load event cannot fire, so the
+ *    boundaries, notices and controls arrive without it ("imagery that fails
+ *    from the first request").
  *
- * M3 owns both: its hand-off and registry work replace the initialisation
- * path, and the point selection lands with the inspect registry. Each gets a
- * test when it is fixed.
+ * Still open, and owned by M3: the model-to-land hand-off, and moving the
+ * InfrastructureOverlay layers into the registry.
  */

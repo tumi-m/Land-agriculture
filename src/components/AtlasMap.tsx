@@ -33,6 +33,13 @@ import { group } from "@/lib/format";
 import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import type { ProvinceCode } from "@/lib/types";
 
+/**
+ * How long the map waits for its first complete render before it stops
+ * blocking the view. Imagery on a slow connection can take far longer than
+ * this, and none of the land information depends on it.
+ */
+const SLOW_IMAGERY_MS = 8000;
+
 export default function AtlasMap({
   notice,
   inspection,
@@ -82,6 +89,7 @@ export default function AtlasMap({
   const [inspectMode, setInspectMode] = useState(true);
   const inspectModeRef = useRef(true);
   const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [failed, setFailed] = useState(false);
   const [tileError, setTileError] = useState(false);
   const [demError, setDemError] = useState(false);
@@ -290,7 +298,14 @@ export default function AtlasMap({
     };
     instance.on("moveend", syncLabels);
     instance.on("idle", syncLabels);
-    instance.on("load", () => {
+    // MapLibre's load event waits for the first visually complete render, so
+    // slow or failing imagery used to hold back the land information with it.
+    // The setup runs once, on load or on the watchdog below, whichever is
+    // first: the boundaries, notices and controls do not depend on tiles.
+    let ready = false;
+    const setup = () => {
+      if (ready || !instance.isStyleLoaded()) return;
+      ready = true;
       instance.setSourceTileLodParams(4, 2);
       if (budget.terrain)
         instance.setTerrain({
@@ -433,10 +448,20 @@ export default function AtlasMap({
       });
       setLoaded(true);
       frame(0);
-    });
+    };
+    instance.on("load", setup);
+    const watchdog = window.setTimeout(() => {
+      if (ready) return;
+      setSlow(true);
+      // The style is inline, so it is ready long before the imagery is; if it
+      // somehow is not, take the next styledata event instead.
+      if (instance.isStyleLoaded()) setup();
+      else instance.once("styledata", setup);
+    }, SLOW_IMAGERY_MS);
     const observer = new ResizeObserver(() => instance.resize());
     observer.observe(host.current);
     return () => {
+      window.clearTimeout(watchdog);
       observer.disconnect();
       markers.current.forEach((item) => item.marker.remove());
       markers.current = [];
@@ -597,6 +622,12 @@ export default function AtlasMap({
           <strong>Bringing the landscape into view</strong>
           <span>Satellite imagery + real elevation</span>
         </div>
+      )}
+      {slow && loaded && !tileError && (
+        <p className="terrain-notice" role="status">
+          Imagery is loading slowly on this connection. Boundaries, notices and
+          the land information are ready.
+        </p>
       )}
       {failed && (
         <div className="atlas-fallback">
