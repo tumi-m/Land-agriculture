@@ -12,7 +12,11 @@ import {
   parseInfrastructureBounds,
   type InfrastructureKind,
 } from "@/lib/infrastructure";
-import { INFRA } from "@/design/ramps";
+import {
+  LOCAL_INFRASTRUCTURE_DEFS,
+  addLayerDefs,
+  removeLayerDefs,
+} from "@/map/layers";
 export function infrastructureHit(
   map: LibreMap,
   point: MapMouseEvent["point"],
@@ -46,54 +50,25 @@ export default function InfrastructureOverlay({
   onStatus: (status: string) => void;
 }) {
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
+
+  // The layers belong to the map, not to the toggles. Keying this on `map`
+  // alone means switching a layer off no longer removes and re-adds three
+  // sources and three layers — that rebuild was visible as a flicker, and it
+  // threw away tiles the map had already drawn. The toggles below only change
+  // what data goes into them.
+  useEffect(() => {
+    addLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+    return () => {
+      if (map.getStyle()) removeLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+    };
+  }, [map]);
+
   useEffect(() => {
     let stopped = false,
       timer: ReturnType<typeof setTimeout>,
       controller: AbortController | null = null,
       generation = 0;
     const kinds: InfrastructureKind[] = ["rivers", "dams", "power"];
-    for (const kind of kinds)
-      map.addSource(`local-${kind}`, {
-        type: "geojson",
-        data: EMPTY_FEATURES,
-        attribution: INFRASTRUCTURE[kind].credit,
-        tolerance: 0.5,
-      });
-    map.addLayer({
-      id: "local-dams-fill",
-      type: "fill",
-      source: "local-dams",
-      paint: {
-        "fill-color": INFRA.dams,
-        "fill-opacity": 0.48,
-        "fill-outline-color": INFRA.damsOutline,
-      },
-    });
-    map.addLayer({
-      id: "local-rivers-line",
-      type: "line",
-      source: "local-rivers",
-      paint: {
-        "line-color": [
-          "match",
-          ["get", "classification"],
-          "Perennial",
-          INFRA.riverPerennial,
-          INFRA.riverOther,
-        ],
-        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
-      },
-    });
-    map.addLayer({
-      id: "local-power-line",
-      type: "line",
-      source: "local-power",
-      paint: {
-        "line-color": INFRA.power,
-        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 15, 4],
-        "line-dasharray": [3, 1],
-      },
-    });
     const choose = (e: MapMouseEvent) => {
       const f = infrastructureHit(map, e.point);
       if (f) {
@@ -187,12 +162,6 @@ export default function InfrastructureOverlay({
       controller?.abort();
       map.off("moveend", refresh);
       map.off("click", choose);
-      if (map.getStyle()) {
-        for (const id of INFRA_LAYER_IDS)
-          if (map.getLayer(id)) map.removeLayer(id);
-        for (const kind of kinds)
-          if (map.getSource(`local-${kind}`)) map.removeSource(`local-${kind}`);
-      }
     };
   }, [map, water, power, paused, retry, onSelect, onStatus]);
   useEffect(() => {

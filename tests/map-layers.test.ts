@@ -3,10 +3,14 @@ import { test } from "node:test";
 import {
   LAYER_DEFS,
   LAYER_ID_TO_DEF,
+  LOCAL_INFRASTRUCTURE_DEFS,
   REGISTRY_LAYER_IDS,
+  addLayerDefs,
   addMapLayers,
+  removeLayerDefs,
   setLayerVisibility,
 } from "../src/map/layers";
+import { INFRA_LAYER_IDS } from "../src/lib/infrastructure";
 
 test("addMapLayers adds every registry layer to a fresh map", () => {
   // Regression pin: a beforeId naming a layer defined later in the registry
@@ -76,4 +80,94 @@ test("setLayerVisibility skips layers the map does not have", () => {
   } as unknown as Parameters<typeof setLayerVisibility>[0];
   setLayerVisibility(fake, "rivers", false);
   assert.deepEqual(touched, { rivers: "none" });
+});
+/** A map that remembers what was added, enough for the registry's calls. */
+function fakeMap() {
+  const layers: string[] = [];
+  const sources: string[] = [];
+  return {
+    layers,
+    sources,
+    map: {
+      getSource: (id: string) => (sources.includes(id) ? {} : undefined),
+      addSource: (id: string) => {
+        sources.push(id);
+      },
+      removeSource: (id: string) => {
+        sources.splice(sources.indexOf(id), 1);
+      },
+      getLayer: (id: string) => (layers.includes(id) ? {} : undefined),
+      addLayer: (layer: { id: string }) => {
+        layers.push(layer.id);
+      },
+      removeLayer: (id: string) => {
+        layers.splice(layers.indexOf(id), 1);
+      },
+    } as unknown as Parameters<typeof addLayerDefs>[0],
+  };
+}
+
+test("the local infrastructure defs carry exactly the layers the overlay hit-tests", () => {
+  // These specs used to be inline in InfrastructureOverlay. The overlay still
+  // queries INFRA_LAYER_IDS to decide what a tap hit, so if the registry ever
+  // renames or drops one of them the tap goes dead with nothing else failing.
+  const ids = LOCAL_INFRASTRUCTURE_DEFS.flatMap((def) =>
+    def.layers.map((layer) => layer.id),
+  );
+  assert.deepEqual([...ids].sort(), [...INFRA_LAYER_IDS].sort());
+});
+
+test("each local layer reads from a source the same def declares", () => {
+  for (const def of LOCAL_INFRASTRUCTURE_DEFS) {
+    for (const layer of def.layers) {
+      const source = (layer as { source?: string }).source;
+      assert.ok(
+        source && source in def.sources,
+        `${layer.id} reads from ${source}, which its def does not declare`,
+      );
+    }
+  }
+});
+
+test("the local defs are not in the base registry, and do not collide with it", () => {
+  // They are added on mount and removed on unmount, so addMapLayers must not
+  // draw them; their ids must still be unique against everything it does.
+  const base = new Set(REGISTRY_LAYER_IDS);
+  for (const id of INFRA_LAYER_IDS) {
+    assert.ok(!base.has(id), `${id} is in the base registry as well`);
+  }
+});
+
+test("adding and removing the local defs is idempotent and leaves nothing behind", () => {
+  const { layers, sources, map } = fakeMap();
+  addLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+  const afterFirst = [...layers];
+  assert.deepEqual(afterFirst, [
+    "local-dams-fill",
+    "local-rivers-line",
+    "local-power-line",
+  ]);
+
+  // A remount must not double-add: MapLibre throws on a duplicate layer id.
+  addLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+  assert.deepEqual(layers, afterFirst);
+
+  removeLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+  assert.deepEqual(layers, []);
+  assert.deepEqual(sources, []);
+
+  // And removing twice is safe, which is what a torn-down style looks like.
+  removeLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+  assert.deepEqual(layers, []);
+});
+
+test("dams draw under rivers and power, as they did inline", () => {
+  // Stacking order is the order the overlay added them: fill first, so the
+  // lines stay readable over the water bodies.
+  const { layers, map } = fakeMap();
+  addLayerDefs(map, LOCAL_INFRASTRUCTURE_DEFS);
+  assert.ok(
+    layers.indexOf("local-dams-fill") < layers.indexOf("local-rivers-line"),
+    "the dam fill must be added before the river lines",
+  );
 });

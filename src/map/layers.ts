@@ -16,13 +16,16 @@ import {
   AERIAL_ATTRIBUTION,
   AERIAL_TILES,
 } from "@/lib/aerial";
+import { EMPTY_FEATURES, INFRASTRUCTURE } from "@/lib/infrastructure";
+import { INFRA } from "@/design/ramps";
 
 export type LayerGroupId =
   | "base"
   | "land"
   | "water"
   | "government"
-  | "imagery";
+  | "imagery"
+  | "infrastructure";
 
 export interface LayerAttribution {
   text: string;
@@ -266,6 +269,138 @@ export const LAYER_DEFS: LayerDef[] = [
     },
   },
 ];
+
+/**
+ * Rivers, dams and power lines fetched for the visible box.
+ *
+ * These are not in LAYER_DEFS: they are added when the overlay mounts and
+ * removed when it unmounts, on top of everything the base registry drew, and
+ * their sources start empty because the features arrive from /api per view.
+ * They are LayerDefs all the same, so the specs live here with every other
+ * layer and no component calls addLayer.
+ */
+const localSource = (kind: keyof typeof INFRASTRUCTURE): SourceSpecification => ({
+  type: "geojson",
+  data: EMPTY_FEATURES,
+  attribution: INFRASTRUCTURE[kind].credit,
+  tolerance: 0.5,
+});
+
+export const LOCAL_INFRASTRUCTURE_DEFS: LayerDef[] = [
+  {
+    id: "local-dams",
+    group: "infrastructure",
+    label: "Dams & water bodies",
+    description: INFRASTRUCTURE.dams.note,
+    sources: { "local-dams": localSource("dams") },
+    layers: [
+      {
+        id: "local-dams-fill",
+        type: "fill",
+        source: "local-dams",
+        paint: {
+          "fill-color": INFRA.dams,
+          "fill-opacity": 0.48,
+          "fill-outline-color": INFRA.damsOutline,
+        },
+      },
+    ],
+    defaultOn: true,
+    attribution: {
+      text: INFRASTRUCTURE.dams.credit,
+      url: INFRASTRUCTURE.dams.url,
+      licence: "Public government data",
+      date: INFRASTRUCTURE.dams.updated,
+    },
+  },
+  {
+    id: "local-rivers",
+    group: "infrastructure",
+    label: "Rivers & streams",
+    description: INFRASTRUCTURE.rivers.note,
+    sources: { "local-rivers": localSource("rivers") },
+    layers: [
+      {
+        id: "local-rivers-line",
+        type: "line",
+        source: "local-rivers",
+        paint: {
+          "line-color": [
+            "match",
+            ["get", "classification"],
+            "Perennial",
+            INFRA.riverPerennial,
+            INFRA.riverOther,
+          ],
+          "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
+        },
+      },
+    ],
+    defaultOn: true,
+    attribution: {
+      text: INFRASTRUCTURE.rivers.credit,
+      url: INFRASTRUCTURE.rivers.url,
+      licence: "Public government data",
+      date: INFRASTRUCTURE.rivers.updated,
+    },
+  },
+  {
+    id: "local-power",
+    group: "infrastructure",
+    label: "Power lines",
+    description: INFRASTRUCTURE.power.note,
+    sources: { "local-power": localSource("power") },
+    layers: [
+      {
+        id: "local-power-line",
+        type: "line",
+        source: "local-power",
+        paint: {
+          "line-color": INFRA.power,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 15, 4],
+          "line-dasharray": [3, 1],
+        },
+      },
+    ],
+    defaultOn: true,
+    attribution: {
+      text: INFRASTRUCTURE.power.credit,
+      url: INFRASTRUCTURE.power.url,
+      licence: "Public government data",
+      date: INFRASTRUCTURE.power.updated,
+    },
+  },
+];
+
+/**
+ * Adds defs that are not part of the base registry, in the order given.
+ *
+ * Order is stacking order, and these go on last so they sit above the base
+ * layers — the same order the overlay added them inline. Both calls are
+ * idempotent, so a remount cannot double-add or throw on a missing layer.
+ */
+export function addLayerDefs(map: LibreMap, defs: LayerDef[]): void {
+  for (const def of defs) {
+    for (const [sourceId, source] of Object.entries(def.sources)) {
+      if (!map.getSource(sourceId)) map.addSource(sourceId, source);
+    }
+    for (const layer of def.layers) {
+      if (!map.getLayer(layer.id)) map.addLayer(layer);
+    }
+  }
+}
+
+/** Removes them again: layers first, then the sources they were using. */
+export function removeLayerDefs(map: LibreMap, defs: LayerDef[]): void {
+  for (const def of defs) {
+    for (const layer of def.layers) {
+      if (map.getLayer(layer.id)) map.removeLayer(layer.id);
+    }
+    for (const sourceId of Object.keys(def.sources)) {
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    }
+  }
+}
 
 /** Map layer id → owning def id, for visibility and lookup. */
 export const LAYER_ID_TO_DEF = new Map<string, string>(
