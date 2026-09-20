@@ -14,6 +14,11 @@ export async function expectNoOverlap(page: Page, selector: string, tolerance = 
         return (
           style.visibility !== "hidden" &&
           style.display !== "none" &&
+          // A fully transparent element cannot overlap anything visually.
+          // The model parks its unused labels at opacity 0 rather than
+          // unmounting them, and counting those was reporting collisions
+          // nobody could see.
+          Number(style.opacity) > 0 &&
           el.getBoundingClientRect().width > 0 &&
           el.getBoundingClientRect().height > 0
         );

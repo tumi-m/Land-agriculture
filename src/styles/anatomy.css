@@ -171,6 +171,51 @@
   color: #b8d6ae;
   margin-top: 0.18rem;
 }
+/*
+ * An overflow label. The place keeps a control the size of a fingertip and
+ * the name stays in the accessible tree, so nothing becomes unreachable —
+ * only the text steps aside so the land under it can be read.
+ */
+.anatomy-stage .anatomy-label.is-dot {
+  /*
+   * Under the labels that won their place. A dot keeps a 44px target, and
+   * most of that target is transparent, so without this it would swallow
+   * taps meant for a name it happens to sit over.
+   */
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  min-height: 0;
+  max-width: none;
+  font-size: 0;
+  /* Belt and braces: the name stays in the accessible tree, and no cascade
+     accident can let it spill across the map as loose text. */
+  overflow: hidden;
+}
+.anatomy-stage .anatomy-label.is-dot::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #bcdcd6;
+  border: 1px solid #05131788;
+  box-shadow: 0 2px 6px #05131766;
+}
+.anatomy-stage .anatomy-label.is-dot small {
+  display: none;
+}
+.anatomy-stage .anatomy-label.is-dot:hover::before,
+.anatomy-stage .anatomy-label.is-dot:focus-visible::before {
+  background: #ecffc0;
+  transform: scale(1.35);
+}
 .anatomy-label:hover,
 .anatomy-label.is-hovered {
   border-color: #d8efa2;

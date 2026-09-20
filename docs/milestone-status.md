@@ -332,3 +332,66 @@ from this sandbox (immediate failure, not a timeout). Matching 49 notices to
 cadastral parcels cannot be done without querying it, and Rule 1 forbids
 writing matches that were not read from the service. T2 needs a machine that
 can reach `dffeportal.environment.gov.za`. Mapped boundaries stay at two.
+
+## Landed 20 Sep 2026 — T4, T3 and M1.4
+
+**T4 · The map keeps its layers when a toggle changes** — `src/map/layers.ts`,
+`src/components/InfrastructureOverlay.tsx`, `tests/map-layers.test.ts`.
+The plan framed this as moving inline `addLayer` calls into the registry.
+`AtlasMap` was already clean (the grep hit was a comment); the real find was
+that the effect creating three sources and three layers was keyed on the
+toggles, so every rivers/power switch tore all six down and rebuilt them —
+a flicker, and it discarded tiles the map had already rasterised. Layers now
+belong to the map; toggles only change the data in them. The specs moved to
+the registry as three `LayerDef`s carrying the credit, licence and date the
+inline versions only half-carried.
+
+**T3 (second half) · A shared land link opens where the sharer was looking**
+— `AtlasMap.tsx`, `LandLocator.tsx`, `tests/url-merge.test.ts`.
+`cam` had round-tripped through the codec since M1.2 with nothing writing
+one: `setCamera` had no caller. The map now reports its pose on `moveend`
+and is *built* at an arriving pose rather than flown to it. T3 is complete.
+
+**M1.4 (T5) · Labels stop stacking** — `src/scene/labels.ts`,
+`ModelView.tsx`, `src/styles/anatomy.css`, `e2e/helpers/overlap.ts`,
+`tests/labels.test.ts`, `e2e/labels.spec.ts`.
+`placeLabels` is greedy by rank (selected → hovered → area), ties broken on
+id so a frame always resolves the same way and labels cannot flicker between
+two equally good arrangements. Overflow becomes a dot that keeps a 44 px
+target and its name in the accessible tree. `clampLabelPoint` pulls edge
+labels back on stage. The notice sub-line is gone at country scale, where it
+doubled the height of nine labels already competing for the same space.
+
+Three faults came out of building it, none of which a unit test would have
+caught:
+
+- A dot's 44 px target is mostly transparent, and it was **swallowing taps
+  meant for a full label underneath**. Dots now sit at `z-index: 2`, under
+  the labels that won their place. The e2e caught this, not review.
+- `panels.css` carries `.anatomy-stage .anatomy-label` and loads after
+  `anatomy.css`, so a plain `.anatomy-label.is-dot` tied on specificity and
+  lost on order: dots kept `font-size: .875rem` and their **names spilled
+  across the map as loose text**. The box-level overlap assertion could not
+  see it — the boxes were 44 px and correct; only the screenshot showed it.
+  The dot rules now match that depth, with `overflow: hidden` behind them.
+- Measuring a dot would say it fits, which would turn it back into a name,
+  which would collide, which would turn it back into a dot. Sizes are cached
+  from the full form only, so that loop cannot start.
+
+`expectNoOverlap` now skips fully transparent elements: the model parks
+unused labels at `opacity: 0` rather than unmounting them, and counting
+those was reporting collisions nobody could see.
+
+**Checks:** `npm run check` green, 200 tests. Build and budget green.
+`e2e/labels.spec.ts` asserts no two readable labels overlap at 390 px and
+1440 px across depths 0, 0.33, 0.66 and 1, and that an overflow dot stays a
+named, enabled, 44 px control. Screenshots reviewed.
+
+**Known and not fixed here:** a label can still pass under a floating
+control — "Limpopo" sits beneath the Orbit button at 390 px. That is
+label-versus-chrome, which is the explorer shell's scope
+(`[data-overlay], [data-chrome]`), not label-versus-label.
+
+**Still blocked:** T2 cadastral matching. The CSG MapServer refuses
+connections from the sandbox this ran in, and matching without querying it
+would mean inventing data. Mapped boundaries stay at two.

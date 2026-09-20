@@ -46,7 +46,14 @@ import {
   normalisedPointer,
   pickableMeshes,
 } from "@/scene/picking";
-import { clampLabelX, projectToScreen } from "@/scene/labels";
+import {
+  clampLabelPoint,
+  clampLabelX,
+  labelCap,
+  labelRank,
+  placeLabels,
+  projectToScreen,
+} from "@/scene/labels";
 
 /** How long the camera flight to a new selection takes. */
 const FLIGHT_MS = 1000;
@@ -330,18 +337,90 @@ export default function ModelView({
     let pointerStart: { x: number; y: number } | null = null;
     let hovering: THREE.Mesh | null = null;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Placement is decided for the frame as a whole, not label by label:
+    // whether a name can be read depends on what else is next to it. Each
+    // label positions itself here and joins the queue; applyLabels settles
+    // the collisions once every piece has had its say.
+    const pending: {
+      node: HTMLButtonElement;
+      id: string;
+      x: number;
+      y: number;
+      visible: boolean;
+      rank: number;
+    }[] = [];
+
     const project = (
       node: HTMLButtonElement | undefined,
       point: THREE.Vector3,
       visible: boolean,
+      id?: string,
+      rank = 0,
     ) => {
       if (!node) return;
       const screen = projectToScreen(point, camera, el.clientWidth, el.clientHeight);
       visible = visible && !screen.behind;
-      node.style.transform = `translate(${screen.x}px,${screen.y}px) translate(-50%,-100%)`;
-      node.style.opacity = visible ? "1" : "0";
-      node.style.pointerEvents = visible ? "auto" : "none";
-      node.tabIndex = visible ? 0 : -1;
+      if (id === undefined) {
+        node.style.transform = `translate(${screen.x}px,${screen.y}px) translate(-50%,-100%)`;
+        node.style.opacity = visible ? "1" : "0";
+        node.style.pointerEvents = visible ? "auto" : "none";
+        node.tabIndex = visible ? 0 : -1;
+        return;
+      }
+      pending.push({ node, id, x: screen.x, y: screen.y, visible, rank });
+    };
+
+    // The full size of each label, measured while it is drawn in full.
+    //
+    // A dot is far smaller than the name it replaces, so measuring one would
+    // say it fits, which would turn it back into a name, which would collide,
+    // which would turn it back into a dot: the label would flicker between
+    // the two every frame. Measuring only the full form breaks that loop.
+    const labelSizes = new Map<string, { width: number; height: number }>();
+
+    const applyLabels = () => {
+      for (const entry of pending) {
+        if (entry.node.classList.contains("is-dot")) continue;
+        const width = entry.node.offsetWidth;
+        const height = entry.node.offsetHeight;
+        if (width && height) labelSizes.set(entry.id, { width, height });
+      }
+      const { shown } = placeLabels(
+        pending
+          .filter((entry) => entry.visible)
+          .map((entry) => {
+            const size = labelSizes.get(entry.id);
+            const width = size?.width ?? 120;
+            const height = size?.height ?? 24;
+            // Clamp before the collision test, not after: a label pulled in
+            // from the edge can land on its neighbour, and that collision is
+            // the one that has to be resolved.
+            const point = clampLabelPoint(
+              entry.x,
+              entry.y,
+              width,
+              height,
+              el.clientWidth,
+              el.clientHeight,
+            );
+            entry.x = point.x;
+            entry.y = point.y;
+            return { id: entry.id, ...point, width, height, rank: entry.rank };
+          }),
+        labelCap(el.clientWidth),
+      );
+      const drawn = new Set(shown);
+      for (const entry of pending) {
+        const dot = entry.visible && !drawn.has(entry.id);
+        entry.node.style.transform = `translate(${entry.x}px,${entry.y}px) translate(-50%,-100%)`;
+        entry.node.style.opacity = entry.visible ? "1" : "0";
+        entry.node.classList.toggle("is-dot", dot);
+        // A dot is still the piece's control: it stays tappable and
+        // focusable, or the overflow would be land nobody can reach.
+        entry.node.style.pointerEvents = entry.visible ? "auto" : "none";
+        entry.node.tabIndex = entry.visible ? 0 : -1;
+      }
+      pending.length = 0;
     };
 
     const animate = (speed: number) => {
@@ -377,6 +456,11 @@ export default function ModelView({
           labels.current.get(p.id),
           p.centre.clone().setY(3),
           !state.selected,
+          p.id,
+          labelRank({
+            hovered: p.id === hovering?.userData.id,
+            area: p.size.x * p.size.z,
+          }),
         );
       }
       for (const { id, outline } of world.footprints)
@@ -387,7 +471,7 @@ export default function ModelView({
         p.group.visible =
           p.province === state.selected && (!solo || p.id === solo.district);
         if (!p.group.visible) {
-          project(labels.current.get(p.id), p.centre, false);
+          project(labels.current.get(p.id), p.centre, false, p.id);
           continue;
         }
         const chosen = p.id === state.district;
@@ -429,7 +513,17 @@ export default function ModelView({
               0,
             ),
           );
-        project(labels.current.get(p.id), p.anchor, !state.district || chosen);
+        project(
+          labels.current.get(p.id),
+          p.anchor,
+          !state.district || chosen,
+          p.id,
+          labelRank({
+            selected: chosen,
+            hovered: p.id === hovering?.userData.id,
+            area: p.size.x * p.size.z,
+          }),
+        );
         if (chosen) {
           const anchors = LAND_LAYERS.map((l, i) => ({
             id: l.id,
@@ -511,6 +605,9 @@ export default function ModelView({
         if (useExplorer.getState().cameraPreset !== matched)
           useExplorer.setState({ cameraPreset: matched });
       }
+      // Last, once every piece has queued its label: the collisions can only
+      // be settled when the whole frame is known.
+      applyLabels();
     };
 
     const hoverRef = { current: "" };
@@ -767,13 +864,13 @@ export default function ModelView({
           }
         >
           {p.name.replace(/ District$/, "")}
-          <small>
-            {selected
-              ? noticeCountLabel(noticesForDistrict(selected, p.id))
-              : noticeCountLabel(
-                  FARM_NOTICES.filter((n) => n.province === p.id),
-                )}
-          </small>
+          {/* The count belongs to a district, where it is a fact about one
+              place you are choosing between a few. At country scale it
+              doubled the height of nine labels already fighting for the
+              same space, and the province panel carries the same number. */}
+          {selected && (
+            <small>{noticeCountLabel(noticesForDistrict(selected, p.id))}</small>
+          )}
         </button>
       ))}
       <svg className="anatomy-leaders" aria-hidden="true">
