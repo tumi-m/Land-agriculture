@@ -132,3 +132,55 @@ test("re-writing the same place replaces, which is what keeps Back working", () 
   const restored = { ...base, at: at.lp };
   assert.equal(isNavigation(restored, { ...base, at: at.lp }), false);
 });
+
+/**
+ * The land camera in a shared link.
+ *
+ * `cam` has round-tripped through the codec since M1.2, but nothing wrote
+ * one: `setCamera` had no caller, so every land link opened at the default
+ * framing over Limpopo whatever the sharer was looking at.
+ */
+
+const pose = { lng: 21.2534, lat: -28.4512, zoom: 12.4, bearing: -24, pitch: 50 };
+
+test("a land link carries the pose the sharer was looking at", () => {
+  const search = mergeUrlSearch("", {
+    at: { kind: "point", lng: 21.2534, lat: -28.4512 },
+    view: "land",
+    metric: "advertised",
+    camera: pose,
+  });
+  const cam = new URLSearchParams(search).get("cam");
+  assert.ok(cam, "a land view with a pose must write cam");
+  assert.match(cam ?? "", /^21\.25340,-28\.45120,12\.4,-24,50$/);
+});
+
+test("the model never writes a camera, however one got into the store", () => {
+  // The model's camera is a preset, not a pose, and a cam= on a model link
+  // would be read back by nothing.
+  const search = mergeUrlSearch("", {
+    at: { kind: "province", province: "NC" },
+    view: "model",
+    metric: "advertised",
+    camera: pose,
+  });
+  assert.equal(new URLSearchParams(search).get("cam"), null);
+});
+
+test("panning replaces the entry rather than stacking one per move", () => {
+  // moveend fires on every pan and zoom. If each one were navigation, Back
+  // would crawl through the whole pan instead of leaving the land view.
+  const here = {
+    at: { kind: "district", province: "NC", district: "zf-mgcawu-district" } as const,
+    view: "land" as const,
+    metric: "advertised" as const,
+  };
+  let entries = 0;
+  let previous = { ...here, camera: pose };
+  for (const zoom of [12.5, 12.9, 13.4, 14.0]) {
+    const next = { ...here, camera: { ...pose, zoom } };
+    if (isNavigation(previous, next)) entries += 1;
+    previous = next;
+  }
+  assert.equal(entries, 0);
+});

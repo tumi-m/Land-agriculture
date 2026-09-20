@@ -11,7 +11,12 @@ import {
   type DetailState,
   type MapInspection,
 } from "@/lib/map-selection";
-import { useExplorer, parentOf, type Selection } from "@/state/explorer";
+import {
+  useExplorer,
+  parentOf,
+  type CameraPose,
+  type Selection,
+} from "@/state/explorer";
 import {
   isNavigation,
   mergeUrlSearch,
@@ -100,6 +105,16 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const metric = useExplorer((s) => s.metric);
   const depth = useExplorer((s) => s.depth);
   const setDepth = useExplorer((s) => s.setDepth);
+  const camera = useExplorer((s) => s.camera);
+  const setCamera = useExplorer((s) => s.setCamera);
+  // The pose the link arrived with, read once. The live camera moves with
+  // every pan, and the map only reads a starting pose at construction — so
+  // this has to be the arrival value, not whatever the map has drifted to.
+  const [arrivedCamera] = useState<CameraPose | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : readUrlState(window.location.search).camera,
+  );
   const openIds = useExplorer((s) => s.openIds);
   const setView = useExplorer((s) => s.setView);
   const setMetric = useExplorer((s) => s.setMetric);
@@ -281,11 +296,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       view: urlView,
       metric: urlMetric,
       depth: urlDepth,
+      camera: urlCamera,
     } = readUrlState(window.location.search);
     if (at.kind !== "country") applySelection(at);
     if (urlView !== "model") setView(urlView);
     if (urlMetric !== "advertised") setMetric(urlMetric);
     if (urlDepth !== null) setDepth(urlDepth);
+    if (urlCamera) setCamera(urlCamera);
     // Follows the `dark` class live, so WebGL readers of the tokens stay
     // in step when the theme flips without a remount.
     const stopTheme = onThemeChange(() => {
@@ -304,7 +321,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     const handle = window.setTimeout(() => {
       // mergeUrlSearch keeps every parameter the app does not own — a
       // campaign tag, a referrer — and replaces only its own seven keys.
-      const next: UrlFields = { at: selection, view, metric, depth };
+      const next: UrlFields = { at: selection, view, metric, depth, camera };
       const search = mergeUrlSearch(window.location.search, next);
       const url = `${window.location.pathname}${search}`;
       // A new place gets its own entry so Back returns to the last one
@@ -318,7 +335,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       written.current = next;
     }, 200);
     return () => window.clearTimeout(handle);
-  }, [selection, view, metric, depth, urlReady]);
+  }, [selection, view, metric, depth, camera, urlReady]);
 
   // Back and Forward. The writer replaces the current entry rather than
   // pushing one, so this applies entries the browser restores from elsewhere
@@ -335,6 +352,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         view: state.view,
         metric: state.metric,
         depth: state.depth,
+        camera: state.camera,
       };
       applySelection(state.at);
       setView(state.view);
@@ -668,6 +686,8 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                     setMetric(displayMetric);
                     chooseProvince(code);
                   }}
+                  onCamera={setCamera}
+                  initialCamera={arrivedCamera}
                   onFallback={() => {
                     /* the retired data view is folded into the land */
                     setCompare(true);

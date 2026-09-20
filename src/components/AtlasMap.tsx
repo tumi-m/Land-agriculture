@@ -32,6 +32,7 @@ import { valueOf, type Metric } from "@/lib/land-metrics";
 import { group } from "@/lib/format";
 import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import type { ProvinceCode } from "@/lib/types";
+import type { CameraPose } from "@/state/explorer";
 
 /**
  * How long the map waits for its first complete render before it stops
@@ -52,6 +53,8 @@ export default function AtlasMap({
   onSelect,
   onFallback,
   onInspectInfrastructure,
+  onCamera,
+  initialCamera,
 }: {
   notice: FarmNotice | null;
   inspection: MapInspection | null;
@@ -64,6 +67,10 @@ export default function AtlasMap({
   onSelect: (code: ProvinceCode | null) => void;
   onFallback: () => void;
   onInspectInfrastructure: () => void;
+  /** Reports the pose after every move, so a link can carry it. */
+  onCamera?: (pose: CameraPose) => void;
+  /** The pose a shared link arrived with. Read once, at construction. */
+  initialCamera?: CameraPose | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
@@ -75,6 +82,8 @@ export default function AtlasMap({
     district,
     onSelectDistrict,
     onSelect,
+    onCamera,
+    initialCamera,
     flat: false,
   });
   const markers = useRef<
@@ -121,6 +130,8 @@ export default function AtlasMap({
     district,
     onSelectDistrict,
     onSelect,
+    onCamera,
+    initialCamera,
     flat: flat || quality === "economy",
   };
 
@@ -197,12 +208,17 @@ export default function AtlasMap({
     // GeoJSON source stays pending and the vector layers never draw.
     maplibregl.setWorkerUrl(MAPLIBRE_WORKER_URL);
     try {
+      // A shared land link carries its pose, and the map has to open there
+      // rather than flying from the default — a fly would leave the sharer's
+      // framing only after a second of animation, and the recipient would
+      // wonder what they were meant to be looking at.
+      const start = latest.current.initialCamera ?? null;
       instance = new maplibregl.Map({
         container: host.current,
-        center: [30.05, -23.82],
-        zoom: 8.5,
-        pitch: budget.terrain ? 50 : 0,
-        bearing: -24,
+        center: start ? [start.lng, start.lat] : [30.05, -23.82],
+        zoom: start ? start.zoom : 8.5,
+        pitch: start ? start.pitch : budget.terrain ? 50 : 0,
+        bearing: start ? start.bearing : -24,
         maxPitch: budget.maxPitch,
         pixelRatio: budget.pixelRatio,
         maxTileCacheSize: budget.tileCache,
@@ -297,6 +313,20 @@ export default function AtlasMap({
       setElevation(groundElevation(value));
     };
     instance.on("moveend", syncLabels);
+    // The pose after a move is the shareable one. Reported on moveend only:
+    // during a drag it changes every frame, and the writer that consumes it
+    // replaces the history entry rather than adding one, so a pan leaves a
+    // link that reopens where the panning stopped and no entries behind it.
+    instance.on("moveend", () => {
+      const centre = instance.getCenter();
+      latest.current.onCamera?.({
+        lng: centre.lng,
+        lat: centre.lat,
+        zoom: instance.getZoom(),
+        bearing: instance.getBearing(),
+        pitch: instance.getPitch(),
+      });
+    });
     instance.on("idle", syncLabels);
     // MapLibre's load event waits for the first visually complete render, so
     // slow or failing imagery used to hold back the land information with it.
