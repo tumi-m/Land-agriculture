@@ -7,23 +7,43 @@ import {
   type FarmNotice,
 } from "@/content/farm-notices";
 import { parcelFor } from "@/lib/cadastre";
-import { plural } from "@/lib/format";
+import { decimal, plural, sastDate } from "@/lib/format";
+import { useMountedNow } from "@/lib/useMountedNow";
 export default function GovernmentNotices({
   notices,
   onSelect,
+  now: fixedNow,
 }: {
   notices: FarmNotice[];
   onSelect: (notice: FarmNotice) => void;
+  /**
+   * The instant to judge deadlines against. Left out, it is the browser's
+   * clock once mounted — which is what keeps the server render free of
+   * claims that would disagree with the client. Given, the answer is fixed.
+   */
+  now?: number;
 }) {
   const [filter, setFilter] = useState<"all" | "open" | "past">("all");
   const [query, setQuery] = useState("");
-  const open = notices.filter(
-    (n) => noticeStatus(n) === "Deadline ahead",
-  ).length;
+  // Whether a deadline has passed depends on when you look. The page is
+  // prerendered and revalidated, so the server's answer can be minutes or
+  // days older than the reader's — and a different answer in the HTML than
+  // in the first client render is a hydration mismatch, which makes React
+  // throw away the whole server-rendered tree and redraw it. That happened
+  // every time a deadline crossed between a render and a visit. So nothing
+  // here says open or closed until the browser has its own clock; the first
+  // paint carries only what is true at any time.
+  const mountedNow = useMountedNow();
+  const now = fixedNow ?? mountedNow;
+  const at = now === null ? null : new Date(now);
+  const status = (n: FarmNotice) => (at ? noticeStatus(n, at) : null);
+  const open = at
+    ? notices.filter((n) => status(n) === "Deadline ahead").length
+    : null;
   const visible = notices.filter(
     (n) =>
       (filter === "all" ||
-        (noticeStatus(n) === "Deadline ahead") === (filter === "open")) &&
+        (status(n) === "Deadline ahead") === (filter === "open")) &&
       `${n.name} ${n.district} ${n.use}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
@@ -32,12 +52,14 @@ export default function GovernmentNotices({
     <div className="government-notices">
       <p className="notice-coverage">
         {notices.length
-          ? `${notices.length} reviewed ${plural(notices.length, "advert", "adverts")} · ${open} with a deadline ahead`
+          ? `${notices.length} reviewed ${plural(notices.length, "advert", "adverts")}${
+              open === null ? "" : ` · ${open} with a deadline ahead`
+            }`
           : "Coverage incomplete for this area"}
       </p>
       <p className="dossier-note">
         Checked {NOTICE_CHECKED}.{" "}
-        {notices.length && !open
+        {notices.length && open === 0
           ? "These deadlines have passed. Ask the listed officer about re-advertising or allocation status."
           : "A future deadline does not confirm current availability. Check with the listed officer."}
       </p>
@@ -89,26 +111,24 @@ export default function GovernmentNotices({
             className="notice-card"
             onClick={() => onSelect(n)}
           >
-            <span className="notice-badge">
-              {noticeStatus(n) === "Closed"
-                ? "Past advert · deadline passed"
-                : "Deadline ahead"}
-            </span>
+            {/* Held back until the browser has a clock: see `now` above. */}
+            {status(n) && (
+              <span className="notice-badge">
+                {status(n) === "Closed"
+                  ? "Past advert · deadline passed"
+                  : "Deadline ahead"}
+              </span>
+            )}
             <strong>{n.name}</strong>
             <span>
               {n.district} ·{" "}
-              {n.hectares.toLocaleString("en-ZA", { maximumFractionDigits: 1 })}{" "}
+              {decimal(n.hectares, 1)}{" "}
               ha
             </span>
             <span>{n.use}</span>
             <small>
               Deadline{" "}
-              {new Date(n.closes).toLocaleDateString("en-ZA", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                timeZone: "Africa/Johannesburg",
-              })}
+              {sastDate(n.closes)}
             </small>
             <span className="notice-action">
               {parcelFor(n.id)

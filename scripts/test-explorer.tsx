@@ -350,7 +350,12 @@ test("multi-district advert is discoverable in both districts and remains one pr
   assert.ok(!noticesForDistrict("NC", "frances-baard-district").length);
   assert.equal(noticeCountLabel([]), "Coverage incomplete");
 });
-test("government land browser exposes expired deadlines and official follow-up instead of claiming availability", () => {
+test("the server render makes no claim that depends on the clock", () => {
+  // The page is prerendered and revalidated, so the server's clock can be
+  // minutes or days behind the reader's. A deadline judged on the server and
+  // judged again in the browser disagree the moment one passes in between,
+  // and React answers the mismatch by discarding the server HTML and drawing
+  // the whole page again. Nothing time-dependent may be in the first paint.
   const html = renderToStaticMarkup(
     <GovernmentNotices
       notices={FARM_NOTICES.filter((n) => n.province === "NC")}
@@ -358,6 +363,24 @@ test("government land browser exposes expired deadlines and official follow-up i
     />,
   );
   assert.match(html, /15 reviewed adverts/);
+  assert.doesNotMatch(html, /with a deadline ahead/);
+  assert.doesNotMatch(html, /Past advert · deadline passed/);
+  assert.doesNotMatch(html, /These deadlines have passed/);
+  // The facts that hold at any instant are all still there.
+  assert.match(html, /Kheis &amp; Rooisand/);
+  assert.match(html, /Check official DLRRD adverts/);
+});
+
+test("government land browser exposes expired deadlines and official follow-up instead of claiming availability", () => {
+  // Judged once the clock is known: every Northern Cape deadline has passed.
+  const html = renderToStaticMarkup(
+    <GovernmentNotices
+      notices={FARM_NOTICES.filter((n) => n.province === "NC")}
+      onSelect={() => {}}
+      now={Date.parse("2026-10-01T12:00:00+02:00")}
+    />,
+  );
+  assert.match(html, /15 reviewed adverts · 0 with a deadline ahead/);
   assert.match(html, /Past advert · deadline passed/);
   assert.match(html, /re-advertising or allocation status/);
   assert.match(html, /Kheis &amp; Rooisand/);
@@ -370,7 +393,9 @@ test("a single notice reads '1 reviewed advert', not 'adverts'", () => {
   const html = renderToStaticMarkup(
     <GovernmentNotices notices={[sole]} onSelect={() => {}} />,
   );
-  assert.match(html, /1 reviewed advert /);
+  // Singular, whatever follows it: the deadline count is added only once the
+  // browser's clock is known, so the text after "advert" varies by moment.
+  assert.match(html, /1 reviewed advert(?!s)/);
   assert.doesNotMatch(html, /1 reviewed adverts/);
 });
 

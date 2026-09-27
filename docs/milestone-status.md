@@ -395,3 +395,77 @@ label-versus-chrome, which is the explorer shell's scope
 **Still blocked:** T2 cadastral matching. The CSG MapServer refuses
 connections from the sandbox this ran in, and matching without querying it
 would mean inventing data. Mapped boundaries stay at two.
+
+## Fixed 27 Sep 2026 — the homepage was throwing away its own server HTML
+
+CI had been red on `a7602db` for a week: the two dark screenshot baselines.
+Chasing why the sandbox rendered the dark state as a light page led to a
+production defect, not a test one.
+
+**The fault.** `GovernmentNotices` rendered two kinds of text that the
+server and the browser compute differently:
+
+- **Clock-dependent.** "N with a deadline ahead", the per-notice
+  "Deadline ahead" / "Past advert" badge and the "deadlines have passed" note
+  were judged against `Date.now()` during the server render. `/` is static
+  and revalidated, so the server's clock can be well behind the reader's;
+  whenever a deadline passed in between, the two disagreed.
+- **Runtime-locale-dependent.** `toLocaleString("en-ZA")` formatted
+  21.4154 ha as `21,4` in Node and `21.4` in Chromium. The ICU data each
+  runtime ships disagrees for en-ZA, so this mismatched on *every* load for
+  any visitor whose browser differs from the server — Safari, Firefox, older
+  Chrome, Samsung Internet.
+
+React answers a hydration mismatch (minified error #418) by discarding the
+server-rendered tree and drawing the whole root again on the client. That
+threw away the SSR work, flashed the layout, and reset `<html>`'s class — so
+the `dark` class the pre-hydration script had added was lost, and visitors
+who prefer dark got a light page. Dark mode was a casualty, not the bug.
+
+**Why CI never showed it.** CI builds and tests within minutes on one
+Chromium whose en-ZA data happens to match Node's. The sandbox had a week-old
+build and an older Chromium, so it hit both causes at once. An earlier entry
+here called the dark failure a sandbox artifact; that was wrong — it is real,
+and browser-dependent.
+
+**Found by** installing a fake browser clock a month ahead of the server in
+a dev build, which makes React name the mismatching text instead of throwing
+the minified error. Two mismatches surfaced, one at a time.
+
+**The fix.**
+
+- Clock-dependent notice text waits for `useMountedNow`, the hook the repo
+  already had for exactly this. The first paint carries only what is true at
+  any instant; the counts and badges arrive a frame later. `GovernmentNotices`
+  takes an optional `now` so the judged state can still be tested.
+- Every runtime-locale format in components goes through new deterministic
+  helpers in `src/lib/format.ts`: `decimal`, `rand`, `sastDate`,
+  `sastDateTime`. South Africa is UTC+2 all year, so deadlines read in SAST
+  with a fixed offset — the same string on a server and a browser in any
+  zone. Six call sites across four components.
+- **A lint gate.** `format.ts` already said Intl was forbidden for this
+  reason, in a comment, and six call sites had drifted past it. ESLint now
+  rejects `toLocale*String` and `new Intl.*` in `src/components` and
+  `src/app`, with a message naming the replacements. Proven to fire on a
+  probe file, then the probe was removed.
+
+**Tests.** 204 unit tests. The two notice tests had asserted that the
+*server* render contained the time-dependent claims — pinning the bug in
+place. One now asserts the opposite invariant: the server render makes no
+clock-dependent claim. The original intent (an expired deadline reads as
+expired, never as available) is kept and judged at a fixed instant through
+the `now` prop. The singular/plural test had matched a trailing space that
+came from the deferred count; it now matches the rule, not the punctuation.
+
+**Verified.** With the browser clock a month ahead, a dev build reports no
+hydration mismatch. A production build now keeps `dark` through hydration
+(`rgb(14, 21, 19)` for both a system preference and a stored one). All four
+screenshot baselines regenerated against a fresh server — dark ones for the
+first time from a page that is actually dark — and pass twice more with no
+retries.
+
+**Sandbox note for the next person.** `pkill -f "next start"` matches the
+shell running it and kills that shell; every unexplained exit 144 in this
+log was that. Use `pkill -f "[n]ext start"`. And with
+`reuseExistingServer: true`, a server left on port 3100 silently serves
+whatever build it started with — kill it before trusting a local e2e run.

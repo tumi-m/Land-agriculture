@@ -30,6 +30,44 @@ export function shortDate(iso: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+/**
+ * A number grouped the South African way, with up to `max` decimals and no
+ * trailing zeros: 21.4154 -> "21.4154", 1076.6 at max 1 -> "1 076.6".
+ */
+export function decimal(n: number, max = 2): string {
+  const [whole, raw = ''] = Math.abs(n).toFixed(max).split('.');
+  const fraction = raw.replace(/0+$/, '');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, GROUP);
+  return `${n < 0 ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`;
+}
+
+/** An amount in whole rand: "R 1 250 000". Cents would be false precision. */
+export function rand(n: number): string {
+  return `${n < 0 ? '-' : ''}R ${group(Math.abs(Math.round(n)))}`;
+}
+
+/**
+ * South Africa keeps UTC+2 all year, with no daylight saving, so a deadline
+ * can be read in SAST with a fixed offset and UTC getters. That gives the
+ * same string on a server in any zone and a browser in any zone — which the
+ * runtime's own locale formatting does not.
+ */
+const SAST_MS = 2 * 3_600_000;
+
+/** The calendar date a South African reads: "21 Sep 2026". */
+export function sastDate(iso: string): string {
+  const d = new Date(Date.parse(iso) + SAST_MS);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/** With the time on the wall clock: "21 Sep 2026, 16:00". */
+export function sastDateTime(iso: string): string {
+  const d = new Date(Date.parse(iso) + SAST_MS);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${sastDate(iso)}, ${hh}:${mm}`;
+}
+
 export function daysUntil(iso: string, now: number = Date.now()): number {
   return Math.ceil((Date.parse(iso) - now) / 86_400_000);
 }

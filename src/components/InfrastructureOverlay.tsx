@@ -17,6 +17,7 @@ import {
   addLayerDefs,
   removeLayerDefs,
 } from "@/map/layers";
+import { decimal } from "@/lib/format";
 export function infrastructureHit(
   map: LibreMap,
   point: MapMouseEvent["point"],
@@ -212,9 +213,7 @@ export default function InfrastructureOverlay({
           {selected.hectares !== null && selected.hectares !== undefined && (
             <p>
               Mapped area:{" "}
-              {Number(selected.hectares).toLocaleString("en-ZA", {
-                maximumFractionDigits: 2,
-              })}{" "}
+              {decimal(Number(selected.hectares), 2)}{" "}
               ha
             </p>
           )}

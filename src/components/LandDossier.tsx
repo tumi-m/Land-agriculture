@@ -12,6 +12,7 @@ import type { ProvinceCode } from "@/lib/types";
 import { parcelFor, CADASTRE_SOURCE } from "@/lib/cadastre";
 import FarmBudget from "./FarmBudget";
 import GovernmentNotices from "./GovernmentNotices";
+import { decimal, sastDateTime } from "@/lib/format";
 function ClimateProfile({ point }: { point: MapInspection }) {
   const [data, setData] = useState<Climate | null>(null),
     [error, setError] = useState(""),
@@ -202,7 +203,7 @@ export default function LandDossier({
               <div className="dossier-stats">
                 <div>
                   <small>Advertised extent</small>
-                  <strong>{notice.hectares.toLocaleString("en-ZA")} ha</strong>
+                  <strong>{decimal(notice.hectares, 4)} ha</strong>
                 </div>
                 <div>
                   <small>Advertised enterprise</small>
@@ -258,9 +259,7 @@ export default function LandDossier({
                 <summary>Application & access</summary>
                 <p>
                   Deadline:{" "}
-                  {new Date(notice.closes).toLocaleString("en-ZA", {
-                    timeZone: "Africa/Johannesburg",
-                  })}{" "}
+                  {sastDateTime(notice.closes)}{" "}
                   SAST.
                 </p>
                 <p>Priority / experience: {notice.priority}.</p>

@@ -6,12 +6,10 @@ import {
   type Enterprise,
   type Budget,
 } from "@/lib/farm-budget";
-const money = (n: number) =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(n);
+import { rand } from "@/lib/format";
+// Whole rand, formatted by hand: Intl's en-ZA currency output differs
+// between the server's ICU and the browser's.
+const money = rand;
 const fields: [keyof Budget, string][] = [
   ["units", "Scale"],
   ["output", "Output"],
