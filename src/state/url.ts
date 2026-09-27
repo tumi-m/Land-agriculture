@@ -305,7 +305,8 @@ export function mergeUrlSearch(search: string, state: UrlFields): string {
  * Whether a URL write should add a history entry or replace the current one.
  *
  * Selection and view are navigation: opening a province, dropping into a
- * district, going to the land are all things Back should undo. Everything
+ * district, going to the land are all things Back should undo. Changing the
+ * slice read inside a district is not. Everything
  * else — the measure, the explode depth, the camera pose — adjusts the same
  * place, and pushing an entry for each would bury the page under a hundred
  * of them before a slider drag finished.
@@ -319,8 +320,20 @@ export function isNavigation(
 ): boolean {
   if (!previous) return false;
   return (
-    encodeAt(previous.at) !== encodeAt(next.at) || previous.view !== next.view
+    encodeAt(placeOf(previous.at)) !== encodeAt(placeOf(next.at)) ||
+    previous.view !== next.view
   );
+}
+
+/**
+ * The place a selection stands in. A slice is read inside its district, so
+ * flicking between Land, Soil and Water is one place — Back returns to
+ * where you were before the district, not through every slice you read.
+ */
+function placeOf(at: Selection): Selection {
+  return at.kind === "layer"
+    ? { kind: "district", province: at.province, district: at.district }
+    : at;
 }
 
 export { parentOf, selectionOf };

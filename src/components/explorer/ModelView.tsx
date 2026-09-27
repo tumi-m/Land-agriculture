@@ -1,5 +1,11 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import * as THREE from "three";
 import {
   DEM_ATTRIBUTION,
@@ -19,6 +25,7 @@ import {
 } from "@/lib/exploded-map";
 import { FARM_NOTICES, type FarmNotice } from "@/content/farm-notices";
 import GovernmentNotices from "@/components/GovernmentNotices";
+import DistrictLayerCard from "./DistrictLayerCard";
 import type { ProvinceCode } from "@/lib/types";
 import { SCENE } from "@/design/ramps";
 import { isolatedDistrict, useExplorer } from "@/state/explorer";
@@ -31,6 +38,7 @@ import {
   type CameraPresetId,
 } from "@/scene/camera";
 import { createSceneCore } from "@/scene/core";
+import { easeOut, prefersReducedMotion } from "@/lib/useTween";
 import { pieceTransforms } from "@/scene/depth";
 import {
   applyReliefToPieces,
@@ -101,6 +109,14 @@ export default function ModelView({
   const setCameraPreset = useExplorer((s) => s.setCameraPreset);
   const selectProvince = useExplorer((s) => s.selectProvince);
   const selectDistrict = useExplorer((s) => s.selectDistrict);
+  const chooseSlice = (
+    province: ProvinceCode,
+    id: string,
+    slice: LandLayer,
+  ) =>
+    slice === "opportunity"
+      ? selectDistrict(province, id)
+      : selectLayer(province, id, slice);
 
   const host = useRef<HTMLDivElement>(null),
     labels = useRef(new Map<string, HTMLButtonElement>()),
@@ -108,8 +124,13 @@ export default function ModelView({
   const leaders = useRef(new Map<string, SVGLineElement>());
   const [infoOpen, setInfoOpen] = useState(!!district);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [layer, setLayer] = useState<LandLayer>("opportunity"),
-    [ready, setReady] = useState(false),
+  // The open slice is part of the place, so a link can carry it: a district
+  // on its own opens on Government land, and at=layer:… opens the slice named.
+  const layer: LandLayer = useExplorer((s) =>
+    s.selection.kind === "layer" ? s.selection.layer : "opportunity",
+  );
+  const selectLayer = useExplorer((s) => s.selectLayer);
+  const [ready, setReady] = useState(false),
     [relief, setRelief] = useState(false),
     [reliefFailed, setReliefFailed] = useState(false),
     [water, setWater] = useState(false),
@@ -127,6 +148,11 @@ export default function ModelView({
   const districtShape = selected
     ? DISTRICTS_BY_PROVINCE[selected].find((d) => d.id === district)
     : null;
+  const heading = districtShape
+    ? "Inside the region."
+    : selected
+      ? "Pull the province apart."
+      : "A country you can open.";
   const notices =
     selected && district
       ? noticesForDistrict(selected, district)
@@ -194,6 +220,24 @@ export default function ModelView({
       piece.anchor.copy(piece.centre);
       scene.add(piece.group);
     }
+    // The entrance: on first load the provinces settle onto the floor one
+    // after another, west to east, so the country visibly assembles from its
+    // parts before anyone pulls it apart. Off under reduced motion.
+    const entranceStart = performance.now();
+    const drop = prefersReducedMotion()
+      ? 0
+      : allBox.getSize(new THREE.Vector3()).x * 0.12;
+    const entranceOrder = new Map(
+      [...provinces]
+        .sort((a, b) => a.centre.x - b.centre.x)
+        .map((p, i) => [p.id, i]),
+    );
+    const entrance = (id: string, now: number) => {
+      if (!drop) return 0;
+      const t = (now - entranceStart - (entranceOrder.get(id) ?? 0) * 85) / 820;
+      return drop * (1 - easeOut(Math.min(1, Math.max(0, t))));
+    };
+    for (const p of provinces) p.group.position.y = entrance(p.id, entranceStart);
     world.provinces = provinces;
     world.districts = districts;
     world.allBox = allBox;
@@ -443,8 +487,10 @@ export default function ModelView({
           ),
           speed,
         );
+        const lift = entrance(p.id, now);
+        p.group.position.y = lift;
         const material = p.meshes[0].material as THREE.MeshStandardMaterial;
-        material.opacity = 1;
+        material.opacity = drop ? 1 - 0.8 * (lift / drop) : 1;
         material.color.set(
           muted
             ? SCENE.modelBase
@@ -657,8 +703,8 @@ export default function ModelView({
         store.setHidden(new Set());
         store.setPeel(0.82);
       }
-      store.selectDistrict(d.province, d.id);
-      setLayer(d.layer);
+      if (d.layer === "opportunity") store.selectDistrict(d.province, d.id);
+      else store.selectLayer(d.province, d.id, d.layer);
       setInfoOpen(true);
       setControlsOpen(false);
     };
@@ -729,7 +775,9 @@ export default function ModelView({
     setHidden(new Set());
     setInfoOpen(true);
     setControlsOpen(false);
-    selectDistrict(selected!, id);
+    // Moving to a neighbour keeps the slice being read, so the card's
+    // numbers can travel from one district to the next.
+    chooseSlice(selected!, id, layer);
     setPeel(0.82);
   };
   const applyPreset = (id: CameraPresetId) => {
@@ -791,14 +839,19 @@ export default function ModelView({
       </div>
       <div className="anatomy-title">
         <p>EXPLORE THE LAND, LAYER BY LAYER</p>
-        <h2>
-          {districtShape
-            ? "Inside the region."
-            : selected
-              ? "Pull the province apart."
-              : "A country you can open."}
+        {/* Keyed on the words, so each change of level plays the rise again:
+            the heading moving is the signal that the scene below has too. */}
+        <h2 key={heading} aria-label={heading}>
+          {heading.split(" ").map((word, i) => (
+            <Fragment key={i}>
+              {i > 0 && " "}
+              <span className="anatomy-word" aria-hidden>
+                <span style={{ "--i": i } as CSSProperties}>{word}</span>
+              </span>
+            </Fragment>
+          ))}
         </h2>
-        <span>
+        <span key={`${heading}-hint`} className="anatomy-hint">
           {districtShape
             ? "Select a floating layer to inspect it."
             : selected
@@ -899,7 +952,7 @@ export default function ModelView({
           aria-pressed={layer === l.id}
           style={{ opacity: 0, borderColor: l.colour }}
           onClick={() => {
-            setLayer(l.id);
+            if (selected && district) chooseSlice(selected, district, l.id);
             setInfoOpen(true);
             setControlsOpen(false);
           }}
@@ -925,7 +978,16 @@ export default function ModelView({
             {districtShape?.name ??
               (selected ? PROVINCES[selected].name : "South Africa")}
           </p>
-          {districtShape && <p>{layerMeta.description}</p>}
+          {districtShape && layer !== "opportunity" && (
+            <DistrictLayerCard
+              key={layer}
+              district={districtShape.id}
+              layer={layer}
+            />
+          )}
+          {districtShape && (
+            <p className="anatomy-slice-note">{layerMeta.description}</p>
+          )}
           {(!districtShape || layer === "opportunity") && (
             <GovernmentNotices
               key={`${selected}-${district}`}

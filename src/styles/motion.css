@@ -1,0 +1,65 @@
+/*
+ * Motion for the explorer chrome. Each movement answers "what just
+ * changed?": the heading rises when the level changes, the panel slides in
+ * from the side it lives on, and lists arrive in reading order. Nothing
+ * loops and nothing moves on its own. Under prefers-reduced-motion every
+ * rule here is switched off and the page is simply in its final state.
+ */
+:root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The model view's heading: word by word, out of a mask. */
+.anatomy-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* Room for descenders and the tight tracking, so nothing is clipped. */
+  padding: 0 0.06em 0.1em 0;
+  margin: 0 -0.06em -0.1em 0;
+}
+.anatomy-word > span {
+  display: inline-block;
+  animation: motion-word 760ms var(--motion-ease) both;
+  animation-delay: calc(var(--i, 0) * 75ms);
+}
+@keyframes motion-word {
+  from {
+    transform: translateY(110%);
+  }
+}
+.anatomy-hint {
+  animation: motion-fade 520ms var(--motion-ease) 260ms both;
+}
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* The dossier slides in from the right edge it is anchored to. */
+.anatomy-dossier {
+  animation: motion-panel 460ms var(--motion-ease) both;
+}
+@keyframes motion-panel {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* Notice cards arrive top to bottom, the order they are read in. */
+.anatomy-notices > .notice-card {
+  animation: motion-fade 420ms var(--motion-ease) both;
+  animation-delay: calc(120ms + var(--i, 0) * 55ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-word > span,
+  .anatomy-hint,
+  .anatomy-dossier,
+  .anatomy-notices > .notice-card {
+    animation: none;
+  }
+}

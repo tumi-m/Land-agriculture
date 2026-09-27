@@ -10,6 +10,8 @@ import "../styles/terrain-phone.css";
 import "../styles/dossier.css";
 import "../styles/anatomy.css";
 import "../styles/panels.css";
+import "../styles/district-card.css";
+import "../styles/motion.css";
 import "../styles/provenance.css";
 
 const sans = Inter({

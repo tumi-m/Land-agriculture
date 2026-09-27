@@ -120,6 +120,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
   const setMetric = useExplorer((s) => s.setMetric);
   const selectProvince = useExplorer((s) => s.selectProvince);
   const selectDistrict = useExplorer((s) => s.selectDistrict);
+  const selectLayer = useExplorer((s) => s.selectLayer);
   const selectNotice = useExplorer((s) => s.selectNotice);
   const selectPoint = useExplorer((s) => s.selectPoint);
   const toggleOpen = useExplorer((s) => s.toggleOpen);
@@ -256,6 +257,9 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       } else if (at.kind === "district") {
         selectDistrict(at.province, at.district);
         setUi((u) => ({ ...u, notice: null, inspection: null }));
+      } else if (at.kind === "layer") {
+        selectLayer(at.province, at.district, at.layer);
+        setUi((u) => ({ ...u, notice: null, inspection: null }));
       } else if (at.kind === "notice") {
         selectNotice(at.id);
         const item = FARM_NOTICES.find((n) => n.id === at.id) ?? null;
@@ -281,7 +285,14 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
       // parcel and photo links are accepted by the grammar but have no
       // screen yet; they resolve to the land view without a false selection.
     },
-    [selectProvince, selectDistrict, selectNotice, selectPoint, setView],
+    [
+      selectProvince,
+      selectDistrict,
+      selectLayer,
+      selectNotice,
+      selectPoint,
+      setView,
+    ],
   );
 
   // What the last write put in the bar, so the next one knows whether the

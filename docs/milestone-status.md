@@ -469,3 +469,64 @@ shell running it and kills that shell; every unexplained exit 144 in this
 log was that. Use `pkill -f "[n]ext start"`. And with
 `reuseExistingServer: true`, a server left on port 3100 silently serves
 whatever build it started with — kill it before trusting a local e2e run.
+
+## Landed 27 Sep 2026 — the model's slices now say something
+
+Pick a district and the Land, Soil or Water slice, and the panel used to
+show one static sentence about what the slab represents. The measurements
+for all 52 districts were already baked in `src/data/district-stats.json`
+and nothing read them.
+
+**The district card** — `src/components/explorer/DistrictLayerCard.tsx`,
+`src/lib/district-data.ts`, `src/styles/district-card.css`,
+`tests/district-data.test.ts`, `tests/district-card.test.tsx`.
+
+- **Land:** the dominant cover in words ("Mostly grassland — 87% of the
+  district"), a stacked WorldCover bar with a direct legend (classes under
+  2% folded into "Other"), area and average height with its range.
+- **Soil:** pH to one fixed place with its band in words, on a 4–9 scale
+  painted with the raster's own ramp; clay percentage on the clay ramp.
+- **Water:** mean yearly rainfall on a national 0–max scale, with the band
+  the middle 80% of the district's land falls in (spatial p10–p90 of a
+  1991–2020 average, not year-to-year variation — the caption says so).
+- Each figure is ranked against the other 51 districts ("Wetter than 14 of
+  the other 51 districts"), ties sharing a place.
+- Every block carries source · date · resolution · licence from the stats
+  file, and each slice ends with what the numbers cannot tell you: cover is
+  not ownership or leasability, a 250 m soil average is not a soil test,
+  rainfall is not a water-use licence.
+- `WORLDCOVER` and `RASTER_RAMPS` moved into `src/design/ramps.ts`, pinned
+  by test to `scripts/data/raster-colors.json`, so a colour on the card and
+  the same value on the map cannot drift apart.
+
+**Slice links work.** The URL grammar had accepted `at=layer:…` since M1.2
+and nothing applied it: the open slice was local state, so a shared Soil
+link opened on Government land. The slice is now read from the store,
+`LandLocator` applies layer links, and choosing a slice writes one. Reading
+another slice of the same district replaces the history entry (Back leaves
+the district, not each slice read); moving to a neighbour keeps the slice,
+so the card's numbers travel from one district to the next.
+
+**Motion** — `src/lib/useTween.ts`, `src/styles/motion.css`, the card CSS,
+`ModelView.tsx`. Each movement answers "what changed":
+
+- Figures count to their value and glide between districts; scale needles
+  sweep to the reading; the land-cover bar wipes in and its segments resize
+  in place; the rainfall band opens outward from the mean.
+- The heading rises word by word when the level changes; the panel slides
+  in from its edge; notice cards arrive in reading order.
+- On first load the provinces settle onto the floor west to east.
+- The moving copy of every figure is `aria-hidden`; the final value is in
+  the accessible text once. Under `prefers-reduced-motion` all of it is off
+  and the page is simply in its final state, the WebGL entrance included.
+  The screenshot spec now emulates reduced motion, so baselines are the
+  settled page rather than wherever a timer caught the entrance.
+
+**Checks:** 222 unit tests, typecheck, lint, build, budget (191.1 of 230 kB
+— the card ships in the lazily loaded model chunk). Full e2e against the
+production build: 26 of 27 pass; the failure is `land.spec` "a district tap
+inside a province selects the district", which needs map tiles this sandbox
+cannot reach and passes in CI. A new e2e, run with the model and screen
+specs afterwards (all pass): a slice link opens that slice's measurements,
+and switching slice adds no history entry. The four screenshot
+baselines pass unchanged. Card reviewed at 1440 px and 390 px.

@@ -49,3 +49,11 @@ test("deadlines read in SAST whatever zone the runtime is in", () => {
   assert.equal(sastDate("2026-10-01T00:30:00+02:00"), "1 Oct 2026");
   assert.equal(sastDateTime("2026-10-01T00:30:00+02:00"), "1 Oct 2026, 00:30");
 });
+
+test("the tween eases out and lands exactly on 1", async () => {
+  const { easeOut } = await import("../src/lib/useTween");
+  assert.equal(easeOut(0), 0);
+  assert.equal(easeOut(1), 1);
+  assert.ok(easeOut(0.5) > 0.5, "ease-out covers more than half the way by half time");
+  for (let t = 0; t < 1; t += 0.1) assert.ok(easeOut(t + 0.1) >= easeOut(t));
+});

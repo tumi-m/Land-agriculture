@@ -1,0 +1,244 @@
+/*
+ * The district card inside the model dossier: real measurements for the
+ * selected slice. Motion here carries meaning — figures count to their
+ * value, scales sweep to where the district sits — and all of it is off
+ * under prefers-reduced-motion, where the card simply shows the answer.
+ */
+.dcard {
+  --dcard-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.2rem 0 0.8rem;
+  color: #e4f2da;
+}
+.dcard > * {
+  animation: dcard-rise 520ms var(--dcard-ease) both;
+}
+.dcard > :nth-child(2) { animation-delay: 60ms; }
+.dcard > :nth-child(3) { animation-delay: 120ms; }
+.dcard > :nth-child(4) { animation-delay: 180ms; }
+.dcard > :nth-child(5) { animation-delay: 240ms; }
+.dcard > :nth-child(6) { animation-delay: 300ms; }
+.dcard > :nth-child(n + 7) { animation-delay: 360ms; }
+@keyframes dcard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.dcard-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.dcard p {
+  margin: 0;
+}
+.dcard-lede {
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: #f2f8ec;
+}
+.dcard-lede strong {
+  color: #d5e69e;
+}
+
+/* Land cover: one bar, wiped in left to right, segments that glide to
+   their new widths when the district changes. */
+.dcard-stack {
+  display: flex;
+  height: 20px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px #ffffff26;
+  animation: dcard-wipe 900ms var(--dcard-ease) 80ms both;
+}
+.dcard-stack span {
+  flex-basis: 0;
+  min-width: 2px;
+  transition: flex-grow 700ms var(--dcard-ease);
+}
+.dcard-stack span + span {
+  box-shadow: inset 1px 0 0 #0c232c80;
+}
+@keyframes dcard-wipe {
+  from {
+    clip-path: inset(0 100% 0 0 round 6px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 6px);
+  }
+}
+.dcard-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.875rem;
+}
+.dcard-legend li {
+  display: grid;
+  grid-template-columns: 0.8rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  animation: dcard-rise 420ms var(--dcard-ease) both;
+  animation-delay: calc(200ms + var(--i, 0) * 70ms);
+}
+.dcard-legend i {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px #ffffff33;
+}
+.dcard-legend b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+/* Figures */
+.dcard-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.dcard-figure {
+  display: grid;
+  gap: 0.05rem;
+}
+.dcard-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9fbcb0;
+}
+.dcard-figure strong {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #f2f8ec;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
+.dcard-figure small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #bad0c6;
+}
+.dcard-note {
+  font-size: 0.8rem;
+  color: #d5e69e;
+}
+
+/* Scales: a ramp in the raster's own colours, a needle that sweeps to the
+   district's value, and a band for the spread inside the district. */
+.dcard-scale {
+  display: grid;
+  gap: 0.3rem;
+  padding-top: 0.35rem;
+}
+.dcard-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #ffffff26;
+}
+.dcard-bar.is-track {
+  background: #ffffff14;
+  overflow: hidden;
+}
+.dcard-needle {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  left: calc(var(--at, 0) * 100%);
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #f2f8ec;
+  box-shadow: 0 0 0 1.5px #0c232c, 0 0 10px #f2f8ec99;
+}
+.dcard-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--at, 0) * 100%);
+  background-size: calc(100% / max(var(--at, 1), 0.01)) 100%;
+  border-radius: 6px;
+}
+.dcard-band {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  border-radius: 5px;
+  border: 2px solid #f2f8ec;
+  background: #f2f8ec2e;
+  transform-origin: var(--origin, 50%) center;
+  animation: dcard-open 800ms var(--dcard-ease) 250ms both;
+}
+@keyframes dcard-open {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+.dcard-ticks {
+  position: relative;
+  height: 1.1rem;
+  font-size: 0.7rem;
+  color: #9fbcb0;
+  font-variant-numeric: tabular-nums;
+}
+.dcard-ticks span {
+  position: absolute;
+  left: calc(var(--at) * 100%);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.dcard-ticks span:first-child {
+  transform: none;
+}
+.dcard-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.dcard-caption,
+.dcard-compare {
+  font-size: 0.875rem;
+  color: #d8e7dd;
+}
+.dcard-compare {
+  color: #d5e69e;
+}
+.dcard-source {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #8faea2;
+  overflow-wrap: anywhere;
+}
+.dcard-limit {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 0.5rem 0.65rem;
+  border-left: 3px solid #cfaa7c;
+  background: #ffffff0d;
+  border-radius: 0 6px 6px 0;
+  color: #d8e7dd;
+}
+.anatomy-dossier > p.anatomy-slice-note {
+  font-size: 0.75rem;
+  color: #8faea2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dcard > *,
+  .dcard-legend li,
+  .dcard-stack,
+  .dcard-band {
+    animation: none;
+  }
+  .dcard-stack span {
+    transition: none;
+  }
+}

@@ -10,7 +10,13 @@ const VIEWS = [
 for (const view of VIEWS) {
   test(`the explorer matches its ${view.name} baseline`, async ({ page }) => {
     await page.setViewportSize({ width: view.width, height: view.height });
-    await page.emulateMedia({ colorScheme: view.scheme });
+    // Reduced motion puts every entrance straight into its final state —
+    // the WebGL one too, which `animations: "disabled"` cannot reach — so
+    // the baseline is the settled page, not wherever a timer caught it.
+    await page.emulateMedia({
+      colorScheme: view.scheme,
+      reducedMotion: "reduce",
+    });
     await page.goto("/");
     // The first WebGL frame (or its loading state) before the shot.
     await page

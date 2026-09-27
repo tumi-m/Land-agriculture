@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   NOTICE_CHECKED,
   NOTICE_INDEX,
@@ -105,10 +105,12 @@ export default function GovernmentNotices({
         </>
       )}
       <div className="anatomy-notices">
-        {visible.map((n) => (
+        {visible.map((n, i) => (
           <button
             key={n.id}
             className="notice-card"
+            // Its place in the list, for the staggered entrance in motion.css.
+            style={{ "--i": Math.min(i, 8) } as CSSProperties}
             onClick={() => onSelect(n)}
           >
             {/* Held back until the browser has a clock: see `now` above. */}

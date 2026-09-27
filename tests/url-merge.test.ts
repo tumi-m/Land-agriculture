@@ -80,6 +80,9 @@ const at = {
   lp: { kind: "province", province: "LP" } as const,
   nc: { kind: "province", province: "NC" } as const,
   mopani: { kind: "district", province: "LP", district: "mopani-district" } as const,
+  mopaniSoil: { kind: "layer", province: "LP", district: "mopani-district", layer: "soil" } as const,
+  mopaniRain: { kind: "layer", province: "LP", district: "mopani-district", layer: "climate" } as const,
+  vhembeSoil: { kind: "layer", province: "LP", district: "vhembe-district", layer: "soil" } as const,
 };
 const base = { view: "model" as const, metric: "advertised" as const };
 
@@ -183,4 +186,12 @@ test("panning replaces the entry rather than stacking one per move", () => {
     previous = next;
   }
   assert.equal(entries, 0);
+});
+
+test("reading another slice of the same district replaces; a new district does not", () => {
+  assert.equal(isNavigation({ ...base, at: at.mopani }, { ...base, at: at.mopaniSoil }), false);
+  assert.equal(isNavigation({ ...base, at: at.mopaniSoil }, { ...base, at: at.mopaniRain }), false);
+  assert.equal(isNavigation({ ...base, at: at.mopaniSoil }, { ...base, at: at.mopani }), false);
+  assert.equal(isNavigation({ ...base, at: at.mopaniSoil }, { ...base, at: at.vhembeSoil }), true);
+  assert.equal(isNavigation({ ...base, at: at.lp }, { ...base, at: at.mopaniSoil }), true);
 });

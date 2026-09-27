@@ -141,3 +141,26 @@ test("Back walks out the way you came in, and the page survives it", async ({
   await expect(page.locator(".anatomy-stage")).toBeVisible();
   await expect(slider).toBeDisabled();
 });
+
+test("a slice link opens that slice's measurements, and switching slice keeps one history entry", async ({
+  page,
+}) => {
+  await page.goto("/?at=layer:EC:alfred-nzo-district:climate");
+  await expect(page.locator(".anatomy-stage")).toBeVisible({ timeout: 20_000 });
+  const card = page.locator(".dcard");
+  await expect(card).toContainText("Rainfall, yearly average");
+  await expect(card.locator(".dcard-sr").first()).toHaveText("782");
+  await expect(card).toContainText("CHIRPS v2.0");
+
+  const entries = await page.evaluate(() => history.length);
+  // The slice labels ride the 3D slabs and can sit under the open panel on a
+  // small stage, so the click goes to the control itself, not a screen point.
+  await page
+    .locator(".anatomy-slice-label", { hasText: "Soil" })
+    .dispatchEvent("click");
+  await expect(page).toHaveURL(/at=layer%3AEC%3Aalfred-nzo-district%3Asoil/);
+  await expect(card).toContainText("Soil pH, district average");
+  await expect(card.locator(".dcard-sr").first()).toHaveText("6.0");
+  // Another slice of the same district is the same place: no new entry.
+  expect(await page.evaluate(() => history.length)).toBe(entries);
+});
