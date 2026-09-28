@@ -118,4 +118,8 @@ export const SCENE = {
   gridPrimary: "#24404a",
   gridSecondary: "#182f37",
   modelBase: "#729f92",
+  /** The stage's mid-tone, so distant grid lines fade into the backdrop. */
+  fog: "#0f2a31",
+  /** The pool of light the country stands in. */
+  glow: "#7fdcc0",
 } as const;

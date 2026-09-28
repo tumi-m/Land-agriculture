@@ -238,6 +238,30 @@ export default function ModelView({
       return drop * (1 - easeOut(Math.min(1, Math.max(0, t))));
     };
     for (const p of provinces) p.group.position.y = entrance(p.id, entranceStart);
+    // Sunrise: the light swings up from a low angle while the provinces
+    // settle, so shadows sweep across the relief and the land is lit into
+    // being. Off under reduced motion, like the entrance.
+    const sunTo = engine.sun.position.clone();
+    const sunFrom = new THREE.Vector3(-175, 22, -30);
+    const SUNRISE_MS = 2400;
+    if (drop) engine.sun.position.copy(sunFrom);
+    const sunrise = (now: number) => {
+      if (!drop) return false;
+      const t = Math.min(1, Math.max(0, (now - entranceStart) / SUNRISE_MS));
+      engine.sun.position.lerpVectors(sunFrom, sunTo, easeOut(t));
+      engine.sun.intensity = 1.2 + 1.8 * easeOut(t);
+      return t < 1;
+    };
+    // Per-piece hover lift, eased so a piece rises toward the pointer and
+    // settles back when it leaves.
+    const hoverLift = new Map<string, number>();
+    const HOVER_LIFT = allBox.getSize(new THREE.Vector3()).x * 0.012;
+    const liftFor = (id: string, hovered: boolean, speed: number) => {
+      const was = hoverLift.get(id) ?? 0;
+      const next = was + ((hovered ? HOVER_LIFT : 0) - was) * Math.min(1, speed * 1.6);
+      hoverLift.set(id, Math.abs(next) < 1e-3 ? 0 : next);
+      return next;
+    };
     world.provinces = provinces;
     world.districts = districts;
     world.allBox = allBox;
@@ -272,22 +296,78 @@ export default function ModelView({
     world.tethers = buildTethers(districts);
     for (const tether of world.tethers) scene.add(tether.line);
 
+    // The ground runs on past the edge of the frame and fades into the
+    // backdrop, instead of stopping at a hard square edge: the land stands
+    // on a floor rather than on a tile.
     const grid = new THREE.GridHelper(
-      220,
-      22,
+      420,
+      42,
       SCENE.gridPrimary,
       SCENE.gridSecondary,
     );
     grid.position.y = -1.2;
     scene.add(grid);
+    // Fog is measured from the camera, and the camera stands much further
+    // back on a portrait phone than on a desktop; fixed distances fogged the
+    // country itself there. animate() keeps the fog beyond whatever is being
+    // looked at.
+    const fog = new THREE.Fog(SCENE.fog, 230, 430);
+    scene.fog = fog;
 
-    let flight: {
+    // A pool of light under the country, so it reads as standing in a lit
+    // space rather than floating over lines.
+    const pool = (() => {
+      const size = 256;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        const glow = new THREE.Color(SCENE.glow);
+        const rgb = `${Math.round(glow.r * 255)}, ${Math.round(glow.g * 255)}, ${Math.round(glow.b * 255)}`;
+        const gradient = ctx.createRadialGradient(
+          size / 2,
+          size / 2,
+          0,
+          size / 2,
+          size / 2,
+          size / 2,
+        );
+        gradient.addColorStop(0, `rgba(${rgb}, 0.32)`);
+        gradient.addColorStop(0.45, `rgba(${rgb}, 0.12)`);
+        gradient.addColorStop(1, `rgba(${rgb}, 0)`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const radius = allBox.getSize(new THREE.Vector3()).x * 0.85;
+      const mesh = new THREE.Mesh(
+        new THREE.CircleGeometry(radius, 64),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          fog: false,
+        }),
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = -1.1;
+      mesh.renderOrder = -1;
+      return mesh;
+    })();
+    scene.add(pool);
+
+    type Flight = {
       from: THREE.Vector3;
       to: THREE.Vector3;
       targetFrom: THREE.Vector3;
       targetTo: THREE.Vector3;
       time: number;
-    } | null = null;
+      /** Overrides FLIGHT_MS; the opening shot takes longer. */
+      duration?: number;
+    };
+    let flight: Flight | null = null;
 
     /**
      * The M1.1 pure function's inputs: pieces in scene units plus the current
@@ -331,6 +411,9 @@ export default function ModelView({
       const span = Math.max(size.x + 30, size.z + 30, child ? 48 : 0);
       const aspect = Math.min(camera.aspect, 1.4);
       const distance = modelDistance(span, aspect, camera.fov);
+      // The mount effects re-frame the same place straight away; let the
+      // opening shot finish rather than cutting it short.
+      if (flight?.duration && flight.targetTo.distanceTo(target) < 0.01) return;
       flight = {
         from: camera.position.clone(),
         to: target
@@ -475,6 +558,12 @@ export default function ModelView({
 
     const animate = (speed: number) => {
       const now = performance.now();
+      // Keep drawing through the sunrise and the entrance: the loop sleeps
+      // when idle, and these run on the clock, not on input.
+      if (sunrise(now)) engine.wake();
+      const focus = camera.position.distanceTo(controls.target);
+      fog.near = focus * 1.25;
+      fog.far = focus * 2.6;
       const state = latest.current;
       const store = useExplorer.getState();
       const solo = store.isolate ? isolatedDistrict(store.selection) : null;
@@ -494,9 +583,12 @@ export default function ModelView({
           speed,
         );
         const lift = entrance(p.id, now);
-        p.group.position.y = lift;
+        const hovered = !state.selected && p.id === hovering?.userData.id;
+        p.group.position.y = lift + liftFor(p.id, hovered, speed);
         const material = p.meshes[0].material as THREE.MeshStandardMaterial;
         material.opacity = drop ? 1 - 0.8 * (lift / drop) : 1;
+        material.emissive.set(engine.accent());
+        material.emissiveIntensity = hovered ? 0.14 : 0;
         material.color.set(
           muted
             ? SCENE.modelBase
@@ -536,6 +628,14 @@ export default function ModelView({
               transform?.offsetZ ?? 0,
             ),
           );
+        // A district you could pick rises to meet the pointer; the chosen one
+        // is already lifted apart and stays put. Added to the target, not the
+        // position, or the lerp would compound it every frame.
+        target.y += liftFor(
+          p.id,
+          !chosen && p.id === hovering?.userData.id,
+          speed,
+        );
         p.group.position.lerp(target, speed);
         p.meshes.forEach((m, i) => {
           m.visible = !chosen || !store.hidden.has(LAND_LAYERS[i].id);
@@ -644,7 +744,9 @@ export default function ModelView({
         for (const line of leaders.current.values()) line.style.opacity = "0";
       }
       if (flight) {
-        const t = reduced ? 1 : Math.min(1, (now - flight.time) / FLIGHT_MS),
+        const t = reduced
+            ? 1
+            : Math.min(1, (now - flight.time) / (flight.duration ?? FLIGHT_MS)),
           e = 1 - Math.pow(1 - t, 3);
         camera.position.lerpVectors(flight.from, flight.to, e);
         controls.target.lerpVectors(flight.targetFrom, flight.targetTo, e);
@@ -730,6 +832,26 @@ export default function ModelView({
     renderer.domElement.addEventListener("pointerleave", cancel);
 
     frame();
+    // The opening shot: the camera glides in from high over the west while
+    // the sun rises and the provinces settle, and arrives at the same ¾ view
+    // it would otherwise start at. Any drag, zoom or preset cancels it, as it
+    // does any flight. Skipped under reduced motion (drop is 0 there).
+    // frame() set it through a closure, which control-flow analysis
+    // cannot see, so it still reads as null here without the widening.
+    const opening = flight as Flight | null;
+    if (drop && opening) {
+      const offset = opening.to
+        .clone()
+        .sub(opening.targetTo)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.55)
+        .multiplyScalar(1.55);
+      offset.y *= 1.35;
+      opening.from = opening.targetTo.clone().add(offset);
+      opening.duration = SUNRISE_MS;
+      camera.position.copy(opening.from);
+      controls.target.copy(opening.targetTo);
+      opening.targetFrom = opening.targetTo.clone();
+    }
     setReady(true);
 
     return () => {

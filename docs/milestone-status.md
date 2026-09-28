@@ -607,3 +607,32 @@ passes in CI.
 28/28 against the production build. Quality harness: small targets
 428 → 88; what remains is the hidden skip link and the map's inline credit
 links.
+
+## Landed 28 Sep 2026 — round 3: a stage you stand in
+
+All in `ModelView.tsx`, `src/design/ramps.ts` (`SCENE.fog`, `SCENE.glow`)
+and `src/styles/shell.css`; everything that moves is off under
+`prefers-reduced-motion`.
+
+- **The opening shot.** On first load the camera glides in from high over
+  the west while the light rises and the provinces settle, and lands on the
+  same ¾ view it used to start at. It is an ordinary camera flight, so any
+  drag, zoom or preset cancels it; the mount effect that re-frames the same
+  place no longer cuts it short.
+- **Sunrise.** The sun swings up from a low angle over 2.4 s, so shadows
+  sweep across the relief.
+- **A floor, not a tile.** The ground grid is twice as wide and fades into
+  a fog matched to the backdrop. The fog is measured from what the camera
+  is looking at: fixed distances fogged the whole country on a portrait
+  phone, where the camera stands much further back — the regenerated phone
+  baseline caught it before it shipped.
+- **A pool of light** under the country and a soft vignette at the stage
+  edges keep the eye on the land.
+- **Hover lift.** The province (country view) or district (province view)
+  under the pointer rises slightly and glows, so what a click will pick is
+  visible before the click. Added to the lerp target, not the position.
+
+**Checks:** 222 unit tests, build, budget unchanged at 191.2 kB (all of
+this is in the lazily loaded model chunk). Full e2e: 26 pass, the two phone
+baselines failed as intended; all four regenerated after the fog fix and
+the layout-sensitive specs re-run green.

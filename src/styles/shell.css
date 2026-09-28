@@ -592,3 +592,21 @@
   align-items: center;
   min-height: 44px;
 }
+
+/* --- Atmosphere --------------------------------------------------------- */
+
+/* A soft vignette: the edges of the stage fall away so the eye rests on the
+   land in the middle. Above the canvas, under every label and control. */
+.anatomy-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 75% 70% at 50% 48%,
+      transparent 55%,
+      #03101480 100%
+    );
+}
