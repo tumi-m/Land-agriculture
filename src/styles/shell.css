@@ -1,0 +1,357 @@
+/*
+ * The explorer shell, laid out once.
+ *
+ * Two structures replace a cascade of one-off positions:
+ *
+ * 1. One bar above the stage. The page title, the view switch, and — on the
+ *    land views — the measure and the map actions share a single row. There
+ *    used to be three stacked bars, and the stage under them ran past the
+ *    fold, so the model's own console was cut off on a 900 px screen.
+ *
+ * 2. A grid over the model. Every control on the stage has a named area, so
+ *    two of them cannot occupy the same place at any width. Before this,
+ *    each was absolutely positioned on its own, and the zoom tools, the dock
+ *    and the camera switch took turns covering one another.
+ *
+ * Loaded after panels.css; selectors here are deliberately one step more
+ * specific than the rules they replace.
+ */
+
+.terrain-experience {
+  --header-h: 4.5rem;
+  --bar-h: 3.75rem;
+  --shell-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.terrain-experience .app-header {
+  height: var(--header-h);
+}
+
+/* --- The bar ------------------------------------------------------------ */
+
+.terrain-experience .explorer-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.25rem;
+  min-height: var(--bar-h);
+  padding: 0.45rem 1.8rem;
+  background: rgb(var(--surface));
+  border-bottom: 1px solid rgb(var(--rule));
+}
+.explorer-title {
+  font:
+    650 1.05rem var(--font-display),
+    sans-serif;
+  letter-spacing: -0.02em;
+  word-spacing: 0.06em;
+  white-space: nowrap;
+  color: rgb(var(--ink));
+}
+.explorer-title span {
+  color: rgb(var(--clay));
+}
+.explorer-title em {
+  font-style: normal;
+  font-weight: 500;
+  color: rgb(var(--muted));
+}
+
+/* A segmented switch whose thumb slides to the chosen view: the motion says
+   "same place, different way of looking", which a hard cut does not. */
+.terrain-experience .explorer-bar .map-view-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 4px;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 12px;
+  background: rgb(var(--paper));
+  overflow: visible;
+}
+.view-switch-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 9px;
+  background: rgb(var(--surface));
+  box-shadow:
+    0 1px 2px rgb(var(--ink) / 0.08),
+    0 4px 14px rgb(var(--ink) / 0.08);
+  transform: translateX(calc(var(--active, 0) * 100%));
+  transition: transform 460ms var(--shell-ease);
+}
+.terrain-experience .explorer-bar .map-view-switch button {
+  position: relative;
+  z-index: 1;
+  min-height: 44px;
+  padding: 0 1.05rem;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  color: rgb(var(--muted));
+  background: transparent;
+  transition: color 0.25s;
+}
+.terrain-experience .explorer-bar .map-view-switch button:hover {
+  color: rgb(var(--ink));
+}
+.terrain-experience .explorer-bar .map-view-switch [aria-pressed="true"] {
+  color: rgb(var(--clay));
+  font-weight: 650;
+  background: transparent;
+}
+.terrain-experience .explorer-bar .metric-switch {
+  margin-left: auto;
+}
+.terrain-experience .explorer-bar .metric-switch button {
+  min-height: 44px;
+}
+.terrain-experience .explorer-bar .map-workspace-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.terrain-experience .explorer-bar .map-workspace-actions button {
+  min-height: 44px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* --- The stage fits the screen under the bar ---------------------------- */
+
+.terrain-experience .anatomy-shell .explorer-body {
+  height: calc(100svh - var(--header-h) - var(--bar-h));
+  min-height: 30rem;
+}
+.terrain-experience .anatomy-shell .map-stage {
+  min-height: 30rem !important;
+}
+@media (min-width: 1101px) {
+  .terrain-experience .atlas-shell .explorer-body {
+    height: calc(100svh - var(--header-h) - var(--bar-h));
+    min-height: 34rem;
+  }
+}
+
+/* --- The stage's HUD ---------------------------------------------------- */
+
+.anatomy-stage .anatomy-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  display: grid;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.2rem 0.7rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "crumb   camera  actions tools"
+    "title   title   dossier tools"
+    ".       .       dossier ."
+    "console console console console"
+    "source  source  foot    foot";
+}
+.anatomy-stage .anatomy-hud > * {
+  position: relative;
+  inset: auto;
+  transform: none;
+  margin: 0;
+  min-width: 0;
+  pointer-events: auto;
+}
+/* Words, not controls: drags that start on them reach the model. */
+.anatomy-stage .anatomy-hud > .anatomy-title,
+.anatomy-stage .anatomy-hud > .anatomy-source,
+.anatomy-stage .anatomy-hud > .anatomy-footnote {
+  pointer-events: none;
+}
+.anatomy-stage .anatomy-hud > .anatomy-breadcrumb {
+  grid-area: crumb;
+  align-self: center;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+/* The place you are in is the one crumb that must not drop out. */
+.anatomy-stage .anatomy-hud > .anatomy-breadcrumb strong {
+  display: inline;
+}
+.anatomy-stage .anatomy-hud > .anatomy-title {
+  grid-area: title;
+  align-self: start;
+}
+.anatomy-stage .anatomy-hud > .anatomy-title h2 {
+  margin-bottom: 0.45rem;
+}
+.anatomy-stage .anatomy-hud > .anatomy-camera {
+  grid-area: camera;
+  justify-self: center;
+  align-self: start;
+}
+.anatomy-stage .anatomy-hud > .anatomy-camera button {
+  min-height: 44px;
+}
+.anatomy-stage .anatomy-hud > .anatomy-mobile-dock {
+  grid-area: actions;
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  gap: 0.5rem;
+}
+.anatomy-stage .anatomy-hud > .anatomy-tools {
+  grid-area: tools;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-self: start;
+}
+.anatomy-stage .anatomy-hud > .anatomy-dossier {
+  grid-area: dossier;
+  justify-self: end;
+  align-self: start;
+  width: min(23rem, 100%);
+  max-width: none;
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+.anatomy-stage .anatomy-hud > .anatomy-console {
+  grid-area: console;
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+}
+.anatomy-stage .anatomy-hud > .anatomy-source {
+  grid-area: source;
+  align-self: end;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: #9fbdb3;
+}
+.anatomy-stage .anatomy-hud > .anatomy-footnote {
+  grid-area: foot;
+  align-self: end;
+  justify-self: end;
+  text-align: right;
+  font-size: 0.7rem;
+  color: #9fbdb3;
+}
+
+@media (max-width: 1100px) {
+  .terrain-experience {
+    --bar-h: 3.6rem;
+  }
+  .anatomy-stage .anatomy-hud {
+    gap: 0.5rem 0.6rem;
+    padding: 0.6rem 0.7rem max(0.7rem, env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "crumb   tools"
+      "title   tools"
+      "source  tools"
+      ".       ."
+      "camera  camera"
+      "sheet   sheet"
+      "actions actions";
+  }
+  .anatomy-stage .anatomy-hud > .anatomy-title h2 {
+    margin-bottom: 0.25rem;
+  }
+  .anatomy-stage .anatomy-hud > .anatomy-source {
+    align-self: start;
+  }
+  /* The angle presets belong with the other scene controls on a small
+     screen: they appear with the controls sheet, not over the model. */
+  .anatomy-stage .anatomy-hud:not(.controls-open) > .anatomy-camera {
+    display: none;
+  }
+  .anatomy-stage .anatomy-hud > .anatomy-dossier,
+  .anatomy-stage .anatomy-hud > .anatomy-console {
+    grid-area: sheet;
+    justify-self: end;
+    width: min(26rem, 100%);
+    max-height: 46svh;
+    animation-name: motion-sheet;
+  }
+  .anatomy-stage .anatomy-hud > .anatomy-source {
+    font-size: 0.65rem;
+  }
+  .anatomy-stage .anatomy-hud > .anatomy-mobile-dock {
+    justify-self: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  /* "3D terrain" is one tap away in the bar above the stage; on a small
+     screen a second copy of it only crowds the model. */
+  .anatomy-stage .anatomy-hud > .anatomy-mobile-dock .anatomy-real-terrain {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .terrain-experience {
+    --header-h: 4rem;
+    --bar-h: 3.5rem;
+  }
+  .terrain-experience .explorer-bar {
+    padding: 0.4rem 0.6rem;
+    gap: 0.4rem;
+  }
+  /* The header already says where you are; the title stays for screen
+     readers and search, and the row goes to the switch. */
+  .explorer-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .terrain-experience .explorer-bar .map-view-switch {
+    flex: 1 1 100%;
+  }
+  .terrain-experience .explorer-bar .map-view-switch button {
+    padding: 0 0.35rem;
+  }
+  .terrain-experience .explorer-bar .metric-switch,
+  .terrain-experience .explorer-bar .map-workspace-actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .terrain-experience .explorer-bar .map-workspace-actions button {
+    padding-inline: 0.3rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-switch-thumb {
+    transition: none;
+  }
+}
+
+/* Header targets: every control a fingertip wide. */
+.terrain-experience .theme-toggle {
+  width: 44px;
+  height: 44px;
+}
+.terrain-experience .brand,
+.terrain-experience .route-cta {
+  min-height: 44px;
+}
+.terrain-experience .main-nav > a {
+  min-width: 44px;
+  justify-content: center;
+}

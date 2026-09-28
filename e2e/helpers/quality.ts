@@ -138,8 +138,19 @@ export async function collectQuality(page: Page, state: string): Promise<Quality
         }));
 
       // (2) overlapping visible text pairs ---------------------------------
+      // Only text a reader can see. The model parks unused labels at
+      // opacity 0 and turns overflow labels into dots whose names are kept
+      // for screen readers at font-size 0; counting either reported
+      // collisions between words nobody could read.
+      const seen = (el: HTMLElement) => {
+        if (parseFloat(getComputedStyle(el).fontSize) === 0) return false;
+        for (let n: HTMLElement | null = el; n; n = n.parentElement)
+          if (parseFloat(getComputedStyle(n).opacity) < 0.05) return false;
+        return true;
+      };
       const textEls = Array.from(document.querySelectorAll(TEXT_SCOPE))
         .filter(isVisible)
+        .filter(seen)
         .filter((el) => (el.textContent ?? "").trim().length > 0)
         .map((el) => ({ el, rect: rectOf(el) }));
       for (let i = 0; i < textEls.length; i++) {
@@ -188,7 +199,15 @@ export async function collectQuality(page: Page, state: string): Promise<Quality
         let bg: [number, number, number, number] | null = null;
         let node: HTMLElement | null = el;
         while (node) {
-          const parsed = parseRgb(getComputedStyle(node).backgroundColor);
+          const computed = getComputedStyle(node);
+          // A gradient is painted as a background image with a transparent
+          // background colour; read its first stop, or text on the dark
+          // model stage is measured against the white page behind it.
+          const parsed =
+            parseRgb(computed.backgroundColor)?.[3] ||
+            !computed.backgroundImage.includes("gradient")
+              ? parseRgb(computed.backgroundColor)
+              : parseRgb(computed.backgroundImage);
           if (parsed && parsed[3] > 0) {
             if (!bg) {
               bg = parsed;

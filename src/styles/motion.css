@@ -49,6 +49,14 @@
   }
 }
 
+/* On a small screen the same panel is a sheet, and rises from the dock. */
+@keyframes motion-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
 /* Notice cards arrive top to bottom, the order they are read in. */
 .anatomy-notices > .notice-card {
   animation: motion-fade 420ms var(--motion-ease) both;

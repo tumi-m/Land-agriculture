@@ -355,11 +355,17 @@ export default function ModelView({
         camera.updateProjectionMatrix();
         return;
       }
+      // The sheet is measured in the page's coordinates; the camera needs
+      // the stage's. Mixing the two framed the model against a panel that
+      // was really a header's height lower than it looked.
+      const stage = el.getBoundingClientRect();
+      const left = box.left - stage.left;
+      const top = box.top - stage.top;
       // A side sheet on a wide stage, a bottom sheet on a narrow one.
       const inset =
         box.width < width * 0.6
-          ? { right: Math.round(width - box.left) }
-          : { bottom: Math.round(height - box.top) };
+          ? { right: Math.round(width - left) }
+          : { bottom: Math.round(height - top) };
       const region = visibleViewRegion(width, height, inset);
       if (region)
         camera.setViewOffset(
@@ -796,15 +802,6 @@ export default function ModelView({
   };
   return (
     <div className="anatomy-stage" data-camera={cameraPreset ?? "free"}>
-      <p className="anatomy-source" role="status">
-        {relief
-          ? `Regional relief (~2.3 km grid), vertical scale ×${RELIEF_EXAGGERATION}${
-              water && !selected ? " · major rivers shown" : ""
-            } · ${DEM_ATTRIBUTION}`
-          : reliefFailed
-            ? "Regional relief unavailable · overview still usable"
-            : "Adding regional relief…"}
-      </p>
       <div
         ref={host}
         className="anatomy-canvas"
@@ -820,85 +817,6 @@ export default function ModelView({
           <button onClick={onTerrain}>Open terrain map</button>
         </div>
       )}
-      <div className="anatomy-breadcrumb">
-        <button onClick={() => selectProvince(null)}>South Africa</button>
-        {selected && (
-          <>
-            <span>/</span>
-            <button onClick={() => selectDistrict(selected, null)}>
-              {PROVINCES[selected].name}
-            </button>
-          </>
-        )}
-        {districtShape && (
-          <>
-            <span>/</span>
-            <strong>{districtShape.name.replace(/ District$/, "")}</strong>
-          </>
-        )}
-      </div>
-      <div className="anatomy-title">
-        <p>EXPLORE THE LAND, LAYER BY LAYER</p>
-        {/* Keyed on the words, so each change of level plays the rise again:
-            the heading moving is the signal that the scene below has too. */}
-        <h2 key={heading} aria-label={heading}>
-          {heading.split(" ").map((word, i) => (
-            <Fragment key={i}>
-              {i > 0 && " "}
-              <span className="anatomy-word" aria-hidden>
-                <span style={{ "--i": i } as CSSProperties}>{word}</span>
-              </span>
-            </Fragment>
-          ))}
-        </h2>
-        <span key={`${heading}-hint`} className="anatomy-hint">
-          {districtShape
-            ? "Select a floating layer to inspect it."
-            : selected
-              ? "Choose a district to separate its information layers."
-              : "Select a province to lift out its districts."}
-        </span>
-      </div>
-      <div className="anatomy-tools">
-        <button aria-label="Zoom in" onClick={() => zoom(0.8)}>
-          +
-        </button>
-        <button aria-label="Zoom out" onClick={() => zoom(1.25)}>
-          −
-        </button>
-        <button
-          aria-label="Reframe selection"
-          onClick={() => frameScene.current()}
-        >
-          ⌖
-        </button>
-        <button
-          aria-pressed={auto}
-          onClick={() => {
-            const engine = core.current;
-            if (engine) {
-              engine.controls.autoRotate = !auto;
-              engine.controls.autoRotateSpeed = 0.65;
-              engine.wake();
-            }
-            setAuto(!auto);
-          }}
-        >
-          {auto ? "Pause" : "Orbit"}
-        </button>
-      </div>
-      <div className="anatomy-camera" role="group" aria-label="Camera angle">
-        {CAMERA_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            aria-pressed={cameraPreset === preset.id}
-            aria-label={`${preset.label} view`}
-            onClick={() => applyPreset(preset.id)}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
       {(selected
         ? DISTRICTS_BY_PROVINCE[selected]
         : PROVINCE_SHAPES.map((p) => ({ id: p.code, name: p.name }))
@@ -961,204 +879,304 @@ export default function ModelView({
           {String(i + 1).padStart(2, "0")} {l.name}
         </button>
       ))}
-      {infoOpen && (
-        <div className="anatomy-dossier" id="anatomy-layer-details">
-          <div className="anatomy-dossier-head">
-            <span style={{ color: layerMeta.colour }}>
-              ● {districtShape ? layerMeta.name : "Government land"}
-            </span>
+      {/* The stage's controls live in one grid laid over the canvas. Each
+          has its own area, so they cannot land on one another at any width —
+          they used to be positioned one by one, and the tools, the dock and
+          the camera switch took turns covering each other. */}
+      <div
+        className={`anatomy-hud${controlsOpen ? " controls-open" : ""}${
+          infoOpen ? " info-open" : ""
+        }`}
+      >
+        <div className="anatomy-breadcrumb">
+          <button onClick={() => selectProvince(null)}>South Africa</button>
+          {selected && (
+            <>
+              <span>/</span>
+              <button onClick={() => selectDistrict(selected, null)}>
+                {PROVINCES[selected].name}
+              </button>
+            </>
+          )}
+          {districtShape && (
+            <>
+              <span>/</span>
+              <strong>{districtShape.name.replace(/ District$/, "")}</strong>
+            </>
+          )}
+        </div>
+        <div className="anatomy-title">
+          {/* Keyed on the words, so each change of level plays the rise again:
+              the heading moving is the signal that the scene below has too. */}
+          <h2 key={heading} aria-label={heading}>
+            {heading.split(" ").map((word, i) => (
+              <Fragment key={i}>
+                {i > 0 && " "}
+                <span className="anatomy-word" aria-hidden>
+                  <span style={{ "--i": i } as CSSProperties}>{word}</span>
+                </span>
+              </Fragment>
+            ))}
+          </h2>
+          <span key={`${heading}-hint`} className="anatomy-hint">
+            {districtShape
+              ? "Select a floating layer to inspect it."
+              : selected
+                ? "Choose a district to separate its information layers."
+                : "Select a province to lift out its districts."}
+          </span>
+        </div>
+        <div className="anatomy-camera" role="group" aria-label="Camera angle">
+          {CAMERA_PRESETS.map((preset) => (
             <button
-              onClick={() => setInfoOpen(false)}
-              aria-label="Collapse layer information"
+              key={preset.id}
+              aria-pressed={cameraPreset === preset.id}
+              aria-label={`${preset.label} view`}
+              onClick={() => applyPreset(preset.id)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <div className="anatomy-mobile-dock">
+          <button className="anatomy-real-terrain" onClick={onTerrain}>
+            View real terrain ↗
+          </button>
+          <button
+            className="anatomy-controls-toggle"
+            aria-expanded={controlsOpen}
+            aria-controls="anatomy-region-controls"
+            onClick={() => {
+              setControlsOpen(!controlsOpen);
+              setInfoOpen(false);
+            }}
+          >
+            Regions & layers
+          </button>
+          <button
+            aria-expanded={infoOpen}
+            aria-controls="anatomy-layer-details"
+            onClick={() => {
+              setInfoOpen(!infoOpen);
+              setControlsOpen(false);
+            }}
+          >
+            {infoOpen
+              ? "Close information ×"
+              : districtShape
+                ? "Region information"
+                : `Government land · ${notices.length}`}
+          </button>
+        </div>
+        <div className="anatomy-tools">
+          <button aria-label="Zoom in" onClick={() => zoom(0.8)}>
+            +
+          </button>
+          <button aria-label="Zoom out" onClick={() => zoom(1.25)}>
+            −
+          </button>
+          <button
+            aria-label="Reframe selection"
+            onClick={() => frameScene.current()}
+          >
+            ⌖
+          </button>
+          <button
+            aria-pressed={auto}
+            onClick={() => {
+              const engine = core.current;
+              if (engine) {
+                engine.controls.autoRotate = !auto;
+                engine.controls.autoRotateSpeed = 0.65;
+                engine.wake();
+              }
+              setAuto(!auto);
+            }}
+          >
+            {auto ? "Pause" : "Orbit"}
+          </button>
+        </div>
+        {infoOpen && (
+          <div className="anatomy-dossier" id="anatomy-layer-details">
+            <div className="anatomy-dossier-head">
+              <span style={{ color: layerMeta.colour }}>
+                ● {districtShape ? layerMeta.name : "Government land"}
+              </span>
+              <button
+                onClick={() => setInfoOpen(false)}
+                aria-label="Collapse layer information"
+              >
+                Close ×
+              </button>
+            </div>
+            <p>
+              {districtShape?.name ??
+                (selected ? PROVINCES[selected].name : "South Africa")}
+            </p>
+            {districtShape && layer !== "opportunity" && (
+              <DistrictLayerCard
+                key={layer}
+                district={districtShape.id}
+                layer={layer}
+              />
+            )}
+            {districtShape && (
+              <p className="anatomy-slice-note">{layerMeta.description}</p>
+            )}
+            {(!districtShape || layer === "opportunity") && (
+              <GovernmentNotices
+                key={`${selected}-${district}`}
+                notices={notices}
+                onSelect={onNotice}
+              />
+            )}
+            {districtShape && layer !== "opportunity" && (
+              <button className="anatomy-terrain-link" onClick={onTerrain}>
+                Inspect real terrain & data ↗
+              </button>
+            )}
+            {districtShape && (
+              <button
+                className="anatomy-isolate"
+                aria-pressed={isolate}
+                onClick={() => setIsolate(!isolate)}
+              >
+                {isolate ? "Show surrounding land" : "Isolate this district"}
+              </button>
+            )}
+          </div>
+        )}
+        <div
+          className={`anatomy-console ${controlsOpen ? "is-open" : ""}`}
+          id="anatomy-region-controls"
+        >
+          <div className="anatomy-controls-heading">
+            <strong>Regions & layers</strong>
+            <button
+              onClick={() => setControlsOpen(false)}
+              aria-label="Close region controls"
             >
               Close ×
             </button>
           </div>
-          <p>
-            {districtShape?.name ??
-              (selected ? PROVINCES[selected].name : "South Africa")}
-          </p>
-          {districtShape && layer !== "opportunity" && (
-            <DistrictLayerCard
-              key={layer}
-              district={districtShape.id}
-              layer={layer}
-            />
-          )}
-          {districtShape && (
-            <p className="anatomy-slice-note">{layerMeta.description}</p>
-          )}
-          {(!districtShape || layer === "opportunity") && (
-            <GovernmentNotices
-              key={`${selected}-${district}`}
-              notices={notices}
-              onSelect={onNotice}
-            />
-          )}
-          {districtShape && layer !== "opportunity" && (
-            <button className="anatomy-terrain-link" onClick={onTerrain}>
-              Inspect real terrain & data ↗
-            </button>
-          )}
-          {districtShape && (
-            <button
-              className="anatomy-isolate"
-              aria-pressed={isolate}
-              onClick={() => setIsolate(!isolate)}
-            >
-              {isolate ? "Show surrounding land" : "Isolate this district"}
-            </button>
-          )}
-        </div>
-      )}
-      <div className="anatomy-mobile-dock">
-        <button className="anatomy-real-terrain" onClick={onTerrain}>
-          View real terrain ↗
-        </button>
-        <button
-          className="anatomy-controls-toggle"
-          aria-expanded={controlsOpen}
-          aria-controls="anatomy-region-controls"
-          onClick={() => {
-            setControlsOpen(!controlsOpen);
-            setInfoOpen(false);
-          }}
-        >
-          Regions & layers
-        </button>
-        <button
-          aria-expanded={infoOpen}
-          aria-controls="anatomy-layer-details"
-          onClick={() => {
-            setInfoOpen(!infoOpen);
-            setControlsOpen(false);
-          }}
-        >
-          {infoOpen
-            ? "Close information ×"
-            : districtShape
-              ? "Region information"
-              : `Government land · ${notices.length}`}
-        </button>
-      </div>
-      <div
-        className={`anatomy-console ${controlsOpen ? "is-open" : ""}`}
-        id="anatomy-region-controls"
-      >
-        <div className="anatomy-controls-heading">
-          <strong>Regions & layers</strong>
-          <button
-            onClick={() => setControlsOpen(false)}
-            aria-label="Close region controls"
-          >
-            Close ×
-          </button>
-        </div>
-        <div className="anatomy-select">
-          <label>
-            REGION
-            <select
-              aria-label="Select province to explode"
-              value={selected ?? ""}
-              onChange={(e) =>
-                selectProvince((e.target.value || null) as ProvinceCode | null)
-              }
-            >
-              <option value="">South Africa</option>
-              {PROVINCE_ORDER.map((code) => (
-                <option key={code} value={code}>
-                  {PROVINCES[code].name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {selected && (
+          <div className="anatomy-select">
             <label>
-              DISTRICT
+              REGION
               <select
-                aria-label="Select district to peel"
-                value={district ?? ""}
+                aria-label="Select province to explode"
+                value={selected ?? ""}
                 onChange={(e) =>
-                  e.target.value
-                    ? chooseDistrict(e.target.value)
-                    : selectDistrict(selected, null)
+                  selectProvince((e.target.value || null) as ProvinceCode | null)
                 }
               >
-                <option value="">All districts</option>
-                {DISTRICTS_BY_PROVINCE[selected].map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
+                <option value="">South Africa</option>
+                {PROVINCE_ORDER.map((code) => (
+                  <option key={code} value={code}>
+                    {PROVINCES[code].name}
                   </option>
                 ))}
               </select>
             </label>
-          )}
-        </div>
-        <label className="anatomy-slider">
-          <span>
-            Separate regions <b>{Math.round(depth * 100)}%</b>
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step=".01"
-            value={depth}
-            disabled={!selected}
-            onChange={(e) => setDepth(Number(e.target.value))}
-          />
-        </label>
-        {district && (
+            {selected && (
+              <label>
+                DISTRICT
+                <select
+                  aria-label="Select district to peel"
+                  value={district ?? ""}
+                  onChange={(e) =>
+                    e.target.value
+                      ? chooseDistrict(e.target.value)
+                      : selectDistrict(selected, null)
+                  }
+                >
+                  <option value="">All districts</option>
+                  {DISTRICTS_BY_PROVINCE[selected].map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
           <label className="anatomy-slider">
             <span>
-              Peel layers <b>{Math.round(peel * 100)}%</b>
+              Separate regions <b>{Math.round(depth * 100)}%</b>
             </span>
             <input
               type="range"
               min="0"
               max="1"
               step=".01"
-              value={peel}
-              onChange={(e) => setPeel(Number(e.target.value))}
+              value={depth}
+              disabled={!selected}
+              onChange={(e) => setDepth(Number(e.target.value))}
             />
           </label>
-        )}
-        {district && (
-          <div className="anatomy-layer-switches">
-            {LAND_LAYERS.map((l) => (
-              <button
-                key={l.id}
-                aria-pressed={!hiddenStore.has(l.id)}
-                onClick={() => toggleHidden(l.id)}
-              >
-                <i style={{ background: l.colour }} />
-                {l.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          className="anatomy-reassemble"
-          onClick={() => {
-            if (depth === 0) {
-              setDepth(0.72);
-              setPeel(0.82);
-            } else {
-              setDepth(0);
-              setPeel(0);
-              setHidden(new Set());
-              setIsolate(false);
-              selectDistrict(selected!, null);
-            }
-          }}
-        >
-          {depth === 0 ? "Separate regions" : "Reassemble"}
-        </button>
+          {district && (
+            <label className="anatomy-slider">
+              <span>
+                Peel layers <b>{Math.round(peel * 100)}%</b>
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step=".01"
+                value={peel}
+                onChange={(e) => setPeel(Number(e.target.value))}
+              />
+            </label>
+          )}
+          {district && (
+            <div className="anatomy-layer-switches">
+              {LAND_LAYERS.map((l) => (
+                <button
+                  key={l.id}
+                  aria-pressed={!hiddenStore.has(l.id)}
+                  aria-label={l.name}
+                  onClick={() => toggleHidden(l.id)}
+                >
+                  <i style={{ background: l.colour }} />
+                  {/* The first word carries it in a row this tight; the
+                      full name is the button's accessible name. */}
+                  {l.name.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            className="anatomy-reassemble"
+            onClick={() => {
+              if (depth === 0) {
+                setDepth(0.72);
+                setPeel(0.82);
+              } else {
+                setDepth(0);
+                setPeel(0);
+                setHidden(new Set());
+                setIsolate(false);
+                selectDistrict(selected!, null);
+              }
+            }}
+          >
+            {depth === 0 ? "Separate regions" : "Reassemble"}
+          </button>
+        </div>
+        <p className="anatomy-source" role="status">
+          {relief
+            ? `Regional relief (~2.3 km grid), vertical scale ×${RELIEF_EXAGGERATION}${
+                water && !selected ? " · major rivers shown" : ""
+              } · ${DEM_ATTRIBUTION}`
+            : reliefFailed
+              ? "Regional relief unavailable · overview still usable"
+              : "Adding regional relief…"}
+        </p>
+        <p className="anatomy-footnote">
+          Geographic shapes · thematic slices, not measured soil strata · drag to
+          orbit · pinch to zoom
+        </p>
       </div>
-      <p className="anatomy-footnote">
-        Geographic shapes · thematic slices, not measured soil strata · drag to
-        orbit · pinch to zoom
-      </p>
     </div>
   );
 }

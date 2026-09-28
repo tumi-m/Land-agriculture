@@ -530,3 +530,45 @@ cannot reach and passes in CI. A new e2e, run with the model and screen
 specs afterwards (all pass): a slice link opens that slice's measurements,
 and switching slice adds no history entry. The four screenshot
 baselines pass unchanged. Card reviewed at 1440 px and 390 px.
+
+## Landed 28 Sep 2026 — round 1: one bar, and a grid over the model
+
+**The bar.** Above the stage there were three stacked bars — page title with
+the measure switch, the view switch, and the map actions — so the stage ran
+past the fold and the model's own console was cut off on a 1440×900 screen.
+They are one row now (`.explorer-bar` in `LandLocator.tsx`): the title, a
+segmented view switch whose thumb slides to the chosen view, and on the land
+views the measure and map actions. On a phone the title steps back to screen
+readers and the switch takes the row. The stage is sized to what is left of
+the viewport (`--header-h`, `--bar-h` in `src/styles/shell.css`).
+
+**The HUD.** Every control on the model stage was absolutely positioned on
+its own, and they took turns covering each other: on desktop the dock hid
+the fourth zoom tool; on a phone the camera switch sat over the zoom tools
+and the hint text. They now live in one CSS grid (`.anatomy-hud`) with a
+named area each, so two cannot occupy one place at any width. On a phone
+the camera presets move into the controls sheet, the duplicate "View real
+terrain" leaves the dock (the bar's "3D terrain" is right above), and the
+dossier and the controls share one sheet area above the dock.
+
+**Also fixed on the way:**
+- The district name dropped out of the breadcrumb below 1100 px.
+- The sheet-aware camera framing measured the open panel in page
+  coordinates and the stage in its own, so the model was framed against a
+  panel a header's height from where it really was.
+- Header targets (theme toggle, brand, route link) are 44 px.
+- The kicker "Explore the land, layer by layer" repeated the page title and
+  is gone; the relief attribution moved to the stage's bottom edge.
+
+**Measurement corrections.** `e2e/helpers/quality.ts` counted text at
+opacity 0 (parked slice labels) and overflow dots (names kept at font-size 0
+for screen readers) as colliding text, and measured text on the dark stage
+against the white page because the stage background is a gradient. Both
+fixed. Latest run: text overlaps 464 → 0, low contrast 72 → 0, small
+targets 668 → 428; what remains is almost all in the land view.
+
+**Checks:** `npm run check` green (222 tests), build and budget (191.2 of
+230 kB). Full e2e against the production build: 23 pass; the four screen
+baselines failed as intended and are regenerated (and pass again with no
+retries); the fifth failure is the tile-dependent `land.spec` tap that
+passes in CI.

@@ -1,7 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { parcelFor } from "@/lib/cadastre";
 import { onThemeChange } from "@/lib/tokens";
 import LandDossier, { NoticeBrowser } from "./LandDossier";
@@ -487,12 +494,58 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           )}
           aria-label="Explore South African provinces"
         >
-          <div className="explorer-toolbar">
-            <div>
-              <p className="eyebrow">SOUTH AFRICA / LAND EXPLORER</p>
-              <h1>
-                Open the land. Explore its layers<span>.</span>
-              </h1>
+          {/* One bar for the whole workspace: what this is, which way to
+              look at it, and — on the land views — which figure and how much
+              room the map takes. It used to be three stacked bars, which
+              pushed the stage's own controls below the fold. */}
+          <div className="explorer-bar">
+            <h1 className="explorer-title">
+              Open the land<span>.</span>{" "}
+              <em>Explore its layers.</em>
+            </h1>
+            <div
+              className="map-view-switch"
+              role="group"
+              aria-label="Map presentation"
+              style={
+                {
+                  "--active": showModel ? 0 : showTerrain ? 1 : 2,
+                } as CSSProperties
+              }
+            >
+              <span className="view-switch-thumb" aria-hidden="true" />
+              <button
+                aria-pressed={showModel}
+                onClick={() => {
+                  setView("model");
+                  setNotice(null);
+                  setInspection(null);
+                  setCompactMap(false);
+                  setFocusMap(false);
+                }}
+              >
+                Exploded map
+              </button>
+              <button
+                aria-pressed={showTerrain}
+                onClick={() => {
+                  setCompare(false);
+                  setView("land");
+                }}
+                aria-label="3D terrain"
+              >
+                3D terrain
+              </button>
+              <button
+                aria-pressed={showFigures}
+                onClick={() => {
+                  setCompare(true);
+                  setView("land");
+                }}
+                aria-label="Compare provincial land figures"
+              >
+                Compare
+              </button>
             </div>
             <div
               role="group"
@@ -514,74 +567,36 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 </button>
               ))}
             </div>
-          </div>
-          <div
-            className="map-view-switch"
-            role="group"
-            aria-label="Map presentation"
-          >
-            <button
-              aria-pressed={showModel}
-              onClick={() => {
-                setView("model");
-                setNotice(null);
-                setInspection(null);
-                setCompactMap(false);
-                setFocusMap(false);
-              }}
-            >
-              {view === "land" ? "← Exploded overview" : "Exploded map"}
-            </button>
-            <button
-              aria-pressed={showTerrain}
-              onClick={() => {
-                setCompare(false);
-                setView("land");
-              }}
-              aria-label="3D terrain"
-            >
-              3D terrain
-            </button>
-            <button
-              aria-pressed={showFigures}
-              onClick={() => {
-                setCompare(true);
-                setView("land");
-              }}
-              aria-label="Compare provincial land figures"
-            >
-              Compare area
-            </button>
-          </div>
-      <div className="map-workspace-actions" hidden={showModel}>
-            <button
-              aria-pressed={focusMap}
-              onClick={() => setFocusMap(!focusMap)}
-            >
-              {focusMap ? "Show land browser" : "Focus map ⛶"}
-            </button>
-            <button
-              aria-expanded={!compactMap}
-              aria-controls="land-map-stage"
-              onClick={() => setCompactMap(!compactMap)}
-            >
-              {compactMap ? "Expand map" : "Collapse map"}
-            </button>
-            <button
-              disabled={!province && !notice && !inspection}
-              aria-expanded={detailState === "expanded" && !focusMap}
-              aria-controls="land-information-panel"
-              onClick={() => {
-                setFocusMap(false);
-                setDetailState(
-                  focusMap ? "expanded" : toggleDetailState(detailState),
-                );
-              }}
-            >
-              {detailState === "expanded" && !focusMap
-                ? "Collapse details"
-                : "Show details"}
-            </button>
+            <div className="map-workspace-actions" hidden={showModel}>
+              <button
+                aria-pressed={focusMap}
+                onClick={() => setFocusMap(!focusMap)}
+              >
+                {focusMap ? "Show land browser" : "Focus map ⛶"}
+              </button>
+              <button
+                aria-expanded={!compactMap}
+                aria-controls="land-map-stage"
+                onClick={() => setCompactMap(!compactMap)}
+              >
+                {compactMap ? "Expand map" : "Collapse map"}
+              </button>
+              <button
+                disabled={!province && !notice && !inspection}
+                aria-expanded={detailState === "expanded" && !focusMap}
+                aria-controls="land-information-panel"
+                onClick={() => {
+                  setFocusMap(false);
+                  setDetailState(
+                    focusMap ? "expanded" : toggleDetailState(detailState),
+                  );
+                }}
+              >
+                {detailState === "expanded" && !focusMap
+                  ? "Collapse details"
+                  : "Show details"}
+              </button>
+            </div>
           </div>
           <div className="explorer-body">
             {
