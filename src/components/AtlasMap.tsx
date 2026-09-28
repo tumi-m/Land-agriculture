@@ -33,6 +33,22 @@ import { group } from "@/lib/format";
 import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import type { ProvinceCode } from "@/lib/types";
 import type { CameraPose } from "@/state/explorer";
+import { labelCap, placeLabels, type LabelBox } from "@/lib/placement";
+
+/** A marker that takes part in decluttering, with the size of its full form. */
+interface FarmPin {
+  id: string;
+  marker: maplibregl.Marker;
+  button: HTMLButtonElement;
+  /** Higher keeps its name when two would touch. */
+  rank: number;
+  size?: { width: number; height: number };
+}
+
+/** Exact cadastral parcels outrank everything: they are the verified farms. */
+const PARCEL_RANK = 2_000_000;
+/** Province names are the way into the country view. */
+const PROVINCE_RANK = 1_500_000;
 
 /**
  * How long the map waits for its first complete render before it stops
@@ -93,7 +109,7 @@ export default function AtlasMap({
       button: HTMLButtonElement;
     }[]
   >([]);
-  const farmMarkers = useRef<maplibregl.Marker[]>([]);
+  const farmMarkers = useRef<FarmPin[]>([]);
   const pointMarker = useRef<maplibregl.Marker | null>(null);
   const [inspectMode, setInspectMode] = useState(true);
   const inspectModeRef = useRef(true);
@@ -303,10 +319,65 @@ export default function AtlasMap({
           setTileError(true);
       }
     });
+    // At country zoom two dozen notice groups and nine province names
+    // fought for one screen and piled into an unreadable stack. The same
+    // greedy rule the model uses for its labels decides which keep their
+    // names; the rest become dots that stay tappable and keep their names
+    // for screen readers, so no notice group becomes unreachable.
+    let declutterFrame = 0;
+    const declutter = () => {
+      declutterFrame = 0;
+      // A frame scheduled just before the map was torn down.
+      if (!map.current) return;
+      const width = host.current?.clientWidth ?? 0;
+      const height = host.current?.clientHeight ?? 0;
+      const pins: FarmPin[] = [
+        ...markers.current.map((item) => ({
+          id: item.code,
+          marker: item.marker,
+          button: item.button,
+          rank: PROVINCE_RANK,
+        })),
+        ...farmMarkers.current,
+      ];
+      const boxes: LabelBox[] = [];
+      for (const pin of pins) {
+        if (pin.button.hidden) continue;
+        const point = instance.project(pin.marker.getLngLat());
+        if (point.x < -80 || point.y < -80 || point.x > width + 80 || point.y > height + 80)
+          continue;
+        // Measured in the full form only: a dot would report that it fits.
+        if (!pin.size && !pin.button.classList.contains("is-dot"))
+          pin.size = {
+            width: pin.button.offsetWidth,
+            height: pin.button.offsetHeight,
+          };
+        const size = pin.size ?? { width: 44, height: 44 };
+        // Markers are centred on their point; placeLabels anchors at the
+        // bottom centre, so hand it the bottom edge.
+        boxes.push({
+          id: pin.id,
+          x: point.x,
+          y: point.y + size.height / 2,
+          width: size.width,
+          height: size.height,
+          rank: pin.rank,
+        });
+      }
+      const dotted = new Set(placeLabels(boxes, labelCap(width)).dotted);
+      for (const pin of pins)
+        pin.button.classList.toggle("is-dot", dotted.has(pin.id));
+    };
+    const scheduleDeclutter = () => {
+      if (!declutterFrame)
+        declutterFrame = requestAnimationFrame(declutter);
+    };
+    instance.on("move", scheduleDeclutter);
     const syncLabels = () => {
       const code = latest.current.selected;
       for (const item of markers.current)
         item.button.hidden = !!code || instance.getZoom() > 7.1;
+      scheduleDeclutter();
       const value = instance.isSourceLoaded("elevation")
         ? instance.queryTerrainElevation(instance.getCenter())
         : null;
@@ -416,11 +487,14 @@ export default function AtlasMap({
           event.stopPropagation();
           latest.current.onSelectNotice(item);
         });
-        farmMarkers.current.push(
-          new maplibregl.Marker({ element: button })
+        farmMarkers.current.push({
+          id: `parcel-${item.id}`,
+          button,
+          rank: PARCEL_RANK,
+          marker: new maplibregl.Marker({ element: button })
             .setLngLat(parcel.properties.coordinates)
             .addTo(instance),
-        );
+        });
       }
       for (const shape of DISTRICTS) {
         const notices = FARM_NOTICES.filter(
@@ -437,11 +511,14 @@ export default function AtlasMap({
           event.stopPropagation();
           latest.current.onSelectNotice(notices[0]);
         });
-        farmMarkers.current.push(
-          new maplibregl.Marker({ element: button })
+        farmMarkers.current.push({
+          id: `district-${shape.id}`,
+          button,
+          rank: notices.length,
+          marker: new maplibregl.Marker({ element: button })
             .setLngLat(geoCentroid(shape.geometry))
             .addTo(instance),
-        );
+        });
       }
       instance.on("click", (event) => {
         if (infrastructureHit(instance, event.point)) return;
@@ -495,7 +572,7 @@ export default function AtlasMap({
       observer.disconnect();
       markers.current.forEach((item) => item.marker.remove());
       markers.current = [];
-      farmMarkers.current.forEach((m) => m.remove());
+      farmMarkers.current.forEach((pin) => pin.marker.remove());
       farmMarkers.current = [];
       pointMarker.current?.remove();
       pointMarker.current = null;
@@ -653,12 +730,6 @@ export default function AtlasMap({
           <span>Satellite imagery + real elevation</span>
         </div>
       )}
-      {slow && loaded && !tileError && (
-        <p className="terrain-notice" role="status">
-          Imagery is loading slowly on this connection. Boundaries, notices and
-          the land information are ready.
-        </p>
-      )}
       {failed && (
         <div className="atlas-fallback">
           <p>The terrain map could not start on this device.</p>
@@ -667,275 +738,288 @@ export default function AtlasMap({
           </button>
         </div>
       )}
-      {(tileError || demError) && loaded && (
-        <p className="terrain-notice" role="status">
-          {demError
-            ? "Some elevation tiles could not load; relief may be incomplete."
-            : "Some map imagery could not load. Try the relief layer."}
-        </p>
-      )}
-      <div className="terrain-place">
-        <span className="terrain-live-dot" />
-        <div>
-          <strong>
-            {selected ? PROVINCES[selected].name : "South Africa"}
-          </strong>
-          <span>
-            {selected
-              ? PROVINCES[selected].commodities.slice(0, 3).join(" · ")
-              : "Choose a province to explore its landscape"}
-          </span>
+      {/* Every control over the map has a named grid area, as on the model
+          stage: the status notices used to sit on the inspect button, and
+          the readout ran under the attribution. */}
+      <div className="terrain-hud">
+        <div className="terrain-notices">
+          {slow && loaded && !tileError && (
+            <p className="terrain-notice" role="status">
+              Imagery is loading slowly on this connection. Boundaries,
+              notices and the land information are ready.
+            </p>
+          )}
+          {(tileError || demError) && loaded && (
+            <p className="terrain-notice" role="status">
+              {demError
+                ? "Some elevation tiles could not load; relief may be incomplete."
+                : "Some map imagery could not load. Try the relief layer."}
+            </p>
+          )}
         </div>
-      </div>
-      <div
-        className="terrain-navigation"
-        role="group"
-        aria-label="3D terrain navigation"
-      >
-        <button
-          disabled={!loaded}
-          onClick={() => map.current?.zoomIn()}
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          disabled={!loaded}
-          onClick={() => map.current?.zoomOut()}
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <button
-          disabled={!loaded}
-          onClick={() =>
-            map.current?.rotateTo((map.current?.getBearing() ?? 0) - 30)
-          }
-          aria-label="Rotate left"
-        >
-          ↶
-        </button>
-        <button
-          disabled={!loaded}
-          onClick={() =>
-            map.current?.rotateTo((map.current?.getBearing() ?? 0) + 30)
-          }
-          aria-label="Rotate right"
-        >
-          ↷
-        </button>
-        <button
-          disabled={!loaded}
-          aria-pressed={!flat && quality !== "economy"}
-          onClick={() => {
-            const enable3D = flat || quality === "economy";
-            map.current?.easeTo({
-              pitch: enable3D ? 50 : 0,
-              bearing: enable3D ? -24 : 0,
-              duration: matchMedia("(prefers-reduced-motion: reduce)").matches
-                ? 0
-                : 700,
-            });
-            if (enable3D && quality === "economy") setQuality("balanced");
-            setFlat(!enable3D);
-          }}
-        >
-          {flat || quality === "economy" ? "3D" : "2D"}
-        </button>
-        <button
-          disabled={!loaded}
-          onClick={() => frame()}
-          aria-label="Reset regional view"
-        >
-          ⌖
-        </button>
-      </div>
-      <div className="map-inspection-toggle">
-        <button
-          aria-pressed={inspectMode}
-          onClick={() => {
-            inspectModeRef.current = !inspectMode;
-            setInspectMode(!inspectMode);
-          }}
-        >
-          {inspectMode ? "⌖ Click to inspect" : "↗ Click districts"}
-        </button>
-        <span>
-          {inspectMode
-            ? "Climate · elevation · farming scenarios"
-            : "Select a region to explore"}
-        </span>
-      </div>
-      <div className="terrain-detail-status" role="status">
-        {aerial && satellite && quality !== "economy" && (
-          <span className="aerial-status">
-            {aerialState === "error"
-              ? "Some aerial tiles unavailable · overview remains underneath"
-              : aerialState === "loading"
-                ? "Loading aerial detail over the overview…"
-                : "NGI aerial imagery · historical, dates vary"}
-          </span>
-        )}
-        {infraStatus}
-      </div>
-      <button
-        className="terrain-layers-toggle"
-        aria-expanded={layersOpen}
-        aria-controls="terrain-layer-sheet"
-        onClick={() => setLayersOpen(!layersOpen)}
-      >
-        {layersOpen ? "Close map layers ×" : "Map layers & detail"}
-      </button>
-      <button
-        className="terrain-aerial-toggle"
-        disabled={!loaded}
-        aria-pressed={aerial && satellite && quality !== "economy"}
-        onClick={() =>
-          aerial && satellite && quality !== "economy"
-            ? setAerial(false)
-            : openAerial()
-        }
-      >
-        {aerial && satellite && quality !== "economy"
-          ? "Aerial on · turn off"
-          : "Aerial close-up ↗"}
-      </button>
-      {layersOpen && (
-        <section
-          className="terrain-layer-sheet"
-          id="terrain-layer-sheet"
-          aria-label="Map layers and performance"
-        >
-          <div className="infrastructure-card-head">
-            <strong>Map layers & detail</strong>
-            <button onClick={() => setLayersOpen(false)}>Close ×</button>
+        <div className="terrain-place">
+          <span className="terrain-live-dot" />
+          <div>
+            <strong>
+              {selected ? PROVINCES[selected].name : "South Africa"}
+            </strong>
+            <span>
+              {selected
+                ? PROVINCES[selected].commodities.slice(0, 3).join(" · ")
+                : "Choose a province to explore its landscape"}
+            </span>
           </div>
-          <label>
-            Rendering quality
-            <select
-              value={quality}
-              onChange={(e) => setQuality(e.target.value as TerrainQuality)}
-            >
-              <option value="balanced">Balanced · recommended</option>
-              <option value="detail">Sharper display</option>
-              <option value="economy">Save data · 2D</option>
-            </select>
-          </label>
-          <p>
-            Start with ≈10 m satellite imagery. Aerial close-up loads much finer
-            NGI photography only near your selected location. Terrain relief
-            remains typically ≈30 m.
-          </p>
-          <a href={AERIAL_CATALOGUE} target="_blank" rel="noreferrer">
-            Aerial source & dates ↗
-          </a>
-          <small>
-            The catalogue describes 2014–2016 imagery; the local capture date is
-            unverified. Coverage and sharpness vary. This is photography draped
-            over terrain, not a 3D building survey.
-          </small>
-          <div className="terrain-layer-options">
-            <button
-              disabled={!loaded}
-              aria-pressed={satellite}
-              onClick={() => {
-                setSatellite(!satellite);
-                setTileError(false);
-                map.current?.setLayoutProperty(
-                  "satellite",
-                  "visibility",
-                  satellite ? "none" : "visible",
-                );
-                map.current?.setLayoutProperty(
-                  "relief",
-                  "visibility",
-                  satellite ? "visible" : "none",
-                );
-              }}
-            >
-              {satellite ? "Satellite imagery" : "Relief basemap"}
-            </button>
-            <button
-              disabled={!loaded}
-              aria-pressed={water}
-              onClick={() => {
-                setWater(!water);
-                if (map.current)
-                  setLayerVisibility(map.current, "rivers", !water);
-              }}
-            >
-              Rivers & dams
-            </button>
-            <button
-              disabled={!loaded}
-              aria-pressed={power}
-              onClick={() => setPower(!power)}
-            >
-              Transmission lines
-            </button>
-            <button
-              disabled={!loaded}
-              aria-pressed={dataOverlay}
-              onClick={() => setDataOverlay(!dataOverlay)}
-            >
-              Historical land totals
-            </button>
-          </div>
-          <p>
-            Local water and electricity features load as you zoom closer. Gold
-            dashes show transmission; blue shows mapped water.
-          </p>
+        </div>
+        <div
+          className="terrain-navigation"
+          role="group"
+          aria-label="3D terrain navigation"
+        >
           <button
-            className="terrain-local-zoom"
+            disabled={!loaded}
+            onClick={() => map.current?.zoomIn()}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            disabled={!loaded}
+            onClick={() => map.current?.zoomOut()}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            disabled={!loaded}
+            onClick={() =>
+              map.current?.rotateTo((map.current?.getBearing() ?? 0) - 30)
+            }
+            aria-label="Rotate left"
+          >
+            ↶
+          </button>
+          <button
+            disabled={!loaded}
+            onClick={() =>
+              map.current?.rotateTo((map.current?.getBearing() ?? 0) + 30)
+            }
+            aria-label="Rotate right"
+          >
+            ↷
+          </button>
+          <button
+            disabled={!loaded}
+            aria-pressed={!flat && quality !== "economy"}
             onClick={() => {
-              if (quality === "economy") setQuality("balanced");
-              setFlat(false);
+              const enable3D = flat || quality === "economy";
               map.current?.easeTo({
-                zoom: Math.max(12, map.current?.getZoom() ?? 12),
-                pitch: 50,
-                duration: 700,
+                pitch: enable3D ? 50 : 0,
+                bearing: enable3D ? -24 : 0,
+                duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+                  ? 0
+                  : 700,
               });
-              setLayersOpen(false);
+              if (enable3D && quality === "economy") setQuality("balanced");
+              setFlat(!enable3D);
             }}
           >
-            Explore nearby detail ↗
+            {flat || quality === "economy" ? "3D" : "2D"}
           </button>
-          <button onClick={() => setInfraRetry((n) => n + 1)}>
-            Retry local features
+          <button
+            disabled={!loaded}
+            onClick={() => frame()}
+            aria-label="Reset regional view"
+          >
+            ⌖
           </button>
-          <small>
-            Mapped lines do not establish a farm connection. Water features do
-            not establish water rights or current supply.
-          </small>
-        </section>
-      )}
-      {loaded && map.current && (
-        <InfrastructureOverlay
-          map={map.current}
-          water={water}
-          power={power}
-          paused={quality === "economy"}
-          retry={infraRetry}
-          onSelect={selectInfrastructure}
-          onStatus={setInfraStatus}
-        />
-      )}
-      <div className="terrain-readout">
-        <span>
-          {quality === "economy" || flat
-            ? "Elevation off in 2D"
-            : elevation === null
-              ? "Elevation loading"
-              : `Centre ≈ ${group(elevation)} m`}
-        </span>
-        <span>
-          {quality === "economy" || flat
-            ? "2D · terrain off"
-            : `Relief ×${TERRAIN_EXAGGERATION}`}
-        </span>
-        <span className="terrain-gesture">
-          Drag to explore · right-drag to orbit
-        </span>
+        </div>
+        <div className="map-inspection-toggle">
+          <button
+            aria-pressed={inspectMode}
+            onClick={() => {
+              inspectModeRef.current = !inspectMode;
+              setInspectMode(!inspectMode);
+            }}
+          >
+            {inspectMode ? "⌖ Click to inspect" : "↗ Click districts"}
+          </button>
+          <span>
+            {inspectMode
+              ? "Climate · elevation · farming scenarios"
+              : "Select a region to explore"}
+          </span>
+        </div>
+        <div className="terrain-detail-status" role="status">
+          {aerial && satellite && quality !== "economy" && (
+            <span className="aerial-status">
+              {aerialState === "error"
+                ? "Some aerial tiles unavailable · overview remains underneath"
+                : aerialState === "loading"
+                  ? "Loading aerial detail over the overview…"
+                  : "NGI aerial imagery · historical, dates vary"}
+            </span>
+          )}
+          {infraStatus}
+        </div>
+        <button
+          className="terrain-layers-toggle"
+          aria-expanded={layersOpen}
+          aria-controls="terrain-layer-sheet"
+          onClick={() => setLayersOpen(!layersOpen)}
+        >
+          {layersOpen ? "Close map layers ×" : "Map layers & detail"}
+        </button>
+        <button
+          className="terrain-aerial-toggle"
+          disabled={!loaded}
+          aria-pressed={aerial && satellite && quality !== "economy"}
+          onClick={() =>
+            aerial && satellite && quality !== "economy"
+              ? setAerial(false)
+              : openAerial()
+          }
+        >
+          {aerial && satellite && quality !== "economy"
+            ? "Aerial on · turn off"
+            : "Aerial close-up ↗"}
+        </button>
+        {layersOpen && (
+          <section
+            className="terrain-layer-sheet"
+            id="terrain-layer-sheet"
+            aria-label="Map layers and performance"
+          >
+            <div className="infrastructure-card-head">
+              <strong>Map layers & detail</strong>
+              <button onClick={() => setLayersOpen(false)}>Close ×</button>
+            </div>
+            <label>
+              Rendering quality
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value as TerrainQuality)}
+              >
+                <option value="balanced">Balanced · recommended</option>
+                <option value="detail">Sharper display</option>
+                <option value="economy">Save data · 2D</option>
+              </select>
+            </label>
+            <p>
+              Start with ≈10 m satellite imagery. Aerial close-up loads much finer
+              NGI photography only near your selected location. Terrain relief
+              remains typically ≈30 m.
+            </p>
+            <a href={AERIAL_CATALOGUE} target="_blank" rel="noreferrer">
+              Aerial source & dates ↗
+            </a>
+            <small>
+              The catalogue describes 2014–2016 imagery; the local capture date is
+              unverified. Coverage and sharpness vary. This is photography draped
+              over terrain, not a 3D building survey.
+            </small>
+            <div className="terrain-layer-options">
+              <button
+                disabled={!loaded}
+                aria-pressed={satellite}
+                onClick={() => {
+                  setSatellite(!satellite);
+                  setTileError(false);
+                  map.current?.setLayoutProperty(
+                    "satellite",
+                    "visibility",
+                    satellite ? "none" : "visible",
+                  );
+                  map.current?.setLayoutProperty(
+                    "relief",
+                    "visibility",
+                    satellite ? "visible" : "none",
+                  );
+                }}
+              >
+                {satellite ? "Satellite imagery" : "Relief basemap"}
+              </button>
+              <button
+                disabled={!loaded}
+                aria-pressed={water}
+                onClick={() => {
+                  setWater(!water);
+                  if (map.current)
+                    setLayerVisibility(map.current, "rivers", !water);
+                }}
+              >
+                Rivers & dams
+              </button>
+              <button
+                disabled={!loaded}
+                aria-pressed={power}
+                onClick={() => setPower(!power)}
+              >
+                Transmission lines
+              </button>
+              <button
+                disabled={!loaded}
+                aria-pressed={dataOverlay}
+                onClick={() => setDataOverlay(!dataOverlay)}
+              >
+                Historical land totals
+              </button>
+            </div>
+            <p>
+              Local water and electricity features load as you zoom closer. Gold
+              dashes show transmission; blue shows mapped water.
+            </p>
+            <button
+              className="terrain-local-zoom"
+              onClick={() => {
+                if (quality === "economy") setQuality("balanced");
+                setFlat(false);
+                map.current?.easeTo({
+                  zoom: Math.max(12, map.current?.getZoom() ?? 12),
+                  pitch: 50,
+                  duration: 700,
+                });
+                setLayersOpen(false);
+              }}
+            >
+              Explore nearby detail ↗
+            </button>
+            <button onClick={() => setInfraRetry((n) => n + 1)}>
+              Retry local features
+            </button>
+            <small>
+              Mapped lines do not establish a farm connection. Water features do
+              not establish water rights or current supply.
+            </small>
+          </section>
+        )}
+        {loaded && map.current && (
+          <InfrastructureOverlay
+            map={map.current}
+            water={water}
+            power={power}
+            paused={quality === "economy"}
+            retry={infraRetry}
+            onSelect={selectInfrastructure}
+            onStatus={setInfraStatus}
+          />
+        )}
+        <div className="terrain-readout">
+          <span>
+            {quality === "economy" || flat
+              ? "Elevation off in 2D"
+              : elevation === null
+                ? "Elevation loading"
+                : `Centre ≈ ${group(elevation)} m`}
+          </span>
+          <span>
+            {quality === "economy" || flat
+              ? "2D · terrain off"
+              : `Relief ×${TERRAIN_EXAGGERATION}`}
+          </span>
+          <span className="terrain-gesture">
+            Drag to explore · right-drag to orbit
+          </span>
+        </div>
       </div>
     </div>
   );

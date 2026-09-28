@@ -1156,7 +1156,10 @@ export default function ModelView({
                 setPeel(0);
                 setHidden(new Set());
                 setIsolate(false);
-                selectDistrict(selected!, null);
+                // At country scale there is no province to step back to; the
+                // old non-null assertion wrote a province selection holding
+                // null, which the URL then carried as "province:null".
+                if (selected) selectDistrict(selected, null);
               }
             }}
           >

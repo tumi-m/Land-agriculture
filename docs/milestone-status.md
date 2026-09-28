@@ -572,3 +572,38 @@ targets 668 → 428; what remains is almost all in the land view.
 baselines failed as intended and are regenerated (and pass again with no
 retries); the fifth failure is the tile-dependent `land.spec` tap that
 passes in CI.
+
+## Landed 28 Sep 2026 — round 2: bugs from the audit
+
+- **Land-view notice groups piled into a stack.** At country zoom two
+  dozen district notice groups and nine province names drew on top of each
+  other. They now go through the same greedy placement the model uses
+  (`placeLabels`), moved into `src/lib/placement.ts` so the map can use it
+  without pulling three.js; `src/scene/labels.ts` re-exports it. Losers
+  become 44 px dots that keep their names for screen readers. Exact
+  cadastral parcels outrank province names, which outrank notice groups.
+- **Land-view controls sat on each other.** The tile-error notice covered
+  "Click to inspect"; the readout ran under the attribution; on a phone the
+  navigation stretched across the map and the credits covered the aerial
+  button. The land view now has the same kind of grid HUD as the model
+  (`.terrain-hud`), the navigation is two columns on a phone, and while the
+  credits are expanded (until the first drag) the bottom row stands above
+  them.
+- **The "sandbox-only" land e2e failure was a real bug.** Its log said the
+  sticky header intercepted the click on "Click to inspect": the stage ran
+  past the fold, so the control scrolled under the header. With the stage
+  fitted under the bar (round 1) it passes here too.
+- **Reassemble at country scale** wrote a province selection holding null
+  (a non-null assertion on `selected`), which the URL carried as
+  `province:null`.
+- **Compare view** cut off the tallest bar at the top of a viewport-sized
+  stage, and its reset landed closer than the intro; both stand back by the
+  same `pullFor(width)`. Its province labels declutter the same way on a
+  phone.
+- **Targets:** model labels, slice labels, breadcrumb, sliders, the land
+  browser's filter, search and source link are 44 px.
+
+**Checks:** 222 unit tests, build, budget (191.2 of 230 kB), full e2e
+28/28 against the production build. Quality harness: small targets
+428 → 88; what remains is the hidden skip link and the map's inline credit
+links.

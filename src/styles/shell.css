@@ -355,3 +355,240 @@
   min-width: 44px;
   justify-content: center;
 }
+
+/* --- Land view markers -------------------------------------------------- */
+
+.terrain-map .farm-area-pin,
+.terrain-map .farm-parcel-pin,
+.terrain-map .terrain-pin {
+  min-height: 44px;
+  z-index: 2;
+}
+/*
+ * A marker that lost its place to a stronger one. It keeps a fingertip-sized
+ * target and its name in the accessible tree; only the text steps aside so
+ * the land and the names that won can be read.
+ */
+.terrain-map .farm-area-pin.is-dot,
+.terrain-map .farm-parcel-pin.is-dot,
+.terrain-map .terrain-pin.is-dot {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 0;
+  overflow: hidden;
+}
+.terrain-map .is-dot::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #d5f1b9;
+  box-shadow: 0 2px 8px #0006;
+  transition: transform 0.2s var(--shell-ease);
+}
+.terrain-map .terrain-pin.is-dot::before {
+  background: #12352c;
+}
+.terrain-map .farm-parcel-pin.is-dot::before {
+  background: #e9ff8c;
+}
+.terrain-map .is-dot:hover::before,
+.terrain-map .is-dot:focus-visible::before {
+  transform: scale(1.4);
+}
+
+/* --- The land view's HUD ------------------------------------------------ */
+
+.terrain-map .terrain-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  gap: 0.6rem 0.8rem;
+  /* The bottom edge belongs to the scale bar and the attribution. */
+  padding: 1rem 1rem 2.3rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "place   place   nav"
+    "inspect inspect nav"
+    "notice  notice  nav"
+    "sheet   infra   ."
+    "status  status  status"
+    "layers  aerial  aerial"
+    "readout readout readout";
+}
+.terrain-map .terrain-hud > * {
+  position: relative;
+  inset: auto;
+  transform: none;
+  margin: 0;
+  min-width: 0;
+  z-index: auto;
+  pointer-events: auto;
+}
+.terrain-map .terrain-hud > .terrain-place,
+.terrain-map .terrain-hud > .terrain-notices,
+.terrain-map .terrain-hud > .terrain-detail-status,
+.terrain-map .terrain-hud > .terrain-readout {
+  pointer-events: none;
+}
+.terrain-map .terrain-hud > .terrain-place {
+  grid-area: place;
+}
+.terrain-map .terrain-hud > .terrain-navigation {
+  grid-area: nav;
+  align-self: start;
+  justify-self: end;
+}
+.terrain-map .terrain-hud > .map-inspection-toggle {
+  grid-area: inspect;
+  justify-self: start;
+}
+.terrain-map .terrain-hud > .map-inspection-toggle button {
+  min-height: 44px;
+}
+.terrain-map .terrain-hud > .terrain-notices {
+  grid-area: notice;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+}
+.terrain-map .terrain-hud > .terrain-notices:empty {
+  display: none;
+}
+.terrain-map .terrain-notices .terrain-notice {
+  position: static;
+  max-width: 34rem;
+}
+.terrain-map .terrain-hud > .terrain-detail-status {
+  grid-area: status;
+}
+.terrain-map .terrain-hud > .terrain-layers-toggle {
+  grid-area: layers;
+  justify-self: start;
+  max-width: none;
+}
+.terrain-map .terrain-hud > .terrain-aerial-toggle {
+  grid-area: aerial;
+  justify-self: end;
+  max-width: none;
+  white-space: nowrap;
+}
+.terrain-map .terrain-hud > .terrain-layer-sheet {
+  grid-area: sheet;
+  align-self: end;
+  justify-self: start;
+  width: min(23rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+.terrain-map .terrain-hud > .infrastructure-card {
+  grid-area: infra;
+  align-self: end;
+  justify-self: end;
+  width: min(21rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+.terrain-map .terrain-hud > .terrain-readout {
+  grid-area: readout;
+}
+
+@media (max-width: 640px) {
+  .terrain-map .terrain-hud {
+    gap: 0.45rem;
+    padding: 0.7rem 0.6rem 2.4rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "place   nav"
+      "inspect nav"
+      "notice  nav"
+      "sheet   sheet"
+      "status  status"
+      "layers  aerial"
+      "readout readout";
+  }
+  .terrain-map .terrain-hud > .terrain-layer-sheet,
+  .terrain-map .terrain-hud > .infrastructure-card {
+    grid-area: sheet;
+    width: auto;
+    justify-self: stretch;
+  }
+  /* Six buttons in one column ran half the height of a phone's map. */
+  .terrain-map .terrain-hud > .terrain-navigation {
+    display: grid;
+    grid-template-columns: repeat(2, 44px);
+  }
+  /* The credits start expanded and fold to an (i) at the first drag. While
+     they are open they wrap to several lines, so the bottom row of controls
+     stands above them instead of under them. */
+  .terrain-map:has(.maplibregl-compact-show) .terrain-hud {
+    padding-bottom: 6rem;
+  }
+}
+
+/* --- Compare view labels ------------------------------------------------ */
+
+/* No display here: the district labels rely on Tailwind's hidden/sm:block. */
+.map-stage .scene-label {
+  min-height: 44px;
+  min-width: 44px;
+}
+.map-stage .scene-label.is-dot {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  font-size: 0;
+  overflow: hidden;
+}
+.map-stage .scene-label.is-dot > span {
+  display: none;
+}
+.map-stage .scene-label.is-dot::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgb(var(--paper));
+  border: 2px solid rgb(var(--ink) / 0.55);
+  box-shadow: 0 2px 6px #0003;
+}
+
+/* --- Targets that were under a fingertip -------------------------------- */
+
+.anatomy-stage .anatomy-hud .anatomy-breadcrumb button,
+.anatomy-stage .anatomy-hud .anatomy-slider input,
+.anatomy-stage .anatomy-hud .anatomy-reassemble {
+  min-height: 44px;
+}
+/* The model's place and slice labels are its main controls. */
+.anatomy-stage .anatomy-label:not(.is-dot),
+.anatomy-stage .anatomy-slice-label {
+  min-height: 44px;
+}
+.terrain-experience .notice-filter button,
+.terrain-experience .province-search,
+.terrain-experience .province-search input {
+  min-height: 44px;
+}
+.terrain-experience .dossier-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

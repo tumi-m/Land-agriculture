@@ -15,6 +15,7 @@ import type { ProvinceCode } from "@/lib/types";
 import { METRICS, type Metric, valueOf } from "@/lib/land-metrics";
 import { LAND_RAMP_DARK, LAND_RAMP_LIGHT, SCENE } from "@/design/ramps";
 import { readToken } from "@/lib/tokens";
+import { labelCap, placeLabels, type LabelBox } from "@/lib/placement";
 
 const MAX_HEIGHT = 30;
 const BASE = 0.6;
@@ -27,6 +28,15 @@ const LIFT = 5;
 /** Where the camera arrives from, and where it settles. */
 const INTRO_FROM = new THREE.Vector3(-10, 148, 60);
 const INTRO_TO = new THREE.Vector3(-12, 74, 104);
+
+/**
+ * How far to stand back from the country. A portrait canvas is constrained
+ * horizontally; a landscape one still has to fit the tallest bar, which the
+ * default framing cut off at the top of a stage sized to the viewport.
+ */
+function pullFor(width: number): number {
+  return width < 640 ? 1.18 : 1.1;
+}
 
 /** Ramp steps from the data ramps, so 2D and 3D agree. */
 const RAMP_LIGHT = LAND_RAMP_LIGHT;
@@ -217,8 +227,7 @@ export default function LandScene({
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    // A portrait canvas is constrained horizontally, so stand further back.
-    const pull = narrow ? 1.18 : 1;
+    const pull = pullFor(el.clientWidth);
     cam.position.copy(reduced ? INTRO_TO : INTRO_FROM).multiplyScalar(pull);
     if (!reduced) intro.current = performance.now();
     camera.current = cam;
@@ -418,6 +427,8 @@ export default function LandScene({
     gl.domElement.addEventListener("pointerleave", onLeave);
 
     const introPull = pull;
+    const labelSizes = new Map<string, { width: number; height: number }>();
+    const labelBoxes: LabelBox[] = [];
     let frame = 0;
     const clock = new THREE.Clock();
 
@@ -595,7 +606,31 @@ export default function LandScene({
         el.style.opacity = hidden ? "0" : "1";
         el.style.pointerEvents = hidden ? "none" : "auto";
         el.tabIndex = hidden ? -1 : 0;
+        if (!hidden) {
+          // Measured in the full form only: a dot would report that it fits.
+          if (!el.classList.contains("is-dot"))
+            labelSizes.set(o.code, {
+              width: el.offsetWidth,
+              height: el.offsetHeight,
+            });
+          const size = labelSizes.get(o.code) ?? { width: 44, height: 44 };
+          labelBoxes.push({
+            id: o.code,
+            x: ((world.x + 1) / 2) * width,
+            y: ((-world.y + 1) / 2) * height,
+            width: size.width,
+            height: size.height,
+            // Taller bars first: they are the figures the view is about.
+            rank: Math.round(o.currentScale * 1000),
+          });
+        }
       }
+      // On a phone the nine labels fought over one strip and stacked; the
+      // shorter bar's label becomes a dot, still a named, tappable control.
+      const dotted = new Set(placeLabels(labelBoxes, labelCap(width)).dotted);
+      for (const [code, el] of labelRefs.current)
+        el.classList.toggle("is-dot", dotted.has(code));
+      labelBoxes.length = 0;
 
       const openList = open ? districts.current.get(open) : null;
       for (const [id, node] of districtLabelRefs.current) {
@@ -830,7 +865,15 @@ export default function LandScene({
     setRotating(false);
     orbit.autoRotate = false;
     orbit.target.set(0, 0, 0);
-    cam.position.copy(flat ? new THREE.Vector3(0, 135, 0.1) : INTRO_TO);
+    // The same distance the intro settled at, or a reset lands closer
+    // than the view it resets to.
+    cam.position.copy(
+      flat
+        ? new THREE.Vector3(0, 135, 0.1)
+        : INTRO_TO.clone().multiplyScalar(
+            pullFor(renderer.current?.domElement.clientWidth ?? 1024),
+          ),
+    );
     orbit.update();
   };
 
