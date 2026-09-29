@@ -663,3 +663,29 @@ Everything below is off under `prefers-reduced-motion`.
 
 **Checks:** 222 unit tests, build, budget 191.5 of 230 kB, full e2e 28/28
 against the production build with no baseline changes.
+
+## Landed 28 Sep 2026 — round 5: phone and keyboard
+
+- **The map takes the keyboard.** The canvas is a focusable
+  `role="application"` with `aria-keyshortcuts`: arrows turn and tilt
+  (within the orbit limits), `+`/`−` zoom, `0` reframes. It shows a focus
+  ring on the dark stage.
+- **Changes are announced.** A polite live region says what the scene just
+  did — "Limpopo opened: 5 districts.", "Vhembe District, Water & climate
+  layer."
+- **Pull down to close** (`src/lib/useSwipeDown.ts`). On the compact layout
+  the information and controls sheets close when their header is pulled
+  down past 90 px, follow the finger while dragging, spring back if let go
+  early, and show a grab handle. Presses on the header's buttons are left
+  to the buttons.
+- **First visit.** Province names beckon three times after the opening
+  shot, until anything has been opened (`localStorage`, wrapped for private
+  modes), and never again.
+- **`data-settled`** on the stage turns true on the first frame without a
+  camera flight — the opening landed, was cancelled, or never ran. The specs
+  that click labels wait for it: one run clicked "Limpopo" mid-glide and
+  missed.
+
+**Checks:** 222 unit tests; two new e2e (keyboard + announcement, pull to
+close); full e2e 30/30 twice in a row against the production build;
+budget 191.5 of 230 kB.

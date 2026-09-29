@@ -622,3 +622,56 @@
       #03101480 100%
     );
 }
+
+/* --- Keyboard and touch -------------------------------------------------- */
+
+/* The map itself takes focus for the arrow keys; show where focus is. */
+.anatomy-stage .anatomy-canvas:focus-visible {
+  outline: 2px solid #ecf5b0;
+  outline-offset: -4px;
+}
+
+/* A first visit: the province names beckon three times after the opening
+   shot, then stop. Never again once anything has been opened. */
+.anatomy-stage.is-fresh .anatomy-label:not(.is-dot) {
+  animation: shell-beckon 1.6s ease-in-out 3.2s 3;
+}
+@keyframes shell-beckon {
+  0%,
+  100% {
+    box-shadow: 0 6px 15px #05131744;
+  }
+  50% {
+    box-shadow:
+      0 6px 15px #05131744,
+      0 0 0 5px #d5e69e55;
+    border-color: #d8efa2;
+  }
+}
+
+@media (max-width: 1100px) {
+  /* The sheet's header is the handle: pull it down to close. */
+  .anatomy-stage .anatomy-dossier-head,
+  .anatomy-stage .anatomy-controls-heading {
+    touch-action: none;
+    cursor: grab;
+  }
+  .anatomy-stage .anatomy-dossier-head::before,
+  .anatomy-stage .anatomy-controls-heading::before {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: #9fbdb366;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-stage.is-fresh .anatomy-label:not(.is-dot) {
+    animation: none;
+  }
+}

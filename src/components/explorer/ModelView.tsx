@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import * as THREE from "three";
 import {
@@ -39,6 +40,7 @@ import {
 } from "@/scene/camera";
 import { createSceneCore } from "@/scene/core";
 import { easeOut, prefersReducedMotion } from "@/lib/useTween";
+import { useSwipeDown } from "@/lib/useSwipeDown";
 import { pieceTransforms } from "@/scene/depth";
 import {
   applyReliefToPieces,
@@ -65,6 +67,7 @@ import {
 
 /** How long the camera flight to a new selection takes. */
 const FLIGHT_MS = 1000;
+const EXPLORED_KEY = "asbonge-explored";
 export { EXTRUDE_DEPTH, makePiece } from "@/scene/pieces";
 
 /**
@@ -123,6 +126,17 @@ export default function ModelView({
     sliceLabels = useRef(new Map<string, HTMLButtonElement>());
   const leaders = useRef(new Map<string, SVGLineElement>());
   const [infoOpen, setInfoOpen] = useState(!!district);
+  // A first visit: the province names pulse gently, a few times, to show
+  // they are the way in. Once anything has been opened, never again.
+  const [fresh, setFresh] = useState(false);
+  useEffect(() => {
+    try {
+      if (selected) localStorage.setItem(EXPLORED_KEY, "1");
+      setFresh(!selected && localStorage.getItem(EXPLORED_KEY) !== "1");
+    } catch {
+      setFresh(false);
+    }
+  }, [selected]);
   const [controlsOpen, setControlsOpen] = useState(false);
   // The open slice is part of the place, so a link can carry it: a district
   // on its own opens on Government land, and at=layer:… opens the slice named.
@@ -131,6 +145,9 @@ export default function ModelView({
   );
   const selectLayer = useExplorer((s) => s.selectLayer);
   const [ready, setReady] = useState(false),
+    // The opening shot has landed (or never ran). Exposed as data-settled
+    // so tests can wait for labels to stop moving before clicking them.
+    [settled, setSettled] = useState(false),
     [relief, setRelief] = useState(false),
     [reliefFailed, setReliefFailed] = useState(false),
     [water, setWater] = useState(false),
@@ -153,6 +170,11 @@ export default function ModelView({
     : selected
       ? "Pull the province apart."
       : "A country you can open.";
+  const announcement = districtShape
+    ? `${districtShape.name}, ${layerMeta.name} layer.`
+    : selected
+      ? `${PROVINCES[selected].name} opened: ${DISTRICTS_BY_PROVINCE[selected].length} districts.`
+      : "South Africa: nine provinces.";
   const notices =
     selected && district
       ? noticesForDistrict(selected, district)
@@ -556,6 +578,7 @@ export default function ModelView({
       pending.length = 0;
     };
 
+    let openingDone = false;
     let rippleFor: string | null = null;
     let rippleAt = 0;
     let peelFor: string | null = null;
@@ -787,6 +810,12 @@ export default function ModelView({
         controls.target.lerpVectors(flight.targetFrom, flight.targetTo, e);
         if (t === 1) flight = null;
       }
+      // Whether the opening shot landed, was cancelled by a drag or a
+      // preset, or never ran, the first frame without a flight settles it.
+      if (!flight && !openingDone) {
+        openingDone = true;
+        setSettled(true);
+      }
       if (!flight) {
         // Which preset the current angle matches — null once the user orbits
         // away from all three. Kept in the store so the chrome can show it.
@@ -934,6 +963,45 @@ export default function ModelView({
     engine.camera.position.copy(engine.controls.target).add(offset);
     engine.wake();
   };
+  /** Turns the camera around what it is looking at, for the keyboard. */
+  const orbitBy = (azimuth: number, polar: number) => {
+    const engine = core.current;
+    if (!engine) return;
+    cancelFlight.current();
+    const { camera, controls } = engine;
+    const offset = camera.position.clone().sub(controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta += azimuth;
+    spherical.phi = THREE.MathUtils.clamp(
+      spherical.phi + polar,
+      controls.minPolarAngle,
+      controls.maxPolarAngle,
+    );
+    offset.setFromSpherical(spherical);
+    camera.position.copy(controls.target).add(offset);
+    engine.wake();
+  };
+  const STEP = Math.PI / 12;
+  const onStageKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const act: Record<string, () => void> = {
+      ArrowLeft: () => orbitBy(-STEP, 0),
+      ArrowRight: () => orbitBy(STEP, 0),
+      ArrowUp: () => orbitBy(0, -STEP / 2),
+      ArrowDown: () => orbitBy(0, STEP / 2),
+      "+": () => zoom(0.8),
+      "=": () => zoom(0.8),
+      "-": () => zoom(1.25),
+      "0": () => frameScene.current(),
+    };
+    const run = act[event.key];
+    if (!run || event.altKey || event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    run();
+  };
+  const closeInfo = () => setInfoOpen(false);
+  const closeControls = () => setControlsOpen(false);
+  const swipeInfo = useSwipeDown(closeInfo);
+  const swipeControls = useSwipeDown(closeControls);
   const chooseDistrict = (id: string) => {
     setHidden(new Set());
     setInfoOpen(true);
@@ -958,13 +1026,25 @@ export default function ModelView({
     engine.wake();
   };
   return (
-    <div className="anatomy-stage" data-camera={cameraPreset ?? "free"}>
+    <div
+      className={`anatomy-stage${fresh ? " is-fresh" : ""}`}
+      data-camera={cameraPreset ?? "free"}
+      data-settled={settled}
+    >
       <div
         ref={host}
         className="anatomy-canvas"
-        role="img"
-        aria-label="Exploded 3D map. Use the named region buttons or region selector to explore; drag to orbit and pinch to zoom."
+        role="application"
+        tabIndex={0}
+        onKeyDown={onStageKey}
+        aria-roledescription="3D map"
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
+        aria-label="Exploded 3D map. Arrow keys turn and tilt it, plus and minus zoom, 0 reframes. Use the named region buttons or the region selector to explore; drag to orbit and pinch to zoom."
       />
+      {/* What just happened, for someone who cannot see the scene change. */}
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
       {!ready && !failed && (
         <div className="anatomy-loading">Assembling the land…</div>
       )}
@@ -1155,7 +1235,7 @@ export default function ModelView({
         </div>
         {infoOpen && (
           <div className="anatomy-dossier" id="anatomy-layer-details">
-            <div className="anatomy-dossier-head">
+            <div className="anatomy-dossier-head" {...swipeInfo}>
               <span style={{ color: layerMeta.colour }}>
                 ● {districtShape ? layerMeta.name : "Government land"}
               </span>
@@ -1207,7 +1287,7 @@ export default function ModelView({
           className={`anatomy-console ${controlsOpen ? "is-open" : ""}`}
           id="anatomy-region-controls"
         >
-          <div className="anatomy-controls-heading">
+          <div className="anatomy-controls-heading" {...swipeControls}>
             <strong>Regions & layers</strong>
             <button
               onClick={() => setControlsOpen(false)}

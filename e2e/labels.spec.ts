@@ -33,7 +33,8 @@ for (const width of [390, 1440]) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     await page.goto("/");
-    await expect(page.locator(".anatomy-stage")).toBeVisible({
+    // Settled: the opening shot has landed, so labels have stopped moving.
+    await expect(page.locator(".anatomy-stage[data-settled='true']")).toBeVisible({
       timeout: 20_000,
     });
 
@@ -57,7 +58,8 @@ test("an overflow label stays a control, with its name intact", async ({
   // A phone at full depth is where the cap actually bites.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".anatomy-stage")).toBeVisible({ timeout: 20_000 });
+  // Settled: the opening shot has landed, so labels have stopped moving.
+  await expect(page.locator(".anatomy-stage[data-settled='true']")).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Limpopo" }).first().click();
   await setDepth(page, "1");
   await page.waitForTimeout(900);
