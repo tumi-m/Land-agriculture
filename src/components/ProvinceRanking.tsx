@@ -41,13 +41,13 @@ export default function ProvinceRanking({
                 Province
               </th>
               <th scope="col" className="eyebrow pb-2 font-normal">
-                Advertised Oct 2020
+                Advertised Oct 2020 · ha
               </th>
               <th scope="col" className="eyebrow pb-2 text-right font-normal">
-                Released Feb
+                Released Feb 2020 · ha
               </th>
               <th scope="col" className="eyebrow hidden pb-2 text-right font-normal xl:table-cell">
-                State land
+                State land · %
               </th>
             </tr>
           </thead>
@@ -82,7 +82,7 @@ export default function ProvinceRanking({
                       <span className="flex items-center gap-2">
                         <span
                           className={cx(
-                            'block h-4 rounded-r-[4px] transition-colors duration-200',
+                            'grow-bar block h-4 rounded-r-[4px] transition-colors duration-200',
                             isSelected ? 'bg-clay' : 'bg-land-500',
                           )}
                           style={{ width: `${Math.max(width, 1.5)}%` }}

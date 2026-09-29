@@ -145,3 +145,39 @@
     animation: none;
   }
 }
+
+/* --- The guide ---------------------------------------------------------- */
+
+/* The section being read is marked in the sticky section bar. */
+.guide-sections a[aria-current="location"] {
+  color: rgb(var(--ink));
+  border-bottom-color: rgb(var(--clay));
+}
+
+/* Bars grow from their baseline as they scroll into view, so each figure is
+   read as it arrives; sections rise in. Only where the browser can tie an
+   animation to scrolling — elsewhere everything is simply in place. */
+@supports (animation-timeline: view()) {
+  .grow-bar {
+    transform-origin: left center;
+    animation: motion-grow linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 30%;
+  }
+  .guide-reveal {
+    animation: motion-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+@keyframes motion-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grow-bar,
+  .guide-reveal {
+    animation: none;
+  }
+}

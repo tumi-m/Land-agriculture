@@ -13,6 +13,7 @@ import {
 } from "@/components/Sections";
 import { CONTENT_REVIEWED, SOURCE_NOTE } from "@/content/meta";
 import { PathfinderPanel, RankingPanel } from "./panels";
+import SectionNav from "./SectionNav";
 
 export const metadata: Metadata = {
   title: "Application guide | Asbonge Land Locator",
@@ -46,7 +47,7 @@ function Section({
           {title}
         </h2>
       </div>
-      <div className="mt-7">{children}</div>
+      <div className="guide-reveal mt-7">{children}</div>
     </section>
   );
 }
@@ -71,23 +72,9 @@ export default function GuidePage() {
         </nav>
       </header>
 
-      <div className="sticky top-[4.5rem] z-30 border-b border-rule bg-paper/90 backdrop-blur">
+      <div className="sticky top-[var(--header-h,4.5rem)] z-30 border-b border-rule bg-paper/90 backdrop-blur">
         <div className="mx-auto max-w-[96rem] overflow-x-auto px-4 lg:px-6">
-          <nav
-            aria-label="Guide sections"
-            className="flex gap-1 whitespace-nowrap py-1"
-          >
-            {SECTIONS.map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="flex items-baseline gap-2 border-b-2 border-transparent px-3 py-2 text-sm text-muted transition-colors hover:text-ink"
-              >
-                <span className="num text-2xs text-faint">{s.n}</span>
-                {s.label}
-              </a>
-            ))}
-          </nav>
+          <SectionNav sections={SECTIONS} />
         </div>
       </div>
 

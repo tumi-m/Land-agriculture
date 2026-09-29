@@ -160,7 +160,7 @@ export function ProcessSection() {
                   </span>
                   <span
                     className={cx(
-                      'mt-2 block h-2 origin-left transition-colors',
+                      'grow-bar mt-2 block h-2 origin-left transition-colors',
                       open ? 'bg-clay' : 'bg-land-300',
                     )}
                     style={{ width: `${(stage.days / TOTAL_DAYS) * 100}%`, minWidth: '8px' }}
@@ -241,7 +241,7 @@ export function FinanceSection() {
                 <p className="num text-xs text-muted">{tier.turnover}</p>
               </div>
               <div
-                className="mt-2 flex h-8 w-full overflow-hidden"
+                className="grow-bar mt-2 flex h-8 w-full overflow-hidden"
                 role="img"
                 aria-label={`${tier.grantPct} percent grant, ${tier.loanPct} percent loan, capped at ${tier.capLabel}`}
               >

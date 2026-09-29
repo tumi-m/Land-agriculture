@@ -689,3 +689,26 @@ against the production build with no baseline changes.
 **Checks:** 222 unit tests; two new e2e (keyboard + announcement, pull to
 close); full e2e 30/30 twice in a row against the production build;
 budget 191.5 of 230 kB.
+
+## Landed 29 Sep 2026 — round 6: the guide and verify pages
+
+- **Where you are in the guide.** The sticky section bar marks the section
+  being read (`aria-current="location"`, `src/app/guide/SectionNav.tsx`)
+  and, on a phone where the bar scrolls sideways, keeps it in view. The bar
+  now sits under the header at the header's real height (`--header-h`), not
+  the desktop one.
+- **Phone headers had no way back.** Below 1100 px the guide and verify
+  headers hid their links along with the explorer's, leaving the logo as the
+  only route to the map. Headers without actions keep their links.
+- **Units on the province table**: "Advertised Oct 2020 · ha",
+  "Released Feb 2020 · ha", "State land · %".
+- **Bars grow and sections rise as they scroll into view** — the province
+  table, the finance splits and the process timeline — where the browser
+  supports scroll-driven animation; elsewhere, and under reduced motion,
+  they are simply in place.
+
+**Six rounds, measured.** Quality harness from before round 1 to now:
+overlapping text 464 → 0, text below AA 72 → 0, touch targets under
+44 px 668 → 57 (what remains is the hidden skip link and the map's inline
+credit links). Full e2e 30/30 against the production build; 222 unit tests;
+first-load JS 191.5 of 230 kB.
