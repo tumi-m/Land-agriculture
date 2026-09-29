@@ -105,10 +105,22 @@
   background: transparent;
 }
 .terrain-experience .explorer-bar .metric-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--count, 3), minmax(0, 1fr));
   margin-left: auto;
+  padding: 4px;
+}
+/* The measure switch slides the same way the view switch does. */
+.terrain-experience .explorer-bar .metric-switch .view-switch-thumb {
+  width: calc((100% - 8px) / var(--count, 3));
 }
 .terrain-experience .explorer-bar .metric-switch button {
+  position: relative;
+  z-index: 1;
   min-height: 44px;
+  background: transparent;
+  box-shadow: none;
 }
 .terrain-experience .explorer-bar .map-workspace-actions {
   display: flex;

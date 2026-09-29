@@ -427,6 +427,8 @@ export default function LandScene({
     gl.domElement.addEventListener("pointerleave", onLeave);
 
     const introPull = pull;
+    const growFrom = performance.now();
+    const GROW_STEP_MS = 70;
     const labelSizes = new Map<string, { width: number; height: number }>();
     const labelBoxes: LabelBox[] = [];
     let frame = 0;
@@ -465,7 +467,7 @@ export default function LandScene({
       setHover((prev) => (prev === hitCode ? prev : hitCode));
       setHoverDistrict((prev) => (prev === hitDistrict ? prev : hitDistrict));
 
-      for (const o of objects.current) {
+      for (const [index, o] of objects.current.entries()) {
         const isSelected = selectedRef.current === o.code;
         const isHovered = hitCode === o.code;
         const dimmed = selectedRef.current !== null && !isSelected;
@@ -477,8 +479,12 @@ export default function LandScene({
         // The rest of the country drops to a flat plate; the opened province
         // hands over to its districts as the burst runs.
         const wantScale = dimmed ? GHOST : o.targetScale;
-        o.currentScale +=
-          (wantScale - o.currentScale) * (reduced ? 1 : Math.min(1, dt * 4.5));
+        // On arrival the bars rise one province after another rather than
+        // all at once, so each figure is read as it lands.
+        const waiting = !reduced && now - growFrom < index * GROW_STEP_MS;
+        if (!waiting)
+          o.currentScale +=
+            (wantScale - o.currentScale) * (reduced ? 1 : Math.min(1, dt * 4.5));
         o.group.scale.y = o.currentScale;
         o.group.visible = !(isSelected && easedBurst > 0.04);
 

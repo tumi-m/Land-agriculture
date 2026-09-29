@@ -63,7 +63,81 @@
   animation-delay: calc(120ms + var(--i, 0) * 55ms);
 }
 
+/* Labels fade as the level changes instead of blinking in and out. Opacity
+   only: their position is written every frame and must not lag behind the
+   land it names. */
+.anatomy-stage .anatomy-label,
+.anatomy-stage .anatomy-slice-label {
+  transition: opacity 220ms var(--motion-ease);
+}
+
+/* Switching between the exploded map, the terrain and the comparison: the
+   new stage settles in rather than cutting. Opacity and a small scale only —
+   a blur over a live WebGL canvas stalls software compositing. */
+.map-stage > :first-child {
+  /* backwards, not both: a transform animation left filling makes the
+     stage a stacking context for good. */
+  animation: motion-stage 520ms var(--motion-ease) backwards;
+}
+@keyframes motion-stage {
+  from {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+}
+
+/* Primary actions answer a press. */
+.btn-solid,
+.anatomy-reassemble,
+.anatomy-stage .anatomy-mobile-dock button,
+.terrain-layers-toggle,
+.terrain-aerial-toggle,
+.anatomy-isolate,
+.anatomy-terrain-link {
+  transition:
+    transform 160ms var(--motion-ease),
+    background-color 200ms,
+    color 200ms;
+}
+.btn-solid:active,
+.anatomy-reassemble:active,
+.anatomy-stage .anatomy-mobile-dock button:active,
+.terrain-layers-toggle:active,
+.terrain-aerial-toggle:active,
+.anatomy-isolate:active,
+.anatomy-terrain-link:active {
+  transform: scale(0.97);
+}
+
+/* The next-steps cards rise into place as they scroll into view, where the
+   browser can tie an animation to scrolling; elsewhere they are simply
+   there. */
+@supports (animation-timeline: view()) {
+  .next-steps > * {
+    animation: motion-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .anatomy-stage .anatomy-label,
+  .anatomy-stage .anatomy-slice-label {
+    transition: none;
+  }
+  .map-stage > :first-child,
+  .next-steps > * {
+    animation: none;
+  }
+  .btn-solid:active,
+  .anatomy-reassemble:active,
+  .anatomy-stage .anatomy-mobile-dock button:active,
+  .terrain-layers-toggle:active,
+  .terrain-aerial-toggle:active,
+  .anatomy-isolate:active,
+  .anatomy-terrain-link:active {
+    transform: none;
+  }
   .anatomy-word > span,
   .anatomy-hint,
   .anatomy-dossier,

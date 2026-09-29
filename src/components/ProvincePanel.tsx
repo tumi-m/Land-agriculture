@@ -3,8 +3,12 @@
 import ParcelCard from "./ParcelCard";
 import { DISTRICTS_BY_PROVINCE } from "@/lib/geo";
 import { PROVINCES } from "@/content/provinces";
-import { cx, group } from "@/lib/format";
+import { cx, decimal, group } from "@/lib/format";
 import type { Listing, ProvinceCode } from "@/lib/types";
+import type { ReactNode } from "react";
+import { CountUp } from "./ui/CountUp";
+
+const whole = (n: number) => group(Math.round(n));
 
 /**
  * Slides over the map when a province is opened, and cascades in: each block
@@ -75,18 +79,35 @@ export default function ProvincePanel({
         >
           <Stat
             label="Advertised"
-            value={p.advertised2020 > 0 ? group(p.advertised2020) : "0"}
+            value={<CountUp value={Math.max(0, p.advertised2020)} format={whole} />}
             unit="ha"
           />
           <Stat
             label="Released"
-            value={p.released2020 !== null ? group(p.released2020) : "—"}
+            value={
+              p.released2020 !== null ? (
+                <CountUp value={p.released2020} format={whole} />
+              ) : (
+                "—"
+              )
+            }
             unit={p.released2020 !== null ? "ha" : undefined}
           />
           <Stat
             label="State land"
             value={
-              p.stateLandSharePct !== null ? `${p.stateLandSharePct}%` : "—"
+              p.stateLandSharePct !== null ? (
+                <CountUp
+                  value={p.stateLandSharePct}
+                  // Rounded to the figure's own precision, so a future
+                  // 12.5% is never shown as 13%.
+                  format={(n) =>
+                    `${decimal(n, Number.isInteger(p.stateLandSharePct) ? 0 : 1)}%`
+                  }
+                />
+              ) : (
+                "—"
+              )
             }
           />
         </dl>
@@ -245,7 +266,7 @@ function Stat({
   unit,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   unit?: string;
 }) {
   return (

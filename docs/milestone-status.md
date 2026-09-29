@@ -636,3 +636,30 @@ and `src/styles/shell.css`; everything that moves is off under
 this is in the lazily loaded model chunk). Full e2e: 26 pass, the two phone
 baselines failed as intended; all four regenerated after the fog fix and
 the layout-sensitive specs re-run green.
+
+## Landed 28 Sep 2026 — round 4: motion that shows what changed
+
+Everything below is off under `prefers-reduced-motion`.
+
+- **Ripple explode** (`ModelView.tsx`). Opening a province resets its
+  districts to the assembled shape and releases each after a delay set by
+  its distance from the province's middle (up to 420 ms), so the land
+  comes apart from the centre outwards.
+- **Peel from the ground up.** A chosen district's slices separate bottom
+  first, 90 ms apart.
+- **Labels fade** (220 ms, opacity only — their position is written every
+  frame and must not lag the land it names).
+- **Views settle in.** Switching between the exploded map, the terrain and
+  the comparison fades and scales the new stage in (opacity and scale only;
+  a blur over live WebGL stalls software compositing; `backwards` fill so
+  the stage is not left a stacking context).
+- **Measure switch** slides a thumb like the view switch.
+- **Figures count** in the province panel through a new `CountUp`
+  primitive (`src/components/ui/CountUp.tsx`, on the same `useTween` as the
+  district card); the percentage is rounded to its own precision.
+- **Comparison bars rise** one province after another on arrival.
+- **Next-steps cards** rise as they scroll into view where the browser
+  supports scroll-driven animation; primary buttons answer a press.
+
+**Checks:** 222 unit tests, build, budget 191.5 of 230 kB, full e2e 28/28
+against the production build with no baseline changes.

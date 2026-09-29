@@ -556,6 +556,22 @@ export default function ModelView({
       pending.length = 0;
     };
 
+    let rippleFor: string | null = null;
+    let rippleAt = 0;
+    let peelFor: string | null = null;
+    let peelAt = 0;
+    const RIPPLE_MS = 420;
+    const PEEL_STEP_MS = 90;
+    /** How long a district waits before leaving: its distance from the
+     *  middle of its province, as a share of the province's size. */
+    const rippleDelay = (piece: (typeof districts)[number]) => {
+      const parent = provinces.find((p) => p.id === piece.province);
+      if (!parent || reduced) return 0;
+      const reach = Math.max(parent.size.x, parent.size.z) / 2 || 1;
+      const dx = piece.centre.x - parent.centre.x;
+      const dz = piece.centre.z - parent.centre.z;
+      return Math.min(1, Math.hypot(dx, dz) / reach) * RIPPLE_MS;
+    };
     const animate = (speed: number) => {
       const now = performance.now();
       // Keep drawing through the sunrise and the entrance: the loop sleeps
@@ -569,6 +585,21 @@ export default function ModelView({
       const solo = store.isolate ? isolatedDistrict(store.selection) : null;
       const transforms = pieceTransforms(depthInput());
       world.waterGroup.visible = !state.selected;
+      // Choreography clocks. Opening a province starts a ripple: districts
+      // leave the assembled province from its middle outwards, so the eye
+      // follows the land coming apart instead of watching it jump. Choosing
+      // a district peels its slices from the ground up.
+      if (state.selected !== rippleFor) {
+        rippleFor = state.selected;
+        rippleAt = now;
+        if (!reduced)
+          for (const d of districts)
+            if (d.province === state.selected) d.group.position.copy(d.centre);
+      }
+      if (state.district !== peelFor) {
+        peelFor = state.district;
+        peelAt = now;
+      }
       for (const p of provinces) {
         const transform = transforms.get(p.id);
         const muted = !!state.selected || !!transform?.ghost;
@@ -636,7 +667,8 @@ export default function ModelView({
           !chosen && p.id === hovering?.userData.id,
           speed,
         );
-        p.group.position.lerp(target, speed);
+        if (now - rippleAt >= rippleDelay(p)) p.group.position.lerp(target, speed);
+        else engine.wake();
         p.meshes.forEach((m, i) => {
           m.visible = !chosen || !store.hidden.has(LAND_LAYERS[i].id);
           // The chosen district's Peel slider trims its own separation; the
@@ -645,7 +677,10 @@ export default function ModelView({
             i,
             chosen ? state.peel : (transform?.layerGap ?? 0),
           );
-          m.position.y += (want - m.position.y) * speed;
+          // Bottom slice first, each one a beat after the one below it.
+          if (!chosen || reduced || now - peelAt >= i * PEEL_STEP_MS)
+            m.position.y += (want - m.position.y) * speed;
+          else engine.wake();
           const mat = m.material as THREE.MeshStandardMaterial;
           mat.opacity = 1;
           mat.emissive.set(LAND_LAYERS[i].colour);

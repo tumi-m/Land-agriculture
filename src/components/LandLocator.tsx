@@ -552,7 +552,17 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               aria-label="Historical province measure"
               className="metric-switch"
               hidden={showModel}
+              style={
+                {
+                  "--active": Math.max(
+                    0,
+                    METRICS.findIndex((m) => m.id === displayMetric),
+                  ),
+                  "--count": METRICS.length,
+                } as CSSProperties
+              }
             >
+              <span className="view-switch-thumb" aria-hidden="true" />
               {METRICS.map((m) => (
                 <button
                   key={m.id}
