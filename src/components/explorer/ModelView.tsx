@@ -35,12 +35,16 @@ import {
   DEFAULT_PRESET,
   presetDirection,
   presetFor,
-  visibleViewRegion,
+  sheetViewOffset,
   type CameraPresetId,
 } from "@/scene/camera";
 import { createSceneCore } from "@/scene/core";
 import { easeOut, prefersReducedMotion } from "@/lib/useTween";
 import { useSwipeDown } from "@/lib/useSwipeDown";
+import { loadSliceTexture } from "@/scene/textures";
+import LANDCOVER from "../../../public/data/layers/landcover.json";
+import SOIL_PH from "../../../public/data/layers/soil-ph.json";
+import RAIN from "../../../public/data/layers/rain.json";
 import { pieceTransforms } from "@/scene/depth";
 import {
   applyReliefToPieces,
@@ -157,6 +161,10 @@ export default function ModelView({
   const core = useRef<ReturnType<typeof createSceneCore>>(null);
   const frameScene = useRef<() => void>(() => {});
   const sheetFrame = useRef<(box: DOMRect | null) => void>(() => {});
+  /** Puts a texture on every district's matching slice. */
+  const drapeSlices = useRef<(textures: (THREE.Texture | null)[]) => void>(
+    () => {},
+  );
   /** Drops any camera flight in progress, so a preset or zoom is not undone. */
   const cancelFlight = useRef<() => void>(() => {});
   const latest = useRef({ selected, district, depth, peel, layer });
@@ -286,6 +294,19 @@ export default function ModelView({
     };
     world.provinces = provinces;
     world.districts = districts;
+    drapeSlices.current = (textures) => {
+      for (const piece of districts)
+        piece.meshes.forEach((mesh, i) => {
+          const texture = textures[i];
+          if (!texture) return;
+          const material = mesh.material as THREE.MeshStandardMaterial;
+          material.map = texture;
+          // The map carries the colour now; the relief tint still multiplies.
+          material.color.set(SCENE.white);
+          material.needsUpdate = true;
+        });
+      engine.wake();
+    };
     world.allBox = allBox;
     world.centre = centre;
 
@@ -414,6 +435,8 @@ export default function ModelView({
      * Frames the selection. `setViewOffset`, applied through `setSheet`,
      * already biases the visible region around an open sheet.
      */
+    /** How much further back to stand while a sheet narrows the view. */
+    let sheetScale = 1;
     const frame = () => {
       engine.wake();
       const { selected, district } = latest.current;
@@ -432,7 +455,7 @@ export default function ModelView({
         (child ?? parent)?.size ?? allBox.getSize(new THREE.Vector3());
       const span = Math.max(size.x + 30, size.z + 30, child ? 48 : 0);
       const aspect = Math.min(camera.aspect, 1.4);
-      const distance = modelDistance(span, aspect, camera.fov);
+      const distance = modelDistance(span, aspect, camera.fov) * sheetScale;
       // The mount effects re-frame the same place straight away; let the
       // opening shot finish rather than cutting it short.
       if (flight?.duration && flight.targetTo.distanceTo(target) < 0.01) return;
@@ -458,6 +481,10 @@ export default function ModelView({
       if (!box || width < 1 || height < 1) {
         camera.clearViewOffset();
         camera.updateProjectionMatrix();
+        if (sheetScale !== 1) {
+          sheetScale = 1;
+          frame();
+        }
         return;
       }
       // The sheet is measured in the page's coordinates; the camera needs
@@ -467,22 +494,29 @@ export default function ModelView({
       const left = box.left - stage.left;
       const top = box.top - stage.top;
       // A side sheet on a wide stage, a bottom sheet on a narrow one.
+      // A bottom sheet also leaves the breadcrumb above the model (the
+      // heading steps aside while a sheet is open on a small screen).
+      const crumb = el.parentElement
+        ?.querySelector<HTMLElement>(".anatomy-breadcrumb")
+        ?.getBoundingClientRect();
       const inset =
         box.width < width * 0.6
           ? { right: Math.round(width - left) }
-          : { bottom: Math.round(height - top) };
-      const region = visibleViewRegion(width, height, inset);
-      if (region)
-        camera.setViewOffset(
-          width,
-          height,
-          region.x,
-          region.y,
-          region.width,
-          region.height,
-        );
+          : {
+              bottom: Math.round(height - top),
+              top: crumb ? Math.max(0, Math.round(crumb.bottom - stage.top)) : 0,
+            };
+      const offset = sheetViewOffset(width, height, inset);
+      if (offset)
+        camera.setViewOffset(width, height, offset.x, offset.y, width, height);
       else camera.clearViewOffset();
       camera.updateProjectionMatrix();
+      // Re-frame when the free space changes size, so the piece fits it.
+      const scale = offset?.scale ?? 1;
+      if (Math.abs(scale - sheetScale) > 0.01) {
+        sheetScale = scale;
+        frame();
+      }
       engine.wake();
     };
     sheetFrame.current = setSheet;
@@ -936,6 +970,25 @@ export default function ModelView({
     if (!core.current) return;
     frameScene.current();
   }, [selected, district]);
+
+  // The slices wear the measurements they stand for: land cover, soil pH
+  // and rainfall, loaded the first time a province is opened (the slices
+  // only separate inside one). Government land keeps its flat colour.
+  const [draped, setDraped] = useState(false);
+  useEffect(() => {
+    if (!selected || draped) return;
+    let cancelled = false;
+    void Promise.all(LAND_LAYERS.map((l) => loadSliceTexture(l.id))).then(
+      (textures) => {
+        if (cancelled) return;
+        drapeSlices.current(textures);
+        setDraped(textures.some(Boolean));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, draped]);
 
   useEffect(() => {
     core.current?.wake();
@@ -1413,8 +1466,9 @@ export default function ModelView({
               : "Adding regional relief…"}
         </p>
         <p className="anatomy-footnote">
-          Geographic shapes · thematic slices, not measured soil strata · drag to
-          orbit · pinch to zoom
+          {draped && selected
+            ? `Slices: land cover ${LANDCOVER.source} (${LANDCOVER.date}); soil pH ${SOIL_PH.source} (${SOIL_PH.date}); rainfall ${RAIN.source} (${RAIN.date}) · each on a grid of about 1.7 km · slab thickness is not soil depth`
+            : "Geographic shapes · thematic slices, not measured soil strata · drag to orbit · pinch to zoom"}
         </p>
       </div>
     </div>

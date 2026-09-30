@@ -214,3 +214,23 @@ test("on a phone the information sheet closes when pulled down, not when nudged"
   await pull(180);
   await expect(sheet).toHaveCount(0);
 });
+
+test("opening a province drapes the slices with the measured rasters, and says whose", async ({
+  page,
+}) => {
+  const glErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /WebGL|GL_|THREE/.test(message.text()))
+      glErrors.push(message.text());
+  });
+  await page.goto("/?at=province:KZN&depth=1");
+  await expect(page.locator(".anatomy-stage[data-settled='true']")).toBeVisible({
+    timeout: 20_000,
+  });
+  const footnote = page.locator(".anatomy-footnote");
+  await expect(footnote).toContainText("ESA WorldCover 2021 v200");
+  await expect(footnote).toContainText("SoilGrids 2.0 pH");
+  await expect(footnote).toContainText("CHIRPS v2.0");
+  await expect(footnote).toContainText("slab thickness is not soil depth");
+  expect(glErrors).toEqual([]);
+});

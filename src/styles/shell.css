@@ -697,3 +697,13 @@
     display: none;
   }
 }
+
+/* On a small screen an open sheet takes the lower half; the heading and the
+   relief note step aside so the model has the space between the breadcrumb
+   and the sheet, and the labels stop landing on the heading. */
+@media (max-width: 1100px) {
+  .anatomy-stage .anatomy-hud:is(.info-open, .controls-open) > .anatomy-title,
+  .anatomy-stage .anatomy-hud:is(.info-open, .controls-open) > .anatomy-source {
+    display: none;
+  }
+}

@@ -9,6 +9,7 @@ import {
   presetFor,
   sheetInset,
   visibleViewRegion,
+  sheetViewOffset,
 } from "../src/scene/camera";
 
 test("the three presets are unit directions with a known angle", () => {
@@ -71,4 +72,23 @@ test("the visible region frames what the sheet leaves", () => {
     null,
     "a sliver of a viewport is not framed",
   );
+});
+
+test("an open sheet shifts the view into the free space instead of zooming it", () => {
+  // A 400 px side panel on the right: the frame's centre moves 200 px left,
+  // into the middle of the 1040 px that are left, and the camera stands back
+  // by the ratio of the widths so the piece still fits.
+  const side = sheetViewOffset(1440, 900, { right: 400 })!;
+  assert.equal(side.x, 200);
+  assert.equal(side.y, 0);
+  assert.ok(Math.abs(side.scale - 1440 / 1040) < 1e-9);
+  // A bottom sheet on a phone moves the centre up by half its height.
+  const bottom = sheetViewOffset(390, 844, { bottom: 320 })!;
+  assert.equal(bottom.x, 0);
+  assert.equal(bottom.y, 160);
+  // A sheet covering almost everything cannot be framed around, and the
+  // stand-back is capped so the model never shrinks to a speck.
+  assert.equal(sheetViewOffset(100, 100, { bottom: 90 }), null);
+  assert.ok(sheetViewOffset(1000, 800, { right: 900 })!.scale <= 1.8);
+  assert.equal(sheetViewOffset(1440, 900, {}), null);
 });

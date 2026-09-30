@@ -11,6 +11,7 @@ import { applyRelief, surfacePoint, type Dem } from "@/lib/dem";
 import { SCENE } from "@/design/ramps";
 import type { ProvinceCode } from "@/lib/types";
 import RIVERS from "@/data/sa-rivers.json";
+import { setPlanarUv } from "./textures";
 
 export interface Piece {
   id: string;
@@ -51,6 +52,9 @@ export function makePiece(
     bevelSegments: 2,
   });
   geometry3d.rotateX(-Math.PI / 2);
+  // District slices wear the baked rasters; the coordinates are taken now,
+  // while the positions are still in scene space.
+  if (stack) setPlanarUv(geometry3d, { x: 0, z: 0 });
   geometry3d.computeBoundingBox();
   const box = geometry3d.boundingBox!;
   const centre = box.getCenter(new THREE.Vector3());

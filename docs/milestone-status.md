@@ -39,7 +39,7 @@ origin/main `404d91f`):
 | P01 feed safety | none — new slice | next: `src/lib/source.ts`, `src/lib/types.ts` |
 | P11 store/URL wiring | M1.2 (codecs) done; integration open | `LandLocator.tsx` |
 | P15 budgets + initial-load resilience | M0.3–M0.5, QC1 done; initial-imagery debt open | `e2e/land.spec.ts`, Land view |
-| P16 terrain/scene | M1.3 landed; M1.4–M1.7, M2.1 open | scene set |
+| P16 terrain/scene | M1.3, M1.4, M2.1 landed; M1.5–M1.7 open | scene set |
 | P04/P06/P13 notices + cadastral | M2.5 owns files | unclaimed |
 | P19 soil honesty | M2.2 data done; UI wiring open | inspect cards |
 | P26 verifier trust | M5.0–M5.5 done; log binding open | `/verify` |
@@ -712,3 +712,40 @@ overlapping text 464 → 0, text below AA 72 → 0, touch targets under
 44 px 668 → 57 (what remains is the hidden skip link and the map's inline
 credit links). Full e2e 30/30 against the production build; 222 unit tests;
 first-load JS 191.5 of 230 kB.
+
+## Landed 30 Sep 2026 — M2.1: the slices wear their measurements
+
+`src/scene/textures.ts`, `tests/uv.test.ts`, `src/scene/pieces.ts`,
+`ModelView.tsx`, `src/scene/camera.ts`.
+
+The four slices of a district were flat colours. The land slice now shows
+ESA WorldCover 2021 (hard class edges, `NearestFilter`), the soil slice
+SoilGrids pH and the water slice CHIRPS 1991–2020 rainfall, each from the
+colour raster the land view already ships; government land keeps its flat
+colour. They load the first time a province is opened, and the footnote
+then names each source and date, the ~1.7 km grid, and that slab thickness
+is not soil depth.
+
+**Registration.** The rasters are longitude/latitude grids; the model is
+Mercator, and a slice's top is a few large triangles with no vertices
+inside, across which texture coordinates interpolate linearly. Coordinates
+taken from latitude would have drifted by tens of kilometres across 13° of
+latitude. Mercator is separable, so each raster's rows are resampled once
+into Mercator spacing and the coordinates become exact. `tests/uv.test.ts`
+pins the corners to 0/1, the rows to Mercator (the middle row sits several
+rows off a linear mapping), and a vertex over Johannesburg to Johannesburg's
+row. Walls take the colour of the cell at their foot, like a cut.
+
+**Found while checking it: the sheet framing zoomed instead of shifting.**
+`setViewOffset` was handed the free rectangle, which crops the frame and
+stretches it over the canvas — so with the side panel open the chosen
+district slid toward the panel and under it. `sheetViewOffset` (tested)
+shifts a full-size window by half the inset and stands the camera back by
+the ratio of the free space. On a phone the heading steps aside while a
+sheet is open and the model is framed between the breadcrumb and the sheet.
+
+**Checks:** 228 unit tests, full e2e 30/30 plus a new spec (province opens
+→ footnote names all three sources, no WebGL console errors), budget
+unchanged at 191.5 kB (the textures load with the model, not the page).
+Depth-1 screenshot of Vhembe shows four distinct slices — land cover,
+pH, rainfall (the Soutpansberg's wet core in dark blue), government land.

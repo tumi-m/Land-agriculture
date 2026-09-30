@@ -105,3 +105,33 @@ export function visibleViewRegion(
     return null;
   return { x: Math.round(left), y: Math.round(top), width: w, height: h };
 }
+
+/**
+ * How to shift the camera's view so what it is framing sits in the middle of
+ * the part of the canvas a sheet leaves free, and how much further back to
+ * stand so it still fits there.
+ *
+ * `setViewOffset(W, H, x, y, w, h)` draws the (x, y, w, h) window of a
+ * W×H image *stretched onto the whole canvas*. Handing it the free region
+ * (as the model did) cropped and zoomed the frame, which pushed the framed
+ * piece toward the sheet and under it. A full-size window shifted by half
+ * the inset moves the centre into the free region without zooming; the
+ * framing distance grows by `scale` so the piece fits the narrower space.
+ */
+export function sheetViewOffset(
+  width: number,
+  height: number,
+  inset: { left?: number; right?: number; top?: number; bottom?: number },
+): { x: number; y: number; scale: number } | null {
+  const region = visibleViewRegion(width, height, inset);
+  if (!region) return null;
+  const left = Math.max(0, inset.left ?? 0);
+  const right = Math.max(0, inset.right ?? 0);
+  const top = Math.max(0, inset.top ?? 0);
+  const bottom = Math.max(0, inset.bottom ?? 0);
+  return {
+    x: Math.round((right - left) / 2),
+    y: Math.round((bottom - top) / 2),
+    scale: Math.min(1.8, Math.max(width / region.width, height / region.height)),
+  };
+}
