@@ -824,4 +824,7 @@ looked at; the explainer rendered headless (621 frames, 20.7 s); the first
 full film render reviewed — length, size, frame rate, 750 of 750 frames,
 −16.1 LUFS, −2.2 dBTP, no black gaps, a picture in every scene, and one
 failure, the frozen stretch from 13.0 s described above. Fixed, and checked
-with frames 380–400 rendered in sequence.
+with frames 380–400 rendered in sequence. The full re-render then passed all
+14 review checks, the contact sheet shows the outline drawing on at 13 s,
+and ship wrote a 3.2 MB 1080p MP4, a 1.6 MB 720p MP4, a 2.2 MB WebM and the
+poster, each probed at 25.0 s.
