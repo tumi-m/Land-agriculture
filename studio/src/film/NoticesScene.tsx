@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AbsoluteFill, interpolate, staticFile, useCurrentFrame, useDelayRender } from "remotion";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
 import { Backdrop, SAFE, kicker, source } from "./Brand";
-import { COUNTS, MAP, NOTICE_PINS, SOURCES } from "./data";
+import { COUNTS, MAP, NOTICE_PINS, NOTICE_PLACEMENT, SOURCES } from "./data";
 import { PIN_FRAMES, SCENES, pinFrame } from "./timeline";
 import { PALETTE } from "./theme";
 import { FONTS } from "../lib/fonts";
@@ -33,8 +33,6 @@ const PIN_TIP = { x: 48 * (PIN_SIZE / 96), y: 76 * (PIN_SIZE / 96) };
 const PIN_LANDS = 12;
 
 const start = (i: number) => pinFrame(i) - SCENES.notices.from;
-const PLACED = NOTICE_PINS.reduce((sum, p) => sum + p.count, 0);
-const UNPLACED = COUNTS.notices - PLACED;
 const DONE = start(NOTICE_PINS.length - 1) + PIN_FRAMES;
 
 /** Loads a staged text file once, holding the render until it arrives. */
@@ -151,7 +149,9 @@ export function NoticesScene() {
   const frame = useCurrentFrame();
   const svg = useStaged("design/outline.svg");
   const pin = useStaged("design/pin.json");
-  const placed = NOTICE_PINS.reduce((sum, p, i) => (frame >= start(i) + PIN_LANDS ? sum + p.count : sum), 0);
+  // Distinct notices whose pin has landed: a notice with a pin in two
+  // districts counts once.
+  const placed = new Set(NOTICE_PINS.flatMap((p, i) => (frame >= start(i) + PIN_LANDS ? p.ids : []))).size;
   const settled = interpolate(frame, [DONE, DONE + 15], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
@@ -191,8 +191,11 @@ export function NoticesScene() {
           }}
         >
           Pins mark districts, not farm locations.
-          {UNPLACED === 1 && " 1 notice awaits confirmation of its district."}
-          {UNPLACED > 1 && ` ${UNPLACED} notices await confirmation of their districts.`}
+          {NOTICE_PLACEMENT.spanning === 1 && " One notice spans two districts and has a pin in each."}
+          {NOTICE_PLACEMENT.spanning > 1 &&
+            ` ${NOTICE_PLACEMENT.spanning} notices span two districts and have a pin in each.`}
+          {NOTICE_PLACEMENT.awaiting === 1 && " 1 notice awaits confirmation of its district."}
+          {NOTICE_PLACEMENT.awaiting > 1 && ` ${NOTICE_PLACEMENT.awaiting} notices await confirmation of their districts.`}
         </div>
         <div style={{ flexGrow: 1 }} />
         <div style={source}>{SOURCES.notices}</div>

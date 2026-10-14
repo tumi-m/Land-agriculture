@@ -48,6 +48,22 @@ export function noticeInDistrict(
       : district.name.toLowerCase().includes(notice.district.toLowerCase()))
   );
 }
+/**
+ * How the reviewed notices fall across districts. Counted by notice, never
+ * by adding up districts: a notice that spans two districts is placed once
+ * and also counted as spanning.
+ */
+export function noticePlacement(notices: FarmNotice[] = FARM_NOTICES) {
+  const districts = Object.values(DISTRICTS_BY_PROVINCE).flat();
+  const hits = notices.map((n) => districts.filter((d) => noticeInDistrict(n, d)).length);
+  return {
+    notices: notices.length,
+    placed: hits.filter((h) => h > 0).length,
+    spanning: hits.filter((h) => h > 1).length,
+    awaiting: hits.filter((h) => h === 0).length,
+    districts: districts.filter((d) => notices.some((n) => noticeInDistrict(n, d))).length,
+  };
+}
 export function noticesForDistrict(province: ProvinceCode, id: string) {
   const district = DISTRICTS_BY_PROVINCE[province].find((d) => d.id === id);
   return district

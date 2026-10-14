@@ -42,7 +42,8 @@ export const PROVINCE_PATHS = PROVINCE_SHAPES.map((p) => ({
 
 export interface NoticePin {
   district: string;
-  count: number;
+  /** The notices in this district. A notice spanning two districts is in both. */
+  ids: string[];
   x: number;
   y: number;
 }
@@ -50,16 +51,26 @@ export interface NoticePin {
 /**
  * One pin per district that has reviewed notices, at the district's centre.
  * A district centre is not a farm location — the film says so on screen.
- * Notices whose district is still awaiting confirmation get no pin.
+ * Notices whose district is still awaiting confirmation get no pin, and a
+ * notice that spans two districts gets one in each — so notices are counted
+ * by id, never by adding up pins.
  */
 export const NOTICE_PINS: NoticePin[] = DISTRICTS.map((d) => {
-  const count = FARM_NOTICES.filter((n) => noticeInDistrict(n, d)).length;
+  const ids = FARM_NOTICES.filter((n) => noticeInDistrict(n, d)).map((n) => n.id);
   const [lon, lat] = geoCentroid(d.geometry);
   const [x, y] = projection([lon, lat]) ?? [0, 0];
-  return { district: d.name, count, x, y };
+  return { district: d.name, ids, x, y };
 })
-  .filter((p) => p.count > 0)
+  .filter((p) => p.ids.length > 0)
   .sort((a, b) => a.x - b.x);
+
+/** How the notices fall: placed in a district, spanning two, or awaiting one. */
+const pinned = new Set(NOTICE_PINS.flatMap((p) => p.ids));
+export const NOTICE_PLACEMENT = {
+  placed: pinned.size,
+  awaiting: FARM_NOTICES.length - pinned.size,
+  spanning: FARM_NOTICES.filter((n) => NOTICE_PINS.filter((p) => p.ids.includes(n.id)).length > 1).length,
+};
 
 export const PROCESS = {
   stages: STAGES.map((s) => ({ id: s.id, actor: s.actor, name: s.name, days: s.days, duration: s.duration })),

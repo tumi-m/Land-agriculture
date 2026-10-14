@@ -767,9 +767,13 @@ The film's five scenes: the title (GSAP SplitText); the nine provinces
 falling into place (React Three Fiber, Rapier stepped once per frame from a
 snapshot, Drei text and outlines, bloom and depth of field); the outline
 drawn on with GSAP DrawSVG and a dotLottie pin dropped on each of the 22
-districts with reviewed notices, while the count climbs to 48 of 49 and the
-frame says one notice awaits its district and that pins mark districts, not
-farms; the five stages to scale; the end card.
+districts with reviewed notices, while the count climbs to 47 of 49 and the
+frame says that pins mark districts, not farms, that one notice spans two
+districts and that two await theirs (corrected on 14 Oct: the first cut
+added up pins, so the notice spanning two districts counted twice, and it
+said 48 placed with one awaiting; notices are now counted by id, through
+`noticePlacement` in `src/lib/exploded-map.ts`, tested); the five stages to
+scale; the end card.
 
 **Found while making it, each a blank or wrong frame first:** the effect
 composer adds its passes two renders after it mounts, and the hull colliders

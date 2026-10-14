@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { FARM_NOTICES } from "../src/content/farm-notices";
 import coverage from "../src/content/notice-coverage.json";
 import { DISTRICTS_BY_PROVINCE } from "../src/lib/geo";
-import { noticeInDistrict } from "../src/lib/exploded-map";
+import { noticeInDistrict, noticePlacement } from "../src/lib/exploded-map";
 
 /**
  * Rules for the notice records, checked against the tree rather than trusted.
@@ -143,4 +143,22 @@ test("the index snapshot still covers every province it claims", () => {
     9,
     `notices reach ${provinces.size} provinces, not 9`,
   );
+});
+
+test("placement counts each notice once, even one that spans two districts", () => {
+  const all = Object.values(DISTRICTS_BY_PROVINCE).flat();
+  const spans = (n: (typeof FARM_NOTICES)[number]) => all.filter((d) => noticeInDistrict(n, d)).length;
+  const placement = noticePlacement();
+  assert.equal(placement.notices, FARM_NOTICES.length);
+  assert.equal(placement.placed + placement.awaiting, placement.notices);
+  assert.equal(placement.placed, FARM_NOTICES.filter((n) => spans(n) > 0).length);
+  assert.equal(placement.spanning, FARM_NOTICES.filter((n) => spans(n) > 1).length);
+  // Adding up per-district counts double-counts a spanning notice; this is
+  // the mistake the count above exists to avoid.
+  const summed = all.reduce((sum, d) => sum + FARM_NOTICES.filter((n) => noticeInDistrict(n, d)).length, 0);
+  assert.equal(summed - placement.placed, FARM_NOTICES.reduce((extra, n) => extra + Math.max(0, spans(n) - 1), 0));
+  // An unmatched district name is awaiting, never guessed into a district.
+  for (const n of FARM_NOTICES.filter((n) => spans(n) === 0)) {
+    assert.match(n.district, /awaiting/i, `${n.name} matched no district`);
+  }
 });
