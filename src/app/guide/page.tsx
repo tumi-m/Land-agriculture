@@ -11,6 +11,7 @@ import {
   RiskSection,
   WhoHandlesWhat,
 } from "@/components/Sections";
+import FilmTour from "@/components/FilmTour";
 import { CONTENT_REVIEWED, SOURCE_NOTE } from "@/content/meta";
 import { PathfinderPanel, RankingPanel } from "./panels";
 import SectionNav from "./SectionNav";
@@ -79,6 +80,8 @@ export default function GuidePage() {
       </div>
 
       <main className="mx-auto max-w-[96rem] space-y-20 px-4 pb-20 pt-10 lg:px-6">
+        <FilmTour />
+
         <Section id="route" title="Which category are you?">
           <Suspense>
             <PathfinderPanel />

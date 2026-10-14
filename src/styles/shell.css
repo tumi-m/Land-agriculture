@@ -762,3 +762,47 @@
     width: 100%;
   }
 }
+
+/* The launch film on the guide: the video beside its words, stacked on a
+   phone. Nothing is fetched until it is played. */
+.film-tour {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .film-tour {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+}
+.film-tour-video {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 12px;
+  background: rgb(var(--ink));
+}
+.film-tour-text h2 {
+  margin-top: 0.4rem;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  line-height: 1.1;
+}
+.film-tour-beats {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding-left: 1.2rem;
+  list-style: decimal;
+  line-height: 1.5;
+}
+.film-tour-beats .source-note {
+  display: block;
+  margin-top: 0.2rem;
+}
+.film-tour-note {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: rgb(var(--muted));
+}

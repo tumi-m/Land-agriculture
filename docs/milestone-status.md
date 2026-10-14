@@ -858,3 +858,23 @@ of Limpopo and reads it back in Node with Mediabunny — 180 frames,
 1280 × 720, named `asbonge-limpopo` — then checks the stage is restored;
 model specs 9/9; the button measured 44 px high in the phone sheet and on
 desktop.
+
+## Landed 14 Oct 2026 — the launch film on the guide
+
+The guide opens with the 25-second film and, beside it, everything it
+says as text: the provinces and districts, the notices placed by district
+(47 of 49, one spanning two districts, two awaiting theirs, pins marking
+districts not farms), and about 87 days to a signed lease, each with its
+source and date. The text is counted on every build from the same modules
+(`noticePlacement` for the notices); the film is dated as made on 14 Oct.
+The video is WebM (VP9, 1080p, 2.2 MB) with a 720p MP4 fallback (1.7 MB)
+for Safari, `preload="none"`, so the page loads only the poster.
+
+This is the corrected cut: re-rendered after the count fix, all 14 review
+checks passed, and the notices scene checked by eye at 47.
+
+**Checks:** `npm run check` (237 unit tests), build, budget 191.8 kB; a new
+e2e spec checks nothing but the poster loads with the page, the three
+files are served with their types, and the three beats carry figures and
+sources; the rest of the suite 35/35 earlier on this tree; the WebM played
+in Chromium at 1920 × 1080 for its full 25.0 s length.
