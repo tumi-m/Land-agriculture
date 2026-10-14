@@ -70,6 +70,7 @@ export default function GuidePage() {
           <a href="/guide" className="nav-current" aria-current="page">
             Guide
           </a>
+          <Link href="/outline">Outline</Link>
         </nav>
       </header>
 

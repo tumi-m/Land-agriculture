@@ -517,6 +517,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
           <a href="/guide#applying">How to apply</a>
           <a href="/guide#money">Funding & support</a>
           <a href="/guide">Guide</a>
+          <a href="/outline">Outline</a>
         </nav>
         <div className="header-actions">
           <button

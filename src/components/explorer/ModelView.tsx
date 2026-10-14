@@ -1179,6 +1179,7 @@ export default function ModelView({
         <div className="anatomy-loading">
           <p>3D rendering is unavailable on this device.</p>
           <button onClick={onTerrain}>Open terrain map</button>
+          <a href="/outline">Read it as an outline</a>
         </div>
       )}
       {(selected

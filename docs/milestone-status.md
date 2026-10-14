@@ -927,3 +927,31 @@ button rather than pushing it onto a second row.
 spec (4 tests: slash and Enter to a district, arrows and Enter to a
 poultry notice, coordinates in and abroad, Escape returns focus); the full
 suite 40/40; budget 193.8 kB of 230 kB (+1.5 kB for the dialog and index).
+
+## Landed 14 Oct 2026 — M1.6 (rest): the outline, and a way there without WebGL
+
+`/outline` is the explorer as text: one table per province, a row per
+district with its area (km²), mean rainfall (mm/year), mean soil pH with
+its band, main land cover and share, and the reviewed lease notices in it,
+each linking into the explorer. The sources are stated once, above the
+tables, with dates and resolutions; an empty figure reads "Not recorded";
+the notices still awaiting a district are listed at the end rather than
+dropped; and a line says what a district mean and a notice's district do
+not tell you. It is static and server-rendered: no WebGL, no script needed
+to read it, every link 44 px.
+
+It is linked from the header on the explorer and the guide, from the
+sitemap, and from the model's failure state, which now offers "Read it as
+an outline" beside the terrain map — the part of M1.7 that says WebGL
+failure must still leave a way in.
+
+Found on the way: `.outline` is a Tailwind utility (it drew a 3 px outline
+round the page), and `.num` is the app's monospace class; the page uses
+`land-outline` and `outline-num`.
+
+**Checks:** `npm run check`; new e2e specs — the outline has 9 tables and
+52 district rows, sources with dates, numbers with units and no NaN, the
+awaiting notices listed, a district link opened from the keyboard — and,
+with Chromium's WebGL switched off, the model shows its fallback and the
+outline link works. Full suite 43/43; budget unchanged at 193.8 kB (the
+page is static and ships no script of its own).

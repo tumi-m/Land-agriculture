@@ -417,6 +417,14 @@
   background: #102a32;
   color: #cfeaa9;
 }
+.anatomy-loading a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .assembling-outline {
   width: min(52vw, 18rem);
   height: auto;
