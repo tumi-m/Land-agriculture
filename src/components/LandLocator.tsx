@@ -42,6 +42,8 @@ import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import { useLiveData } from "@/lib/useLiveData";
 import { cueFor, play, setSoundOn, soundOn } from "@/lib/sound";
+import type { SearchHit } from "@/lib/search";
+import SearchDialog from "./explorer/SearchDialog";
 import {
   IconArrowOut,
   IconChevronDown,
@@ -397,6 +399,32 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     patch({ lastProvince: selectionProvince });
   }, [keepsProvince, selectionProvince, ui.lastProvince, patch]);
 
+  // Search: "/" opens it from anywhere but a text field, as on most sites.
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.target instanceof HTMLElement && e.target.closest("input,select,textarea,[contenteditable]")) return;
+      e.preventDefault();
+      setSearchOpen(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  const chooseHit = (hit: SearchHit) => {
+    if (hit.kind === "notice") {
+      const item = FARM_NOTICES.find((n) => n.id === hit.id);
+      if (item) chooseNotice(item);
+    } else if (hit.kind === "point") {
+      applySelection({ kind: "point", lng: hit.lng, lat: hit.lat });
+      setView("land");
+    } else if (hit.kind === "district") {
+      applySelection({ kind: "district", province: hit.province, district: hit.district });
+    } else {
+      applySelection({ kind: "province", province: hit.province });
+    }
+  };
+
   // Escape closes the province panel — the map is the thing, so give it back.
   useEffect(() => {
     if (selection.kind === "country" && !inspection && !notice) return;
@@ -518,6 +546,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
         </div>
       </header>
 
+      <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} onChoose={chooseHit} />
       <main className="workspace">
         <section
           id="map"
@@ -587,6 +616,18 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 Compare
               </button>
             </div>
+            <button
+              type="button"
+              className="explorer-search"
+              aria-haspopup="dialog"
+              aria-keyshortcuts="/"
+              aria-label="Search places and lease notices"
+              onClick={() => setSearchOpen(true)}
+            >
+              <IconSearch />
+              <span>Search</span>
+              <kbd aria-hidden="true">/</kbd>
+            </button>
             <div
               role="group"
               aria-label="Historical province measure"

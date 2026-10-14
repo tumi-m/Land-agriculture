@@ -899,3 +899,31 @@ removing the metric switch and two-slider console) is still open.
 **Checks:** `npm run check` (237 unit tests); budget 192.3 kB (+0.5 kB);
 screenshot, chrome-overlap and smoke specs pass on this tree, and the full
 suite passed on a tree that also held the next change.
+
+## Landed 14 Oct 2026 — M1.6 (part): search
+
+Press `/` anywhere outside a text field, or the Search button in the bar,
+and type. `src/lib/search.ts` indexes the provinces, the 52 districts and
+the reviewed lease notices (by name, farm use, district, municipality and
+province), all on the device. It also reads what people paste: a
+21-character Surveyor-General code opens the notice its parcel is matched
+to, and a pair of decimal coordinates in either order, with or without
+S/E, opens that point on the land map. Arrow keys move, Enter opens,
+Escape closes and gives focus back. A query that finds nothing says why:
+a code with no matched notice, a point outside South Africa, or no match.
+
+Rivers are not indexed: the six drawn on the model are context, with no
+selection that could hold one. Parcels have no screen of their own yet, so
+a code goes to its notice rather than a dead end. The plan's acceptance
+examples hold — "vhembe" finds the district first, "poultry" finds the two
+poultry notices, coordinates find the point, a matched code finds its
+farm. The Outline (the no-3D, no-mouse path) is the rest of M1.6 and is
+still open.
+
+On a phone the view switch now shares its row with the 44 px search
+button rather than pushing it onto a second row.
+
+**Checks:** `npm run check` (247 unit tests, 10 new for search); a new e2e
+spec (4 tests: slash and Enter to a district, arrows and Enter to a
+poultry notice, coordinates in and abroad, Escape returns focus); the full
+suite 40/40; budget 193.8 kB of 230 kB (+1.5 kB for the dialog and index).

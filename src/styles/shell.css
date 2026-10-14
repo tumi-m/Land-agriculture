@@ -328,8 +328,11 @@
     overflow: hidden;
     clip-path: inset(50%);
   }
+  /* The switch shares its row with the search button, which stays a
+     fingertip wide. */
   .terrain-experience .explorer-bar .map-view-switch {
-    flex: 1 1 100%;
+    flex: 1 1 0;
+    min-width: 0;
   }
   .terrain-experience .explorer-bar .map-view-switch button {
     padding: 0 0.35rem;
@@ -805,4 +808,121 @@
   margin-top: 1rem;
   font-size: 0.875rem;
   color: rgb(var(--muted));
+}
+
+/* Search: a button in the bar, and a dialog over everything. */
+.explorer-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 999px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-size: 0.875rem;
+  flex: none;
+}
+.explorer-search kbd {
+  padding: 0 0.35rem;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  color: rgb(var(--muted));
+}
+@media (max-width: 640px) {
+  .explorer-search {
+    padding: 0;
+  }
+  .explorer-search span,
+  .explorer-search kbd {
+    display: none;
+  }
+}
+.search-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: 80vh;
+  margin: 10vh auto auto;
+  padding: 0;
+  border: 1px solid rgb(var(--rule));
+  border-radius: 14px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  box-shadow: 0 24px 60px rgb(var(--ink) / 0.25);
+}
+.search-dialog::backdrop {
+  background: rgb(var(--ink) / 0.35);
+}
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.4rem 0.4rem 1rem;
+  border-bottom: 1px solid rgb(var(--rule));
+}
+.search-field:focus-within {
+  box-shadow: inset 0 -2px 0 rgb(var(--clay));
+}
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.05rem;
+}
+/* The dialog has its own close button; the browser's clear cross beside it
+   would be a second ×. */
+.search-field input::-webkit-search-cancel-button {
+  display: none;
+}
+.explorer-search .icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.search-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+.search-results {
+  max-height: 50vh;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: auto;
+  list-style: none;
+}
+.search-results:empty {
+  display: none;
+}
+.search-results li {
+  display: grid;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.search-results li[aria-selected="true"] {
+  background: rgb(var(--clay-soft));
+}
+.search-results small {
+  color: rgb(var(--muted));
+  font-size: 0.8rem;
+}
+.search-status {
+  margin: 0;
+  padding: 0.6rem 1rem 0.8rem;
+  border-top: 1px solid rgb(var(--rule));
+  color: rgb(var(--muted));
+  font-size: 0.8rem;
 }
