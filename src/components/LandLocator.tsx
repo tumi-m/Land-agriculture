@@ -41,6 +41,7 @@ import { CONTENT_REVIEWED, SOURCE_NOTE } from "@/content/meta";
 import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import { useLiveData } from "@/lib/useLiveData";
+import { cueFor, play, setSoundOn, soundOn } from "@/lib/sound";
 import type { Dataset, ProvinceCode } from "@/lib/types";
 
 const LandScene = dynamic(() => import("./LandScene"), {
@@ -413,6 +414,26 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [selection, notice, inspection, focusMap, selectProvince, setFocusMap, setDetailState]);
 
+  // Interface sounds are off until turned on, and the choice is read after
+  // hydration so the server and the first render agree.
+  const [sound, setSound] = useState(false);
+  useEffect(() => setSound(soundOn()), []);
+  const toggleSound = () => {
+    const next = !sound;
+    setSound(next);
+    setSoundOn(next);
+    if (next) play("select");
+  };
+  const heard = useRef(selection);
+  useEffect(() => {
+    const before = heard.current;
+    heard.current = selection;
+    const cue = cueFor(before, selection);
+    // Only for a change the reader has just made, never for the selection a
+    // shared link arrives with.
+    if (cue && (navigator.userActivation?.isActive ?? urlReady)) play(cue);
+  }, [selection, urlReady]);
+
   const toggleTheme = () => {
     const next = !dark;
     document.documentElement.classList.toggle("dark", next);
@@ -468,6 +489,29 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
           >
             {dark ? "☀" : "☾"}
+          </button>
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="theme-toggle sound-toggle"
+            aria-pressed={sound}
+            aria-label="Interface sounds"
+            title={sound ? "Interface sounds on" : "Interface sounds off"}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
+              {sound ? (
+                <path
+                  d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <path d="M16 9.5l5 5m0-5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              )}
+            </svg>
           </button>
           <a
             className="btn-solid route-cta"

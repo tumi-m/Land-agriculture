@@ -41,6 +41,7 @@ import {
 import { createSceneCore } from "@/scene/core";
 import { easeOut, prefersReducedMotion } from "@/lib/useTween";
 import { useSwipeDown } from "@/lib/useSwipeDown";
+import AssemblingOutline from "./AssemblingOutline";
 import { loadSliceTexture } from "@/scene/textures";
 import LANDCOVER from "../../../public/data/layers/landcover.json";
 import SOIL_PH from "../../../public/data/layers/soil-ph.json";
@@ -1099,7 +1100,10 @@ export default function ModelView({
         {announcement}
       </p>
       {!ready && !failed && (
-        <div className="anatomy-loading">Assembling the land…</div>
+        <div className="anatomy-loading">
+          <AssemblingOutline />
+          <p>Assembling the land…</p>
+        </div>
       )}
       {failed && (
         <div className="anatomy-loading">

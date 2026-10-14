@@ -201,6 +201,8 @@ test("on a phone the information sheet closes when pulled down, not when nudged"
   await page.goto("/?at=layer:LP:vhembe-district:climate");
   const sheet = page.locator(".anatomy-dossier");
   await expect(sheet).toBeVisible({ timeout: 20_000 });
+  // Measured once the sheet has finished rising into place.
+  await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   const head = await page.locator(".anatomy-dossier-head").boundingBox();
   if (!head) throw new Error("sheet header has no box");
   const pull = async (distance: number) => {
@@ -211,6 +213,10 @@ test("on a phone the information sheet closes when pulled down, not when nudged"
   };
   await pull(40);
   await expect(sheet).toBeVisible();
+  // A nudge springs back to where the sheet rests.
+  await expect
+    .poll(async () => (await page.locator(".anatomy-dossier-head").boundingBox())?.y)
+    .toBeCloseTo(head.y, 0);
   await pull(180);
   await expect(sheet).toHaveCount(0);
 });
