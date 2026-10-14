@@ -828,3 +828,29 @@ with frames 380–400 rendered in sequence. The full re-render then passed all
 14 review checks, the contact sheet shows the outline drawing on at 13 s,
 and ship wrote a 3.2 MB 1080p MP4, a 1.6 MB 720p MP4, a 2.2 MB WebM and the
 poster, each probed at 25.0 s.
+
+## Landed 14 Oct 2026 — save a clip of the model
+
+"Save a 6-second clip" in the model's controls records one full turn around
+what the reader is looking at, 1280 × 720 at 30 fps, captioned with the
+place, the district boundaries' source and date, the slices' sources and
+the relief source, and downloads it. Mediabunny encodes it in the browser
+(H.264 in MP4 where the browser can, VP9 in WebM otherwise); nothing leaves
+the device, the library loads only on that click, and the button is not
+offered where WebCodecs is missing. Frames are drawn on demand at the
+clip's size, so a slow device makes a slower recording, not a jerkier clip.
+While it records, a cover with progress hides the resized canvas; the
+camera, canvas size and panel offset are put back after.
+
+Two framing faults found by looking at the clips: the panel's view offset
+carried into the clip (district low and half under the caption), and the
+turn pivoted on the resting centre rather than where the pulled-apart
+district is drawn. Both fixed; the subject now turns in place above the
+caption.
+
+**Checks:** `npm run check` (236 unit tests, 4 new for the turn, the file
+name, caption wrapping and the shade colour); a new e2e spec saves a clip
+of Limpopo and reads it back in Node with Mediabunny — 180 frames,
+1280 × 720, named `asbonge-limpopo` — then checks the stage is restored;
+model specs 9/9; the button measured 44 px high in the phone sheet and on
+desktop.

@@ -731,3 +731,34 @@
     display: none;
   }
 }
+
+/* Saving a clip is secondary to shaping the model: an outline, not a fill. */
+.anatomy-stage .anatomy-save-clip {
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.anatomy-stage .anatomy-save-clip:disabled {
+  opacity: 0.55;
+}
+.anatomy-clip-status {
+  margin: 0;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+/* While a clip is drawn the canvas is resized and the camera turns; the
+   cover keeps both out of sight and says how far along it is. */
+.anatomy-recording progress {
+  width: min(60%, 18rem);
+  height: 0.5rem;
+}
+@media (max-width: 1100px) {
+  .anatomy-stage .anatomy-save-clip {
+    width: 100%;
+  }
+}

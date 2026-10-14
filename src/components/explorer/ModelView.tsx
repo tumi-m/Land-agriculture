@@ -42,6 +42,8 @@ import { createSceneCore } from "@/scene/core";
 import { easeOut, prefersReducedMotion } from "@/lib/useTween";
 import { useSwipeDown } from "@/lib/useSwipeDown";
 import AssemblingOutline from "./AssemblingOutline";
+import { canRecordClips, recordOrbit } from "@/scene/clip";
+import DISTRICT_STATS from "@/data/district-stats.json";
 import { loadSliceTexture } from "@/scene/textures";
 import LANDCOVER from "../../../public/data/layers/landcover.json";
 import SOIL_PH from "../../../public/data/layers/soil-ph.json";
@@ -82,6 +84,9 @@ export { EXTRUDE_DEPTH, makePiece } from "@/scene/pieces";
  * depth transforms in `src/scene/depth.ts`; this component keeps them in step
  * with the explorer store and owns the chrome around the canvas.
  */
+/** What the model is, said on the stage and under every saved clip. */
+const SHAPES_NOTE = "Geographic shapes · thematic slices, not measured soil strata";
+
 export default function ModelView({
   onNotice,
   onTerrain,
@@ -166,6 +171,8 @@ export default function ModelView({
   const drapeSlices = useRef<(textures: (THREE.Texture | null)[]) => void>(
     () => {},
   );
+  /** The middle of what the reader is looking at, for a clip to turn around. */
+  const clipPivot = useRef<() => THREE.Vector3 | null>(() => null);
   /** Drops any camera flight in progress, so a preset or zoom is not undone. */
   const cancelFlight = useRef<() => void>(() => {});
   const latest = useRef({ selected, district, depth, peel, layer });
@@ -184,6 +191,12 @@ export default function ModelView({
     : selected
       ? `${PROVINCES[selected].name} opened: ${DISTRICTS_BY_PROVINCE[selected].length} districts.`
       : "South Africa: nine provinces.";
+  /** The place a saved clip is named and captioned after. */
+  const place = districtShape
+    ? `${PROVINCES[selected!].name} · ${districtShape.name}`
+    : selected
+      ? PROVINCES[selected].name
+      : "South Africa";
   const notices =
     selected && district
       ? noticesForDistrict(selected, district)
@@ -471,6 +484,20 @@ export default function ModelView({
       };
     };
     frameScene.current = frame;
+    // Drawn positions, not resting ones: a pulled-apart province has moved
+    // its districts away from where the framing above aims.
+    clipPivot.current = () => {
+      const { selected, district } = latest.current;
+      const child = districts.find((p) => p.id === district && p.province === selected);
+      const shown = child
+        ? [child]
+        : selected
+          ? districts.filter((p) => p.province === selected)
+          : provinces;
+      const box = new THREE.Box3();
+      for (const piece of shown) box.expandByObject(piece.group);
+      return box.isEmpty() ? null : box.getCenter(new THREE.Vector3());
+    };
     cancelFlight.current = () => {
       flight = null;
     };
@@ -976,6 +1003,10 @@ export default function ModelView({
   // and rainfall, loaded the first time a province is opened (the slices
   // only separate inside one). Government land keeps its flat colour.
   const [draped, setDraped] = useState(false);
+  const [clip, setClip] = useState<
+    { progress: number } | { saved: string } | { error: string } | null
+  >(null);
+  const recording = clip !== null && "progress" in clip;
   useEffect(() => {
     if (!selected || draped) return;
     let cancelled = false;
@@ -1079,6 +1110,38 @@ export default function ModelView({
     setCameraPreset(id);
     engine.wake();
   };
+  const reliefNote = `Regional relief (~2.3 km grid), vertical scale ×${RELIEF_EXAGGERATION}${
+    water && !selected ? " · major rivers shown" : ""
+  } · ${DEM_ATTRIBUTION}`;
+  const slicesNote = `Slices: land cover ${LANDCOVER.source} (${LANDCOVER.date}); soil pH ${SOIL_PH.source} (${SOIL_PH.date}); rainfall ${RAIN.source} (${RAIN.date}) · each on a grid of about 1.7 km · slab thickness is not soil depth`;
+  const saveClip = async () => {
+    const engine = core.current;
+    if (!engine || recording) return;
+    setClip({ progress: 0 });
+    try {
+      const { blob, name } = await recordOrbit(engine, {
+        place,
+        // What the frame shows, and whose measurements it is drawn from.
+        pivot: clipPivot.current(),
+        sources: [
+          `District boundaries: Code for Germany click_that_hood (${DISTRICT_STATS.boundaries.date}), names updated to current official names`,
+          draped && selected ? slicesNote : SHAPES_NOTE,
+          ...(relief ? [reliefNote] : []),
+        ],
+        onProgress: (progress) => setClip({ progress }),
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setClip({ saved: name });
+    } catch (error) {
+      setClip({ error: error instanceof Error ? error.message : "the clip could not be made" });
+    }
+  };
+
   return (
     <div
       className={`anatomy-stage${fresh ? " is-fresh" : ""}`}
@@ -1099,6 +1162,12 @@ export default function ModelView({
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
+      {recording && (
+        <div className="anatomy-loading anatomy-recording" role="status">
+          <p>Making your clip… {Math.round(clip.progress * 100)}%</p>
+          <progress max={1} value={clip.progress} aria-label="Clip progress" />
+        </div>
+      )}
       {!ready && !failed && (
         <div className="anatomy-loading">
           <AssemblingOutline />
@@ -1459,20 +1528,31 @@ export default function ModelView({
           >
             {depth === 0 ? "Separate regions" : "Reassemble"}
           </button>
+          {canRecordClips() && (
+            <button
+              className="anatomy-save-clip"
+              onClick={saveClip}
+              disabled={recording || !ready}
+              aria-describedby="anatomy-clip-status"
+            >
+              {recording ? "Recording…" : "Save a 6-second clip"}
+            </button>
+          )}
+          {clip && !recording && (
+            <p id="anatomy-clip-status" className="anatomy-clip-status" role="status">
+              {"saved" in clip ? `Saved ${clip.saved}.` : `Could not make a clip: ${clip.error}.`}
+            </p>
+          )}
         </div>
         <p className="anatomy-source" role="status">
           {relief
-            ? `Regional relief (~2.3 km grid), vertical scale ×${RELIEF_EXAGGERATION}${
-                water && !selected ? " · major rivers shown" : ""
-              } · ${DEM_ATTRIBUTION}`
+            ? reliefNote
             : reliefFailed
               ? "Regional relief unavailable · overview still usable"
               : "Adding regional relief…"}
         </p>
         <p className="anatomy-footnote">
-          {draped && selected
-            ? `Slices: land cover ${LANDCOVER.source} (${LANDCOVER.date}); soil pH ${SOIL_PH.source} (${SOIL_PH.date}); rainfall ${RAIN.source} (${RAIN.date}) · each on a grid of about 1.7 km · slab thickness is not soil depth`
-            : "Geographic shapes · thematic slices, not measured soil strata · drag to orbit · pinch to zoom"}
+          {draped && selected ? slicesNote : `${SHAPES_NOTE} · drag to orbit · pinch to zoom`}
         </p>
       </div>
     </div>
