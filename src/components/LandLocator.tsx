@@ -42,6 +42,15 @@ import { PROVINCES, PROVINCE_ORDER } from "@/content/provinces";
 import { cx, group } from "@/lib/format";
 import { useLiveData } from "@/lib/useLiveData";
 import { cueFor, play, setSoundOn, soundOn } from "@/lib/sound";
+import {
+  IconArrowOut,
+  IconChevronDown,
+  IconExpand,
+  IconMoon,
+  IconSearch,
+  IconSpeaker,
+  IconSun,
+} from "./ui/icons";
 import type { Dataset, ProvinceCode } from "@/lib/types";
 
 const LandScene = dynamic(() => import("./LandScene"), {
@@ -488,7 +497,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             className="theme-toggle"
             aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
           >
-            {dark ? "☀" : "☾"}
+            {dark ? <IconSun /> : <IconMoon />}
           </button>
           <button
             type="button"
@@ -498,26 +507,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
             aria-label="Interface sounds"
             title={sound ? "Interface sounds on" : "Interface sounds off"}
           >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
-              {sound ? (
-                <path
-                  d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              ) : (
-                <path d="M16 9.5l5 5m0-5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              )}
-            </svg>
+            <IconSpeaker on={sound} />
           </button>
           <a
             className="btn-solid route-cta"
             href={`/guide${province ? `?province=${province}` : ""}#route`}
           >
-            Find my route <span aria-hidden="true">↗</span>
+            Find my route <IconArrowOut />
           </a>
         </div>
       </header>
@@ -626,7 +622,13 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 aria-pressed={focusMap}
                 onClick={() => setFocusMap(!focusMap)}
               >
-                {focusMap ? "Show land browser" : "Focus map ⛶"}
+                {focusMap ? (
+                  "Show land browser"
+                ) : (
+                  <>
+                    Focus map <IconExpand />
+                  </>
+                )}
               </button>
               <button
                 aria-expanded={!compactMap}
@@ -662,7 +664,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                 <details className="historical-browser">
                   <summary>Browse provinces & historical figures</summary>
                   <label className="province-search">
-                    <span aria-hidden="true">⌕</span>
+                    <IconSearch />
                     <input
                       type="search"
                       aria-label="Search provinces or farming commodities"
@@ -815,7 +817,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                           : "Region selected · view information"}
                     </small>
                   </span>
-                  <b>{detailState === "expanded" && !focusMap ? "⌄" : "↗"}</b>
+                  <b>{detailState === "expanded" && !focusMap ? <IconChevronDown /> : <IconArrowOut />}</b>
                 </button>
               )}
               <div className="map-legend" hidden={!showFigures}>
@@ -857,7 +859,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
                       className="collapse-region"
                       onClick={() => setDetailState("collapsed")}
                     >
-                      Collapse region details ⌄
+                      Collapse region details <IconChevronDown />
                     </button>
                     <ProvincePanel
                       code={province}
@@ -910,7 +912,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <h3>Find your fit</h3>
               <p>Your farming plans, category and lease options.</p>
             </div>
-            <span aria-hidden="true">↗</span>
+            <IconArrowOut />
           </a>
           <a href="/guide#applying">
             <span className="step-number">02</span>
@@ -918,7 +920,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <h3>Build your application</h3>
               <p>The process, Form ALA and a document checklist.</p>
             </div>
-            <span aria-hidden="true">↗</span>
+            <IconArrowOut />
           </a>
           <a href="/guide#money">
             <span className="step-number">03</span>
@@ -926,7 +928,7 @@ export default function LandLocator({ initial }: { initial: Dataset }) {
               <h3>Plan the funding</h3>
               <p>Understand grants, loans and farmer support.</p>
             </div>
-            <span aria-hidden="true">↗</span>
+            <IconArrowOut />
           </a>
         </section>
       </main>

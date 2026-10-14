@@ -878,3 +878,24 @@ e2e spec checks nothing but the poster loads with the page, the three
 files are served with their types, and the three beats carry figures and
 sources; the rest of the suite 35/35 earlier on this tree; the WebM played
 in Chromium at 1920 × 1080 for its full 25.0 s length.
+
+## Landed 14 Oct 2026 — M1.5 (part): icons drawn, not typed
+
+Checked against the tree before claiming: **M1.4 is already complete.**
+Label placement ranks selected → hovered → area, caps at 10 on a phone and
+20 on desktop, turns the overflow into dots, and is pinned by
+`tests/labels.test.ts` (12 tests) and `e2e/labels.spec.ts` (no overlap at
+every depth and width). The phase table above predates that work.
+
+From M1.5, this lands the icons: every unicode glyph used as an icon —
+⌕ ⌖ ↶ ↷ ⛶ ☾ ☀ ● × ⌃ ⌄ and the ↗ arrows on links and buttons — is now an
+inline SVG from `src/components/ui/icons.tsx`, 1em square, in the text
+colour, hidden from assistive technology with the name on the control. The
+glyphs depended on the device's fonts and several drew as empty boxes on
+Android. The brand mark's "A↗" stays: it is the logo, not an icon. The
+rest of M1.5 (splitting the shell into components, the single dock,
+removing the metric switch and two-slider console) is still open.
+
+**Checks:** `npm run check` (237 unit tests); budget 192.3 kB (+0.5 kB);
+screenshot, chrome-overlap and smoke specs pass on this tree, and the full
+suite passed on a tree that also held the next change.

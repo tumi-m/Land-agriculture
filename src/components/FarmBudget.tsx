@@ -7,6 +7,7 @@ import {
   type Budget,
 } from "@/lib/farm-budget";
 import { rand } from "@/lib/format";
+import { IconArrowOut } from "@/components/ui/icons";
 // Whole rand, formatted by hand: Intl's en-ZA currency output differs
 // between the server's ICU and the browser's.
 const money = rand;
@@ -165,7 +166,7 @@ export default function FarmBudget({ scope }: { scope: string }) {
         target="_blank"
         rel="noreferrer"
       >
-        Land Bank enterprise budget references ↗
+        Land Bank enterprise budget references <IconArrowOut />
       </a>
     </section>
   );

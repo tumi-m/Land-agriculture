@@ -42,6 +42,7 @@ import { createSceneCore } from "@/scene/core";
 import { easeOut, prefersReducedMotion } from "@/lib/useTween";
 import { useSwipeDown } from "@/lib/useSwipeDown";
 import AssemblingOutline from "./AssemblingOutline";
+import { IconArrowOut, IconClose, IconDot, IconReframe } from "@/components/ui/icons";
 import { canRecordClips, recordOrbit } from "@/scene/clip";
 import DISTRICT_STATS from "@/data/district-stats.json";
 import { loadSliceTexture } from "@/scene/textures";
@@ -1303,7 +1304,7 @@ export default function ModelView({
         </div>
         <div className="anatomy-mobile-dock">
           <button className="anatomy-real-terrain" onClick={onTerrain}>
-            View real terrain ↗
+            View real terrain <IconArrowOut />
           </button>
           <button
             className="anatomy-controls-toggle"
@@ -1325,7 +1326,7 @@ export default function ModelView({
             }}
           >
             {infoOpen
-              ? "Close information ×"
+              ? <>Close information <IconClose /></>
               : districtShape
                 ? "Region information"
                 : `Government land · ${notices.length}`}
@@ -1342,7 +1343,7 @@ export default function ModelView({
             aria-label="Reframe selection"
             onClick={() => frameScene.current()}
           >
-            ⌖
+            <IconReframe />
           </button>
           <button
             aria-pressed={auto}
@@ -1363,13 +1364,13 @@ export default function ModelView({
           <div className="anatomy-dossier" id="anatomy-layer-details">
             <div className="anatomy-dossier-head" {...swipeInfo}>
               <span style={{ color: layerMeta.colour }}>
-                ● {districtShape ? layerMeta.name : "Government land"}
+                <IconDot /> {districtShape ? layerMeta.name : "Government land"}
               </span>
               <button
                 onClick={() => setInfoOpen(false)}
                 aria-label="Collapse layer information"
               >
-                Close ×
+                Close <IconClose />
               </button>
             </div>
             <p>
@@ -1395,7 +1396,7 @@ export default function ModelView({
             )}
             {districtShape && layer !== "opportunity" && (
               <button className="anatomy-terrain-link" onClick={onTerrain}>
-                Inspect real terrain & data ↗
+                Inspect real terrain & data <IconArrowOut />
               </button>
             )}
             {districtShape && (
@@ -1419,7 +1420,7 @@ export default function ModelView({
               onClick={() => setControlsOpen(false)}
               aria-label="Close region controls"
             >
-              Close ×
+              Close <IconClose />
             </button>
           </div>
           <div className="anatomy-select">

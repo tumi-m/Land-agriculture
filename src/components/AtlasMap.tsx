@@ -34,6 +34,7 @@ import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import type { ProvinceCode } from "@/lib/types";
 import type { CameraPose } from "@/state/explorer";
 import { labelCap, placeLabels, type LabelBox } from "@/lib/placement";
+import { IconArrowOut, IconClose, IconReframe, IconRotateLeft, IconRotateRight } from "@/components/ui/icons";
 
 /** A marker that takes part in decluttering, with the size of its full form. */
 interface FarmPin {
@@ -796,7 +797,7 @@ export default function AtlasMap({
             }
             aria-label="Rotate left"
           >
-            ↶
+            <IconRotateLeft />
           </button>
           <button
             disabled={!loaded}
@@ -805,7 +806,7 @@ export default function AtlasMap({
             }
             aria-label="Rotate right"
           >
-            ↷
+            <IconRotateRight />
           </button>
           <button
             disabled={!loaded}
@@ -830,7 +831,7 @@ export default function AtlasMap({
             onClick={() => frame()}
             aria-label="Reset regional view"
           >
-            ⌖
+            <IconReframe />
           </button>
         </div>
         <div className="map-inspection-toggle">
@@ -841,7 +842,15 @@ export default function AtlasMap({
               setInspectMode(!inspectMode);
             }}
           >
-            {inspectMode ? "⌖ Click to inspect" : "↗ Click districts"}
+            {inspectMode ? (
+              <>
+                <IconReframe /> Click to inspect
+              </>
+            ) : (
+              <>
+                <IconArrowOut /> Click districts
+              </>
+            )}
           </button>
           <span>
             {inspectMode
@@ -867,7 +876,13 @@ export default function AtlasMap({
           aria-controls="terrain-layer-sheet"
           onClick={() => setLayersOpen(!layersOpen)}
         >
-          {layersOpen ? "Close map layers ×" : "Map layers & detail"}
+          {layersOpen ? (
+            <>
+              Close map layers <IconClose />
+            </>
+          ) : (
+            "Map layers & detail"
+          )}
         </button>
         <button
           className="terrain-aerial-toggle"
@@ -881,7 +896,7 @@ export default function AtlasMap({
         >
           {aerial && satellite && quality !== "economy"
             ? "Aerial on · turn off"
-            : "Aerial close-up ↗"}
+            : <>Aerial close-up <IconArrowOut /></>}
         </button>
         {layersOpen && (
           <section
@@ -891,7 +906,9 @@ export default function AtlasMap({
           >
             <div className="infrastructure-card-head">
               <strong>Map layers & detail</strong>
-              <button onClick={() => setLayersOpen(false)}>Close ×</button>
+              <button onClick={() => setLayersOpen(false)}>
+                Close <IconClose />
+              </button>
             </div>
             <label>
               Rendering quality
@@ -910,7 +927,7 @@ export default function AtlasMap({
               remains typically ≈30 m.
             </p>
             <a href={AERIAL_CATALOGUE} target="_blank" rel="noreferrer">
-              Aerial source & dates ↗
+              Aerial source & dates <IconArrowOut />
             </a>
             <small>
               The catalogue describes 2014–2016 imagery; the local capture date is
@@ -981,7 +998,7 @@ export default function AtlasMap({
                 setLayersOpen(false);
               }}
             >
-              Explore nearby detail ↗
+              Explore nearby detail <IconArrowOut />
             </button>
             <button onClick={() => setInfraRetry((n) => n + 1)}>
               Retry local features

@@ -18,6 +18,7 @@ import {
   removeLayerDefs,
 } from "@/map/layers";
 import { decimal } from "@/lib/format";
+import { IconArrowOut, IconClose } from "@/components/ui/icons";
 export function infrastructureHit(
   map: LibreMap,
   point: MapMouseEvent["point"],
@@ -195,7 +196,7 @@ export default function InfrastructureOverlay({
               onClick={() => setSelected(null)}
               aria-label="Close infrastructure information"
             >
-              Close ×
+              Close <IconClose />
             </button>
           </div>
           <p>
@@ -222,7 +223,7 @@ export default function InfrastructureOverlay({
           )}
           <p>{source.note}</p>
           <a href={source.url} target="_blank" rel="noreferrer">
-            {source.credit} ↗
+            {source.credit} <IconArrowOut />
           </a>
           <small>
             Dataset updated {source.updated}.{" "}

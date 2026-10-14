@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { cx } from "@/lib/format";
+import { IconChevronDown, IconChevronUp, IconClose } from "@/components/ui/icons";
 
 export type SheetSnap = "peek" | "half" | "full";
 
@@ -133,7 +134,7 @@ export function Sheet({
           onClick={snapUp}
           disabled={snap === "full"}
         >
-          ⌃
+          <IconChevronUp />
         </button>
         <button
           type="button"
@@ -142,7 +143,7 @@ export function Sheet({
           onClick={snapDown}
           disabled={snap === "peek"}
         >
-          ⌄
+          <IconChevronDown />
         </button>
         <button
           type="button"
@@ -150,7 +151,7 @@ export function Sheet({
           className="sheet-close"
           onClick={onClose}
         >
-          ×
+          <IconClose />
         </button>
       </div>
       <div className="sheet-body">{children}</div>

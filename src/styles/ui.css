@@ -294,3 +294,10 @@
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
   transform: translateX(-50%);
 }
+/* Inline icons (src/components/ui/icons.tsx) sit on the text's baseline and
+   never shrink out of a flex row. */
+.icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: -0.14em;
+}

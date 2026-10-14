@@ -13,6 +13,7 @@ import { parcelFor, CADASTRE_SOURCE } from "@/lib/cadastre";
 import FarmBudget from "./FarmBudget";
 import GovernmentNotices from "./GovernmentNotices";
 import { decimal, sastDateTime } from "@/lib/format";
+import { IconArrowOut, IconClose } from "@/components/ui/icons";
 function ClimateProfile({ point }: { point: MapInspection }) {
   const [data, setData] = useState<Climate | null>(null),
     [error, setError] = useState(""),
@@ -111,7 +112,7 @@ function ClimateProfile({ point }: { point: MapInspection }) {
             target="_blank"
             rel="noreferrer"
           >
-            NASA POWER source data ↗
+            NASA POWER source data <IconArrowOut />
           </a>
         </>
       )}
@@ -170,7 +171,7 @@ export default function LandDossier({
           aria-label="Collapse land information"
           onClick={onClose}
         >
-          Close ×
+          Close <IconClose />
         </button>
       </div>
       <div className="dossier-tabs" role="group" aria-label="Land information">
@@ -237,7 +238,7 @@ export default function LandDossier({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    CSG cadastral data via DFFE ↗
+                    CSG cadastral data via DFFE <IconArrowOut />
                   </a>
                   <p className="dossier-note">
                     GIS extent{" "}
@@ -273,7 +274,7 @@ export default function LandDossier({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Read official farm notice ↗
+                  Read official farm notice <IconArrowOut />
                 </a>
                 <a className="dossier-source" href={`tel:${notice.phone}`}>
                   Call {notice.contact} · {notice.phone}
@@ -342,7 +343,7 @@ export default function LandDossier({
               target="_blank"
               rel="noreferrer"
             >
-              About SoilGrids estimates ↗
+              About SoilGrids estimates <IconArrowOut />
             </a>
           </section>
         </>

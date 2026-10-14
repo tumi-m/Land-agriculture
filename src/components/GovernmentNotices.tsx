@@ -9,6 +9,7 @@ import {
 import { parcelFor } from "@/lib/cadastre";
 import { decimal, plural, sastDate } from "@/lib/format";
 import { useMountedNow } from "@/lib/useMountedNow";
+import { IconArrowOut } from "@/components/ui/icons";
 export default function GovernmentNotices({
   notices,
   onSelect,
@@ -133,9 +134,8 @@ export default function GovernmentNotices({
               {sastDate(n.closes)}
             </small>
             <span className="notice-action">
-              {parcelFor(n.id)
-                ? "View parcel & farm details ↗"
-                : "Farm details & official contact ↗"}
+              {parcelFor(n.id) ? "View parcel & farm details" : "Farm details & official contact"}{" "}
+              <IconArrowOut />
             </span>
           </button>
         ))}
@@ -153,7 +153,7 @@ export default function GovernmentNotices({
         target="_blank"
         rel="noreferrer"
       >
-        Check official DLRRD adverts ↗
+        Check official DLRRD adverts <IconArrowOut />
       </a>
     </div>
   );
