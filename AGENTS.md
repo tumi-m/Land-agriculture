@@ -44,5 +44,10 @@ Next.js 15 (App Router), React 19, TypeScript strict, Tailwind 3. three.js for t
 - Design every state: loading, empty, error, too much data.
 - Charts: label directly rather than with legends where possible, put units on axes, put the source and date under the chart, never rely on colour alone, and offer the numbers as a table for screen readers.
 
+## Motion work
+- Films, explainers, title cards and sound are made in `studio/`, its own npm package, never imported by the app. Its loop is `brief → design → animate → build → sound → render → review → ship`; `studio/README.md` has the commands.
+- Read `.agents/skills/motion-studio/SKILL.md` before any video, explainer, share image, sound or interface-motion work. `npm run skills` fetches the Remotion, GSAP and Motion skills it builds on, at pinned commits.
+- In the app, motion and sound libraries load on demand, respect `prefers-reduced-motion`, and sound stays off until the reader turns it on.
+
 ## Commits
 Imperative summary line, then a short body saying why. No trailers.

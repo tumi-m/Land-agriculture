@@ -21,6 +21,7 @@
     "graph:svg": "mkdir -p test-results/graph && depcruise src scripts tests --config .dependency-cruiser.cjs --output-type archi --output-to test-results/graph/graph.svg",
     "hooks": "git config core.hooksPath .githooks && echo \"hooks installed: $(git config core.hooksPath)\"",
     "budget": "node scripts/budget.mjs",
+    "skills": "node scripts/agent-skills.mjs",
     "measure": "node scripts/measure.mjs",
     "quality": "node scripts/quality.mjs",
     "quality:baseline": "node scripts/quality.mjs --write-baseline",

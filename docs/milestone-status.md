@@ -749,3 +749,79 @@ sheet is open and the model is framed between the breadcrumb and the sheet.
 unchanged at 191.5 kB (the textures load with the model, not the page).
 Depth-1 screenshot of Vhembe shows four distinct slices — land cover,
 pH, rainfall (the Soutpansberg's wet core in dark blue), government land.
+
+## Landed 14 Oct 2026 — a motion studio, and motion and sound in the app
+
+**The studio.** `studio/` is its own npm package, never installed or bundled
+by the app (`tsconfig.json` excludes it, `.vercelignore` skips it). It makes
+a 25-second launch film, a Motion Canvas explainer of the 87 days after the
+closing day, a Satori title card and poster, and a synthesised score, all
+from the app's own modules: counts, sources and dates come from
+`src/content`, `src/lib/geo` and `src/data`, and the palette from
+`src/design/ramps.ts` (new `CARD`). The loop is `brief → design → animate →
+build → sound → render → review → ship`, one npm script per step;
+`studio/README.md` has them, with the licences (Remotion's company-licence
+threshold, GSAP's standard licence, the GPL FFmpeg used as a tool only).
+
+The film's five scenes: the title (GSAP SplitText); the nine provinces
+falling into place (React Three Fiber, Rapier stepped once per frame from a
+snapshot, Drei text and outlines, bloom and depth of field); the outline
+drawn on with GSAP DrawSVG and a dotLottie pin dropped on each of the 22
+districts with reviewed notices, while the count climbs to 48 of 49 and the
+frame says one notice awaits its district and that pins mark districts, not
+farms; the five stages to scale; the end card.
+
+**Found while making it, each a blank or wrong frame first:** the effect
+composer adds its passes two renders after it mounts, and the hull colliders
+a render after the bodies, so the first frames drew nothing and the slabs
+fell through the floor; Drei text typesets after the frame is drawn; and
+React 19 re-applies `dangerouslySetInnerHTML` whenever the prop is a new
+object, which swapped fresh paths under GSAP every frame — invisible in a
+single still, caught by review as a frozen stretch. Each is held or fixed,
+and written into the skill below.
+
+**Review** (`npm run review`) fails a render unless it is the brief's length,
+size and frame rate with all 750 frames (counted by Mediabunny, apart from
+FFmpeg), loudness within 1.5 LU of −16 LUFS and true peak under −1 dBTP, no
+black gaps, nothing frozen 1.5 s, and a picture in every scene.
+
+**Agent skills.** `npm run skills` fetches the Remotion, GSAP and Motion
+skills at pinned commits into `.agents/skills/` (fetched, not committed:
+not all carry a licence that allows copying). The repo's own
+`.agents/skills/motion-studio/SKILL.md` maps every tool to its layer and
+holds the rules for a frame; `AGENTS.md` points to it.
+
+**In the app:**
+- The sheet swipe (`useSwipeDown`) springs with Motion from the finger's
+  release speed: a nudge settles back, a pull past 90 px slides the sheet
+  away before it closes. Release speed is capped, since pointer events a
+  millisecond apart would otherwise fling it. Reduced motion: no spring.
+- While the model builds, Anime.js traces the provinces in outline
+  (`AssemblingOutline`); the library loads only then, and not at all for
+  reduced motion, which sees the outline still.
+- Interface sounds (Howler): a toggle in the header, off until turned on,
+  three cues from the studio's sound stage (`public/sounds`, WebM/Opus with
+  MP3), never played for the selection a shared link arrives with. Howler
+  loads the first time a cue plays.
+- Share cards for `/` and `/guide` (`opengraph-image.tsx`, Satori through
+  `next/og`), with counts, source and date, in the app's typefaces (OFL,
+  licences in `src/assets/fonts`).
+- On the narrowest phones the header keeps both round buttons at 44 px; the
+  wordmark tightens and the route button drops its arrow to fit.
+
+Not done: Rive (its runtime plays `.riv` files made in the Rive editor, and
+none exists); clip export from the app with Mediabunny (used in review
+instead).
+
+**Checks actually run:**
+`npm run check` (232 unit tests, 4 of them new for which change makes which
+sound), build, budget unchanged in practice at 191.7 kB of 230 kB, full e2e
+34/34 including a new spec for the share cards, the sound toggle and the
+cue files, and the swipe spec now also checking that a nudge springs back
+to where the sheet rests. Header measured at 360 and 390 px: one line, both
+round buttons 44 px. In the studio: both typechecks; stills of every scene
+looked at; the explainer rendered headless (621 frames, 20.7 s); the first
+full film render reviewed — length, size, frame rate, 750 of 750 frames,
+−16.1 LUFS, −2.2 dBTP, no black gaps, a picture in every scene, and one
+failure, the frozen stretch from 13.0 s described above. Fixed, and checked
+with frames 380–400 rendered in sequence.
