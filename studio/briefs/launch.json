@@ -1,0 +1,15 @@
+{
+  "composition": "Launch",
+  "seconds": 25,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "loudness": { "integrated": -16, "tolerance": 1.5, "truePeakMax": -1 },
+  "review": { "contactSheetEvery": 1, "maxFrozenSeconds": 1.5 },
+  "deliverables": {
+    "mp4": { "maxMB": 25 },
+    "mp4-720p": { "maxMB": 12 },
+    "webm": { "maxMB": 20 },
+    "poster": { "frame": 372 }
+  }
+}

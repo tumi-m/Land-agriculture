@@ -123,3 +123,16 @@ export const SCENE = {
   /** The pool of light the country stands in. */
   glow: "#7fdcc0",
 } as const;
+
+/**
+ * Share cards (the opengraph-image files under src/app) and the studio's
+ * films: the model stage's colours as literals, because neither an image
+ * renderer nor a video frame reads CSS variables.
+ */
+export const CARD = {
+  stageTop: "#25434a",
+  stageBottom: "#0b1f27",
+  ink: "#eef7ef",
+  muted: "#a9c4ba",
+  accent: "#d5e69e",
+} as const;

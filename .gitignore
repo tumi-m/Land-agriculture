@@ -27,3 +27,14 @@ test-results/perf/*
 !test-results/perf/baseline.json
 playwright-report/
 .pipeline-cache/
+
+# The motion studio: renders and the assets its design and sound stages
+# regenerate. Its node_modules and out/ are covered above.
+studio/public/design/
+studio/public/sound/
+studio/public/fonts/
+
+# Agent skills fetched at pinned commits by `npm run skills`; only the
+# repo's own skill is committed.
+.agents/skills/*
+!.agents/skills/motion-studio/
